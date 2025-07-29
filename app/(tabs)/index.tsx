@@ -1,75 +1,330 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import React from 'react';
+import { FlatList, SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import PullToRefresh from '../../components/PullToRefresh';
+import { usePullToRefresh, usePushNotifications } from '../../hooks';
+import { useGetSessions } from '../../services';
+import { SportSession } from '../../types/sport';
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+import { formatDate, formatTime } from '../../utils/dateHelpers';
+
+const SessionCard = ({ session }: { session: SportSession }) => {
+  const router = useRouter();
+
+
+  return (
+    <TouchableOpacity
+      style={styles.card}
+      onPress={() => router.push(`/session/${session.id}`)}
+    >
+      <View style={styles.cardHeader}>
+        <Text style={styles.sportTitle}>{(session.sport || 'Sport').toUpperCase()}</Text>
+        <Text style={styles.date}>{formatDate(session.date)} à {formatTime(session.time)}</Text>
+      </View>
+
+      <View style={styles.locationContainer}>
+        <Ionicons name="location-outline" size={16} color="#666" />
+        <Text style={styles.location}>{session.location}</Text>
+      </View>
+
+      <View style={styles.participantsContainer}>
+        <Text style={styles.participantsTitle}>
+          Participants ({session.participants?.length || 0}) :
+        </Text>
+        <View style={styles.participantsList}>
+          {(session.participants || []).map((participant, index) => (
+            <View key={participant.id || `participant-${index}`} style={styles.participant}>
+              <Text style={styles.participantName}>
+                {participant.firstname} {participant.lastname}
+              </Text>
+              <View style={[
+                styles.statusBadge,
+                {
+                  backgroundColor: participant.status === 'accepted' ? '#4CAF50' :
+                    participant.status === 'declined' ? '#F44336' : '#FFC107'
+                }
+              ]}>
+                <Text style={styles.statusText}>
+                  {participant.status === 'accepted' ? '✓' :
+                    participant.status === 'declined' ? '✕' : '?'}
+                </Text>
+              </View>
+            </View>
+          ))}
+        </View>
+        {(!session.participants || session.participants.length === 0) && (
+          <Text style={styles.noParticipantsText}>Aucun participant</Text>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+};
 
 export default function HomeScreen() {
+  const router = useRouter();
+  const { data: sessions, isLoading, error, refetch } = useGetSessions();
+
+  // Hook pour les notifications push
+  const { isInitialized: notificationsInitialized, token: pushToken, sendLocalNotification } = usePushNotifications();
+
+  // Utilisation du nouveau hook avec délai minimum
+  const { refreshing, onRefresh } = usePullToRefresh({
+    onRefresh: refetch,
+    minDelay: 1000, // Délai minimum de 1 seconde
+    onError: (error) => {
+    }
+  });
+
+  // Debug: Afficher les informations des sessions
+  React.useEffect(() => {
+    if (sessions && sessions.length > 0) {
+      sessions.forEach((session, index) => {
+      });
+    }
+  }, [sessions]);
+
+  // Test des notifications
+  const handleTestNotification = async () => {
+    try {
+      await sendLocalNotification({
+        title: 'Test de notification',
+        body: 'Ceci est un test de notification locale !',
+        data: {
+          type: 'test',
+          session_id: 'test-123',
+        },
+      });
+    } catch (error) {
+    }
+  };
+
+  // Debug des notifications
+  const handleDebugNotifications = () => {
+    import('../../services/notifications/pushNotifications').then(({ pushNotificationService }) => {
+      pushNotificationService.debugInfo();
+    });
+  };
+
+  // Ne pas afficher d'écran de chargement séparé, toujours afficher l'interface
+  // Le loading sera géré par le pull-to-refresh et les états vides
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" />
+      <View style={styles.header}>
+        <Text style={styles.title}>Mes Sessions</Text>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity
+            style={[styles.headerButton, styles.testButton]}
+            onPress={handleTestNotification}
+          >
+            <Ionicons name="notifications" size={20} color="white" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.headerButton, styles.debugButton]}
+            onPress={handleDebugNotifications}
+          >
+            <Ionicons name="bug" size={20} color="white" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.headerButton, styles.createButton]}
+            onPress={() => router.push('/create-session')}
+          >
+            <Ionicons name="add-circle" size={20} color="#fff" />
+            <Text style={styles.createButtonText}>Nouvelle Session</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <FlatList
+        data={sessions}
+        renderItem={({ item }) => <SessionCard session={item} />}
+        keyExtractor={(item) => item.id || `session-${Math.random()}`}
+        contentContainerStyle={styles.listContainer}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            {isLoading ? (
+              <>
+                <Ionicons name="refresh-outline" size={64} color="#ccc" />
+                <Text style={styles.emptyText}>Chargement des sessions...</Text>
+              </>
+            ) : error ? (
+              <>
+                <Ionicons name="alert-circle-outline" size={64} color="#ff6b6b" />
+                <Text style={[styles.emptyText, { color: '#ff6b6b' }]}>Erreur de chargement</Text>
+                <Text style={styles.emptySubtext}>{error}</Text>
+              </>
+            ) : (
+              <>
+                <Ionicons name="calendar-outline" size={64} color="#ccc" />
+                <Text style={styles.emptyText}>Aucune session trouvée</Text>
+                <Text style={styles.emptySubtext}>Créez votre première session !</Text>
+              </>
+            )}
+          </View>
+        }
+        refreshControl={
+          <PullToRefresh
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+          />
+        }
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  header: {
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerButtons: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
-  stepContainer: {
-    gap: 8,
+  headerButton: {
+    padding: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  testButton: {
+    backgroundColor: '#007AFF',
+  },
+  debugButton: {
+    backgroundColor: '#FF9500',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  createButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 25,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  createButtonText: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  listContainer: {
+    padding: 16,
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  cardHeader: {
+    marginBottom: 12,
+  },
+  sportTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#007AFF',
+    marginBottom: 4,
+  },
+  date: {
+    fontSize: 14,
+    color: '#666',
+  },
+  locationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  location: {
+    marginLeft: 4,
+    fontSize: 14,
+    color: '#666',
+  },
+  participantsContainer: {
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+    paddingTop: 12,
+  },
+  participantsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
     marginBottom: 8,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  participantsList: {
+    gap: 8,
+  },
+  participant: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  participantName: {
+    fontSize: 14,
+    color: '#333',
+  },
+  statusBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statusText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  noParticipantsText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  emptyContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 100,
+    minHeight: 300,
+  },
+  emptyText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 20,
+  },
+  emptySubtext: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 5,
   },
 });

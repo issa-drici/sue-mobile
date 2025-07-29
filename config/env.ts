@@ -1,0 +1,56 @@
+// Configuration des environnements
+export const ENV = {
+  API_BASE_URL: process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8000/api',
+  WEBSOCKET_URL: process.env.EXPO_PUBLIC_WEBSOCKET_URL || 'ws://localhost:6001',
+  IS_DEV: process.env.NODE_ENV === 'development',
+  USE_MOCKS: false, // Forcer la désactivation des mocks
+  SERVER_HOST: process.env.EXPO_PUBLIC_SERVER_HOST || 'localhost',
+  SERVER_PORT: process.env.EXPO_PUBLIC_SERVER_PORT || '8000',
+  API_VERSION: process.env.EXPO_PUBLIC_API_VERSION || 'v1',
+  APP_NAME: process.env.EXPO_PUBLIC_APP_NAME || 'Sue',
+  APP_VERSION: process.env.EXPO_PUBLIC_APP_VERSION || '1.0.0',
+  REQUEST_TIMEOUT: parseInt(process.env.EXPO_PUBLIC_REQUEST_TIMEOUT || '10000'),
+  MAX_RETRIES: parseInt(process.env.EXPO_PUBLIC_MAX_RETRIES || '3'),
+  ENVIRONMENT: process.env.NODE_ENV || 'development',
+  DEFAULT_HEADERS: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  },
+} as const;
+
+// Configuration spécifique à l'environnement
+export const getApiConfig = () => {
+  if (ENV.IS_DEV) {
+    return {
+      baseURL: ENV.API_BASE_URL,
+      timeout: ENV.REQUEST_TIMEOUT,
+      retries: ENV.MAX_RETRIES,
+      useMocks: ENV.USE_MOCKS,
+      environment: ENV.ENVIRONMENT,
+    };
+  }
+  
+  // Configuration de production
+  return {
+    baseURL: ENV.API_BASE_URL,
+    timeout: ENV.REQUEST_TIMEOUT,
+    retries: ENV.MAX_RETRIES,
+    useMocks: false, // Toujours false en production
+    environment: 'production',
+  };
+};
+
+// Fonction utilitaire pour construire l'URL complète
+export const buildApiUrl = (endpoint: string): string => {
+  return `${ENV.API_BASE_URL}${endpoint}`;
+};
+
+// Fonction utilitaire pour vérifier si on est en mode développement
+export const isDevelopment = (): boolean => {
+  return ENV.ENVIRONMENT === 'development' || ENV.IS_DEV;
+};
+
+// Fonction utilitaire pour vérifier si les mocks sont activés
+export const isMockMode = (): boolean => {
+  return ENV.USE_MOCKS && isDevelopment();
+};
