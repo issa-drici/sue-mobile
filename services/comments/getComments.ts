@@ -1,3 +1,4 @@
+import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useState } from 'react';
 import { useAuth } from '../../app/context/auth';
 import { ENV } from '../../config/env';
@@ -9,10 +10,11 @@ export function useGetComments() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState<CommentsListResponse['pagination'] | null>(null);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const { user } = useAuth();
 
   const getComments = useCallback(async (sessionId: string, page: number = 1, limit: number = 20) => {
-    
+    setCurrentSessionId(sessionId);
     setIsLoading(true);
     setError(null);
 
@@ -124,6 +126,15 @@ export function useGetComments() {
       setIsLoading(false);
     }
   }, [user?.token]);
+
+  // Recharger les commentaires quand l'écran est focusé
+  useFocusEffect(
+    useCallback(() => {
+      if (currentSessionId) {
+        getComments(currentSessionId);
+      }
+    }, [currentSessionId, getComments])
+  );
 
   return {
     data,

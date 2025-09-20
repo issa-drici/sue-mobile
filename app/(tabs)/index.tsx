@@ -3,24 +3,31 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { FlatList, SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import PullToRefresh from '../../components/PullToRefresh';
-import { usePullToRefresh, usePushNotifications } from '../../hooks';
+import { usePullToRefresh } from '../../hooks';
 import { useGetSessions } from '../../services';
 import { SportSession } from '../../types/sport';
 
+import { BrandColors } from '@/constants/Colors';
 import { formatDate, formatTime } from '../../utils/dateHelpers';
 
 const SessionCard = ({ session }: { session: SportSession }) => {
   const router = useRouter();
 
-
   return (
     <TouchableOpacity
-      style={styles.card}
+      style={[
+        styles.card,
+        session.status === 'cancelled' && styles.cancelledCard
+      ]}
       onPress={() => router.push(`/session/${session.id}`)}
     >
       <View style={styles.cardHeader}>
-        <Text style={styles.sportTitle}>{(session.sport || 'Sport').toUpperCase()}</Text>
-        <Text style={styles.date}>{formatDate(session.date)} à {formatTime(session.time)}</Text>
+        <Text style={styles.sportTitle}>
+          {(session.sport || 'Sport').toUpperCase()}
+        </Text>
+        <Text style={styles.date}>
+          {formatDate(session.date)} à {formatTime(session.time)}
+        </Text>
       </View>
 
       <View style={styles.locationContainer}>
@@ -30,10 +37,10 @@ const SessionCard = ({ session }: { session: SportSession }) => {
 
       <View style={styles.participantsContainer}>
         <Text style={styles.participantsTitle}>
-          Participants ({session.participants?.length || 0}) :
+          Participants ({(session.participants || []).filter(p => p.status === 'accepted').length}) :
         </Text>
         <View style={styles.participantsList}>
-          {(session.participants || []).map((participant, index) => (
+          {(session.participants || []).slice(0, 5).map((participant, index) => (
             <View key={participant.id || `participant-${index}`} style={styles.participant}>
               <Text style={styles.participantName}>
                 {participant.firstname} {participant.lastname}
@@ -52,11 +59,26 @@ const SessionCard = ({ session }: { session: SportSession }) => {
               </View>
             </View>
           ))}
+          {(session.participants || []).length > 5 && (
+            <View style={styles.participant}>
+              <Text style={styles.participantName}>
+                +{(session.participants || []).length - 5} autre{(session.participants || []).length - 5 > 1 ? 's' : ''}
+              </Text>
+            </View>
+          )}
         </View>
         {(!session.participants || session.participants.length === 0) && (
           <Text style={styles.noParticipantsText}>Aucun participant</Text>
         )}
       </View>
+
+      {/* Indicateur de session annulée */}
+      {session.status === 'cancelled' && (
+        <View style={styles.cancelledBanner}>
+          <Ionicons name="close-circle" size={16} color="#fff" />
+          <Text style={styles.cancelledText}>ANNULÉE</Text>
+        </View>
+      )}
     </TouchableOpacity>
   );
 };
@@ -65,8 +87,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { data: sessions, isLoading, error, refetch } = useGetSessions();
 
-  // Hook pour les notifications push
-  const { isInitialized: notificationsInitialized, token: pushToken, sendLocalNotification } = usePushNotifications();
+
 
   // Utilisation du nouveau hook avec délai minimum
   const { refreshing, onRefresh } = usePullToRefresh({
@@ -84,27 +105,7 @@ export default function HomeScreen() {
     }
   }, [sessions]);
 
-  // Test des notifications
-  const handleTestNotification = async () => {
-    try {
-      await sendLocalNotification({
-        title: 'Test de notification',
-        body: 'Ceci est un test de notification locale !',
-        data: {
-          type: 'test',
-          session_id: 'test-123',
-        },
-      });
-    } catch (error) {
-    }
-  };
 
-  // Debug des notifications
-  const handleDebugNotifications = () => {
-    import('../../services/notifications/pushNotifications').then(({ pushNotificationService }) => {
-      pushNotificationService.debugInfo();
-    });
-  };
 
   // Ne pas afficher d'écran de chargement séparé, toujours afficher l'interface
   // Le loading sera géré par le pull-to-refresh et les états vides
@@ -114,27 +115,13 @@ export default function HomeScreen() {
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
         <Text style={styles.title}>Mes Sessions</Text>
-        <View style={styles.headerButtons}>
-          <TouchableOpacity
-            style={[styles.headerButton, styles.testButton]}
-            onPress={handleTestNotification}
-          >
-            <Ionicons name="notifications" size={20} color="white" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.headerButton, styles.debugButton]}
-            onPress={handleDebugNotifications}
-          >
-            <Ionicons name="bug" size={20} color="white" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.headerButton, styles.createButton]}
-            onPress={() => router.push('/create-session')}
-          >
-            <Ionicons name="add-circle" size={20} color="#fff" />
-            <Text style={styles.createButtonText}>Nouvelle Session</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          style={styles.createButton}
+          onPress={() => router.push('/create-session')}
+        >
+          <Ionicons name="add-circle" size={20} color="#fff" />
+          <Text style={styles.createButtonText}>Nouvelle Session</Text>
+        </TouchableOpacity>
       </View>
 
       <FlatList
@@ -190,29 +177,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  headerButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  headerButton: {
-    padding: 8,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  testButton: {
-    backgroundColor: '#007AFF',
-  },
-  debugButton: {
-    backgroundColor: '#FF9500',
-  },
+
   title: {
     fontSize: 24,
     fontWeight: 'bold',
   },
   createButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: BrandColors.primary,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 25,
@@ -220,7 +191,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   createButtonText: {
-    color: '#fff',
+    color: BrandColors.white,
     fontSize: 17,
     fontWeight: '600',
     marginLeft: 8,
@@ -247,13 +218,34 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  cancelledCard: {
+    backgroundColor: '#ffebee', // Light red background for cancelled sessions
+    borderColor: '#ef9a9a',
+    borderWidth: 1,
+  },
+  cancelledBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F44336', // Red color for cancelled banner
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginTop: 12,
+  },
+  cancelledText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginLeft: 8,
+  },
   cardHeader: {
     marginBottom: 12,
   },
   sportTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#007AFF',
+    color: BrandColors.primary,
     marginBottom: 4,
   },
   date: {

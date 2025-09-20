@@ -1,3 +1,4 @@
+import { BrandColors } from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
@@ -6,7 +7,7 @@ import PullToRefresh from '../../components/PullToRefresh';
 import { usePullToRefresh } from '../../hooks/usePullToRefresh';
 import { useGetHistory } from '../../services';
 import { SportSession } from '../../types/sport';
-import { formatDate } from '../../utils/dateHelpers';
+import { formatDate, formatTimeFrance } from '../../utils/dateHelpers';
 
 // Sports statiques (toujours présents)
 const STATIC_SPORTS = ['Tous'];
@@ -69,12 +70,19 @@ export default function HistoryScreen() {
 
   const renderSessionItem = ({ item }: { item: SportSession }) => (
     <TouchableOpacity 
-      style={styles.card}
-      onPress={() => router.push(`/session/${item.id}`)}
+      style={[
+        styles.card,
+        item.status === 'cancelled' && styles.cancelledCard
+      ]}
+      onPress={() => router.push(`/session/${item.id}?source=history`)}
     >
       <View style={styles.cardHeader}>
-        <Text style={styles.sportTitle}>{item.sport.toUpperCase()}</Text>
-        <Text style={styles.date}>{formatDate(item.date)} à {item.time}</Text>
+        <Text style={styles.sportTitle}>
+          {item.sport.toUpperCase()}
+        </Text>
+        <Text style={styles.date}>
+          {formatDate(item.date)} à {formatTimeFrance(item.time)}
+        </Text>
       </View>
       
       <View style={styles.locationContainer}>
@@ -85,7 +93,7 @@ export default function HistoryScreen() {
       <View style={styles.participantsContainer}>
         <Text style={styles.participantsTitle}>Participants :</Text>
         <View style={styles.participantsList}>
-          {item.participants.map((participant) => (
+          {item.participants.slice(0, 5).map((participant) => (
             <View key={participant.id} style={styles.participant}>
               <Text style={styles.participantName}>
                 {participant.firstname} {participant.lastname}
@@ -102,6 +110,13 @@ export default function HistoryScreen() {
               </View>
             </View>
           ))}
+          {item.participants.length > 5 && (
+            <View style={styles.participant}>
+              <Text style={styles.participantName}>
+                +{item.participants.length - 5} autre{item.participants.length - 5 > 1 ? 's' : ''}
+              </Text>
+            </View>
+          )}
         </View>
       </View>
 
@@ -111,6 +126,14 @@ export default function HistoryScreen() {
           {item.comments.length} commentaire{item.comments.length !== 1 ? 's' : ''}
         </Text>
       </View>
+
+      {/* Indicateur de session annulée */}
+      {item.status === 'cancelled' && (
+        <View style={styles.cancelledBanner}>
+          <Ionicons name="close-circle" size={16} color="#fff" />
+          <Text style={styles.cancelledText}>ANNULÉE</Text>
+        </View>
+      )}
     </TouchableOpacity>
   );
 
@@ -250,9 +273,9 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   filterButtonActive: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
-    shadowColor: '#007AFF',
+    backgroundColor: BrandColors.primary,
+    borderColor: BrandColors.primary,
+    shadowColor: BrandColors.primary,
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 3,
@@ -290,13 +313,31 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  cancelledCard: {
+    opacity: 0.7, // Indiquer que la session est annulée
+  },
+  cancelledBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FF6B6B', // Couleur rouge pour annulée
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginTop: 12,
+  },
+  cancelledText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
   cardHeader: {
     marginBottom: 12,
   },
   sportTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#007AFF',
+    color: BrandColors.primary,
     marginBottom: 4,
   },
   date: {

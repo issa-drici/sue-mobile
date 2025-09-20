@@ -29,6 +29,7 @@ export interface AuthUser {
 export interface AuthData {
   token: string;
   user: AuthUser;
+  refresh_token?: string;
 }
 
 export interface AuthResponse {
@@ -38,4 +39,10 @@ export interface AuthResponse {
   // Pour Laravel, la réponse peut être directement {token, user}
   token?: string;
   user?: AuthUser;
+  refresh_token?: string;
+}
+
+export interface RefreshTokenResponse {
+  token: string;
+  refresh_token?: string;
 } 

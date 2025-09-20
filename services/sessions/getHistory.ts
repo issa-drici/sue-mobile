@@ -31,6 +31,7 @@ function convertToSportSession(session: any): SportSession {
     time: session.time,
     location: session.location,
     maxParticipants: session.maxParticipants,
+    status: session.status, // Ajouter le champ status
     organizer: {
       id: session.organizer?.id || '',
       firstname: organizerNameParts[0] || '',

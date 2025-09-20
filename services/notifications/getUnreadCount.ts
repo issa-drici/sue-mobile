@@ -1,43 +1,39 @@
-import { useFocusEffect } from '@react-navigation/native';
-import { useCallback, useState } from 'react';
+
+import { useCallback, useMemo } from 'react';
 import { ENV } from '../../config/env';
+import { useApiRequest } from '../../hooks/useApiRequest';
 import { NotificationsApi } from '../api/notificationsApi';
 
 export function useGetUnreadCount() {
-  const [count, setCount] = useState<number>(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchUnreadCount = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      if (ENV.USE_MOCKS) {
-        // En mode mock, retourner un nombre aléatoire pour les tests
-        setCount(Math.floor(Math.random() * 10));
-      } else {
-        const unreadCount = await NotificationsApi.getUnreadCount();
-        setCount(unreadCount);
-      }
-    } catch (err: any) {
-      setError(err.message || 'Erreur lors du chargement du compteur');
-      setCount(0);
-    } finally {
-      setIsLoading(false);
+  const fetchUnreadCount = useCallback(async (): Promise<number> => {
+    if (ENV.USE_MOCKS) {
+      // En mode mock, retourner 0 pour éviter les badges de test
+      return 0;
+    } else {
+      const unreadCount = await NotificationsApi.getUnreadCount();
+      return unreadCount;
     }
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      fetchUnreadCount();
-    }, [fetchUnreadCount])
-  );
+  // Stabiliser les options pour éviter les re-créations
+  const options = useMemo(() => ({
+    maxRetries: 5,
+    retryDelay: 1000,
+    enableRetry: true,
+    onRetry: (attempt: number, error: any) => {
+      console.log(`🔄 Tentative ${attempt}/5 pour charger le compteur de notifications:`, error.message);
+    },
+    onMaxRetriesReached: (error: any) => {
+      console.error('❌ Échec après 5 tentatives pour charger le compteur de notifications:', error.message);
+    },
+  }), []);
+
+  const result = useApiRequest(fetchUnreadCount, options);
 
   return {
-    count,
-    isLoading,
-    error,
-    refetch: fetchUnreadCount,
+    count: result.data || 0,
+    isLoading: result.isLoading,
+    error: result.error,
+    refetch: result.refetch,
   };
 } 

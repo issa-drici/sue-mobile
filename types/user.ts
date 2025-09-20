@@ -34,4 +34,7 @@ export interface UserStats {
 
 export interface UserProfile extends User {
   stats: UserStats;
+  isAlreadyFriend?: boolean;
+  hasPendingRequest?: boolean;
+  relationshipStatus?: 'none' | 'pending' | 'accepted' | 'declined' | 'cancelled';
 }

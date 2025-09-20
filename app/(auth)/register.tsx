@@ -1,16 +1,18 @@
+import { BrandColors } from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useAuth } from '../context/auth';
 
@@ -39,7 +41,7 @@ export default function RegisterScreen() {
 
     try {
       setIsLoading(true);
-      await signUp(firstname, lastname, email, password);
+      await signUp(firstname, lastname, email, password, confirmPassword);
       router.replace('/(tabs)');
     } catch (error) {
       Alert.alert('Erreur', error instanceof Error ? error.message : 'Une erreur est survenue');
@@ -63,9 +65,12 @@ export default function RegisterScreen() {
             onPress={() => router.back()}
             disabled={isLoading}
           >
-            <Ionicons name="arrow-back" size={24} color="#000" />
+            <Ionicons name="arrow-back" size={24} color={BrandColors.white} />
           </TouchableOpacity>
-          <Ionicons name="fitness" size={80} color="#007AFF" style={styles.logo} />
+          <Image 
+            source={require('../../assets/images/logo.png')} 
+            style={styles.logo}
+          />
           <Text style={styles.title}>Créer un compte</Text>
           <Text style={styles.subtitle}>
             Rejoignez la communauté sportive
@@ -79,6 +84,7 @@ export default function RegisterScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Prénom"
+                placeholderTextColor="#999"
                 value={firstname}
                 onChangeText={setFirstName}
                 autoCapitalize="words"
@@ -91,6 +97,7 @@ export default function RegisterScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Nom"
+                placeholderTextColor="#999"
                 value={lastname}
                 onChangeText={setLastName}
                 autoCapitalize="words"
@@ -105,6 +112,7 @@ export default function RegisterScreen() {
             <TextInput
               style={styles.input}
               placeholder="Email"
+              placeholderTextColor="#999"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -119,6 +127,7 @@ export default function RegisterScreen() {
             <TextInput
               style={styles.input}
               placeholder="Mot de passe"
+              placeholderTextColor="#999"
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
@@ -144,6 +153,7 @@ export default function RegisterScreen() {
             <TextInput
               style={styles.input}
               placeholder="Confirmer le mot de passe"
+              placeholderTextColor="#999"
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry={!showConfirmPassword}
@@ -209,7 +219,7 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: BrandColors.primary,
   },
   scrollContent: {
     flexGrow: 1,
@@ -227,18 +237,22 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   logo: {
+    width: 200,
+    height: 108,
     marginBottom: 24,
+    resizeMode: 'contain',
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 8,
-    color: '#000',
+    color: BrandColors.white,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: BrandColors.white,
     textAlign: 'center',
+    opacity: 0.9,
   },
   form: {
     marginBottom: 24,
@@ -270,7 +284,7 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   registerButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: BrandColors.white,
     borderRadius: 12,
     height: 56,
     alignItems: 'center',
@@ -281,7 +295,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   registerButtonText: {
-    color: '#fff',
+    color: BrandColors.primary,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -321,13 +335,15 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
   },
   footerText: {
-    color: '#666',
+    color: BrandColors.white,
     fontSize: 14,
+    opacity: 0.9,
   },
   footerLink: {
-    color: '#007AFF',
+    color: BrandColors.white,
     fontSize: 14,
     fontWeight: '600',
     marginLeft: 4,
+    textDecorationLine: 'underline',
   },
 }); 

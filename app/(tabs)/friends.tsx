@@ -1,3 +1,4 @@
+import { BrandColors } from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -14,11 +15,16 @@ import {
   View,
 } from 'react-native';
 import PullToRefresh from '../../components/PullToRefresh';
+import UserProfileModal from '../../components/UserProfileModal';
 import { usePullToRefresh } from '../../hooks';
 import { useGetFriendRequests, useGetFriends, useRemoveFriend, useRespondToFriendRequest } from '../../services';
 import { Friend } from '../../types/user';
 
-const FriendItem = ({ friend, onPress }: { friend: Friend; onPress: () => void }) => {
+const FriendItem = ({ friend, onProfilePress, onMenuPress }: { 
+  friend: Friend; 
+  onProfilePress: () => void;
+  onMenuPress: () => void;
+}) => {
   // Vérification de sécurité
   if (!friend) {
     return null;
@@ -26,27 +32,28 @@ const FriendItem = ({ friend, onPress }: { friend: Friend; onPress: () => void }
 
   return (
     <View style={styles.friendItem}>
-      <View style={styles.friendInfo}>
+      <TouchableOpacity 
+        style={styles.friendInfo}
+        onPress={onProfilePress}
+        activeOpacity={0.7}
+      >
         <View style={styles.avatarContainer}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>
               {friend.firstname?.[0] || ''}{friend.lastname?.[0] || ''}
             </Text>
           </View>
-          <View style={[
-            styles.statusIndicator,
-            { backgroundColor: friend.status === 'online' ? '#4CAF50' : '#ccc' }
-          ]} />
+
         </View>
         <View style={styles.friendDetails}>
           <Text style={styles.friendName}>
             {friend.firstname || ''} {friend.lastname || ''}
           </Text>
         </View>
-      </View>
+      </TouchableOpacity>
       <TouchableOpacity
         style={styles.menuButton}
-        onPress={onPress}
+        onPress={onMenuPress}
       >
         <Ionicons name="ellipsis-horizontal" size={24} color="#666" />
       </TouchableOpacity>
@@ -55,12 +62,21 @@ const FriendItem = ({ friend, onPress }: { friend: Friend; onPress: () => void }
 };
 
 export default function FriendsScreen() {
+  console.log(`🎬 [FriendsScreen] Composant rendu/re-rendu`);
+  
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'friends' | 'requests'>('friends');
+
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   const [isMenuVisible, setIsMenuVisible] = useState(false);
+  const [isProfileModalVisible, setIsProfileModalVisible] = useState(false);
 
+  console.log(`🎣 [FriendsScreen] Appel de useGetFriends`);
   const { data: friends, isLoading: friendsLoading, error: friendsError, refetch: refetchFriends } = useGetFriends();
+  console.log(`📊 [FriendsScreen] Données reçues de useGetFriends:`, {
+    friends: friends?.length || 0,
+    isLoading: friendsLoading,
+    error: friendsError
+  });
   const { data: friendRequests, isLoading: requestsLoading, error: requestsError, refetch } = useGetFriendRequests();
   const { respondToFriendRequest, isLoading: isResponding } = useRespondToFriendRequest();
   const { removeFriend, isLoading: isRemoving } = useRemoveFriend();
@@ -82,7 +98,12 @@ export default function FriendsScreen() {
     }
   });
 
-  const handleFriendPress = (friend: Friend) => {
+  const handleFriendProfilePress = (friend: Friend) => {
+    setSelectedFriend(friend);
+    setIsProfileModalVisible(true);
+  };
+
+  const handleFriendMenuPress = (friend: Friend) => {
     setSelectedFriend(friend);
     setIsMenuVisible(true);
   };
@@ -135,7 +156,14 @@ export default function FriendsScreen() {
     try {
       await respondToFriendRequest(requestId, response);
       refetch(); // Recharger les demandes
-      Alert.alert('Succès', `Demande ${response === 'accept' ? 'acceptée' : 'refusée'}`);
+      // Si on accepte, recharger aussi la liste des amis avec un petit délai
+      if (response === 'accept') {
+        setTimeout(() => {
+          refetchFriends();
+          console.log('✅ [FriendsScreen] Liste des amis rechargée après acceptation');
+        }, 500); // Délai de 500ms pour laisser le temps au backend de se mettre à jour
+      }
+      // Pas d'alerte de succès - l'interface se met à jour automatiquement
     } catch (error) {
       Alert.alert('Erreur', 'Impossible de traiter la demande');
     }
@@ -150,20 +178,20 @@ export default function FriendsScreen() {
     return (
       <FriendItem
         friend={item}
-        onPress={() => handleFriendPress(item)}
+        onProfilePress={() => handleFriendProfilePress(item)}
+        onMenuPress={() => handleFriendMenuPress(item)}
       />
     );
   };
 
   const renderRequestItem = ({ item }: { item: any }) => {
-
-
     // Gestion des données selon la structure réelle de l'API
     const hasSenderData = item.sender && (item.sender.firstname || item.sender.lastname);
     const hasFromUserData = item.fromUser && (item.fromUser.firstname || item.fromUser.lastname);
     const hasDirectData = item.firstname || item.lastname;
 
     if (!hasSenderData && !hasFromUserData && !hasDirectData) {
+      return null;
     }
 
     const displayName = hasSenderData
@@ -176,10 +204,27 @@ export default function FriendsScreen() {
 
     const avatarUrl = item.sender?.avatar || item.fromUser?.avatar || item.avatar;
     const mutualFriends = item.mutualFriends || 0;
+    
+    // Déterminer l'ID de l'utilisateur pour la modal
+    const userId = item.sender?.id || item.fromUser?.id || item.id;
 
     return (
       <View style={styles.requestCard}>
-        <View style={styles.requestInfo}>
+        <TouchableOpacity 
+          style={styles.requestInfo}
+          onPress={() => {
+            // Créer un objet Friend temporaire pour la modal
+            const tempFriend = {
+              id: userId,
+              firstname: hasSenderData ? item.sender.firstname : hasFromUserData ? item.fromUser.firstname : item.firstname,
+              lastname: hasSenderData ? item.sender.lastname : hasFromUserData ? item.fromUser.lastname : item.lastname,
+              avatar: avatarUrl,
+              status: 'offline' as const
+            };
+            handleFriendProfilePress(tempFriend);
+          }}
+          activeOpacity={0.7}
+        >
           <Image
             source={avatarUrl ? { uri: avatarUrl } : require('../../assets/images/icon-avatar.png')}
             style={[styles.requestAvatar, { borderWidth: 1, borderColor: '#e0e0e0' }]}
@@ -188,11 +233,13 @@ export default function FriendsScreen() {
             <Text style={styles.requestFriendName}>
               {displayName}
             </Text>
-            <Text style={styles.requestMutualFriends}>
-              {mutualFriends} ami{mutualFriends > 1 ? 's' : ''} en commun
-            </Text>
+            {mutualFriends > 0 && (
+              <Text style={styles.requestMutualFriends}>
+                {mutualFriends} ami{mutualFriends > 1 ? 's' : ''} en commun
+              </Text>
+            )}
           </View>
-        </View>
+        </TouchableOpacity>
         <View style={styles.requestActions}>
           <TouchableOpacity
             style={[styles.requestButton, styles.acceptButton]}
@@ -217,18 +264,7 @@ export default function FriendsScreen() {
     );
   };
 
-  if (friendsLoading || requestsLoading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Mes Amis</Text>
-        </View>
-        <View style={styles.loadingContainer}>
-          <Text>Chargement...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+
 
   if (friendsError || requestsError) {
     return (
@@ -259,75 +295,61 @@ export default function FriendsScreen() {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.tabsContainer}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'friends' && styles.activeTab]}
-          onPress={() => setActiveTab('friends')}
-        >
-          <Text style={[styles.tabText, activeTab === 'friends' && styles.activeTabText]}>
-            Amis
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'requests' && styles.activeTab]}
-          onPress={() => setActiveTab('requests')}
-        >
-          <View style={styles.tabTextContainer}>
-            <Text style={[styles.tabText, activeTab === 'requests' && styles.activeTabText]}>
-              Demandes
-            </Text>
-            {friendRequests.length > 0 && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{friendRequests.length}</Text>
-              </View>
-            )}
-          </View>
-        </TouchableOpacity>
-      </View>
 
-      {activeTab === 'friends' ? (
-        <FlatList
-          data={friends}
-          renderItem={renderFriendItem}
-          keyExtractor={(item, index) => item.id || `friend-${index}`}
-          contentContainerStyle={styles.listContainer}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="people-outline" size={48} color="#666" />
-              <Text style={styles.emptyText}>
-                Aucun ami trouvé
-              </Text>
-            </View>
+
+      <FlatList
+        data={[
+          // Section des demandes d'amis
+          ...(friendRequests.length > 0 ? [{
+            type: 'section',
+            title: 'Demandes d\'amis',
+            data: friendRequests
+          }] : []),
+          // Section des amis
+          {
+            type: 'section',
+            title: 'Mes amis',
+            data: friends
           }
-          refreshControl={
-            <PullToRefresh
-              refreshing={friendsRefreshing}
-              onRefresh={onFriendsRefresh}
-            />
+        ]}
+        renderItem={({ item }) => {
+          if (item.type === 'section') {
+            return (
+              <View style={styles.sectionContainer}>
+                <Text style={styles.sectionTitle}>{item.title}</Text>
+                {item.data.map((friendOrRequest: any, index: number) => (
+                  <View key={friendOrRequest.id || index}>
+                    {item.title === 'Demandes d\'amis' ? 
+                      renderRequestItem({ item: friendOrRequest }) : 
+                      renderFriendItem({ item: friendOrRequest })
+                    }
+                  </View>
+                ))}
+              </View>
+            );
           }
-        />
-      ) : (
-        <FlatList
-          data={friendRequests}
-          renderItem={renderRequestItem}
-          keyExtractor={(item, index) => item.id || `request-${index}`}
-          contentContainerStyle={styles.listContainer}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="person-add-outline" size={48} color="#666" />
-              <Text style={styles.emptyText}>
-                Aucune demande d&apos;ami
-              </Text>
-            </View>
-          }
-          refreshControl={
-            <PullToRefresh
-              refreshing={requestsRefreshing}
-              onRefresh={onRequestsRefresh}
-            />
-          }
-        />
-      )}
+          return null;
+        }}
+        keyExtractor={(item, index) => `section-${index}`}
+        contentContainerStyle={styles.listContainer}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Ionicons name="people-outline" size={48} color="#666" />
+            <Text style={styles.emptyText}>
+              Aucun ami trouvé
+            </Text>
+          </View>
+        }
+        refreshControl={
+          <PullToRefresh
+            refreshing={friendsRefreshing || requestsRefreshing}
+            onRefresh={() => {
+              onFriendsRefresh();
+              onRequestsRefresh();
+            }}
+          />
+        }
+      />
 
       {/* Modal pour les actions sur les amis */}
       <Modal
@@ -346,14 +368,14 @@ export default function FriendsScreen() {
               style={styles.modalItem}
               onPress={() => handleMenuAction('message')}
             >
-              <Ionicons name="chatbubble-outline" size={24} color="#007AFF" />
+              <Ionicons name="chatbubble-outline" size={24} color={BrandColors.primary} />
               <Text style={styles.modalItemText}>Message</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.modalItem}
               onPress={() => handleMenuAction('invite')}
             >
-              <Ionicons name="calendar-outline" size={24} color="#007AFF" />
+              <Ionicons name="calendar-outline" size={24} color={BrandColors.primary} />
               <Text style={styles.modalItemText}>Inviter à une session</Text>
             </TouchableOpacity> */}
             <TouchableOpacity
@@ -379,6 +401,15 @@ export default function FriendsScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Modal de profil utilisateur */}
+      <UserProfileModal
+        visible={isProfileModalVisible}
+        onClose={() => setIsProfileModalVisible(false)}
+        userId={selectedFriend?.id}
+        userFirstname={selectedFriend?.firstname}
+        userLastname={selectedFriend?.lastname}
+      />
     </SafeAreaView>
   );
 }
@@ -403,7 +434,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   addButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: BrandColors.primary,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 25,
@@ -411,7 +442,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   addButtonText: {
-    color: '#fff',
+    color: BrandColors.white,
     fontSize: 17,
     fontWeight: '600',
     marginLeft: 8,
@@ -429,14 +460,14 @@ const styles = StyleSheet.create({
   },
   activeTab: {
     borderBottomWidth: 2,
-    borderBottomColor: '#007AFF',
+    borderBottomColor: BrandColors.primary,
   },
   tabText: {
     fontSize: 16,
     color: '#666',
   },
   activeTabText: {
-    color: '#007AFF',
+    color: BrandColors.primary,
     fontWeight: '600',
   },
   tabTextContainer: {
@@ -445,7 +476,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   badge: {
-    backgroundColor: '#FF3B30',
+    backgroundColor: BrandColors.primary,
     minWidth: 18,
     height: 18,
     borderRadius: 9,
@@ -454,7 +485,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   badgeText: {
-    color: '#fff',
+    color: BrandColors.white,
     fontSize: 13,
     fontWeight: '600',
     textAlign: 'center',
@@ -477,6 +508,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+    paddingVertical: 4,
   },
   avatarContainer: {
     position: 'relative',
@@ -495,16 +527,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#666',
   },
-  statusIndicator: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
+
   friendDetails: {
     flex: 1,
   },
@@ -564,7 +587,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   acceptButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: BrandColors.primary,
   },
   declineButton: {
     backgroundColor: '#f5f5f5',
@@ -572,7 +595,7 @@ const styles = StyleSheet.create({
     borderColor: '#e0e0e0',
   },
   acceptButtonText: {
-    color: '#fff',
+    color: BrandColors.white,
     fontWeight: '600',
   },
   declineButtonText: {
@@ -590,6 +613,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
+  },
+  sectionContainer: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 12,
+    paddingHorizontal: 16,
   },
   loadingContainer: {
     flex: 1,
@@ -618,7 +651,7 @@ const styles = StyleSheet.create({
   modalItemText: {
     fontSize: 16,
     marginLeft: 12,
-    color: '#007AFF',
+    color: BrandColors.primary,
   },
   menuButton: {
     padding: 8,

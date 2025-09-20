@@ -75,14 +75,45 @@ class BaseApiService {
     if (status === 401 || status === 403) {
       console.warn(`🔐 Erreur d'authentification (${status}): ${errorMessage}`);
       
-      // Déclencher la déconnexion automatique
+      // NE PAS déclencher la déconnexion automatique
+      // L'utilisateur reste connecté même en cas d'erreur d'authentification
+      console.log('⚠️ Erreur d\'authentification détectée, mais l\'utilisateur reste connecté');
+      
+      // Optionnel : essayer de rafraîchir le token en arrière-plan
+      // mais sans forcer la déconnexion
       if (this.logoutCallback) {
-        console.log('🔄 Déconnexion automatique...');
-        this.logoutCallback();
-      } else {
-        console.error('❌ Callback de déconnexion non configuré');
+        console.log('🔄 Tentative de rafraîchissement silencieux du token...');
+        // Ici on pourrait appeler une méthode de refresh silencieux
+        // mais sans déconnecter l'utilisateur
       }
     }
+  }
+
+  // Déterminer si un endpoint nécessite une authentification
+  private requiresAuthentication(endpoint: string): boolean {
+    // Endpoints publics (ne nécessitent pas d'authentification)
+    const publicEndpoints = [
+      '/login',
+      '/register',
+      '/refresh',
+      '/password/reset',
+      '/password/forgot',
+      '/verify-email',
+      '/resend-verification'
+    ];
+
+    // Vérifier si l'endpoint est public
+    const isPublic = publicEndpoints.some(publicEndpoint => 
+      endpoint.startsWith(publicEndpoint)
+    );
+
+    // Si c'est un endpoint public, ne pas nécessiter d'authentification
+    if (isPublic) {
+      return false;
+    }
+
+    // Tous les autres endpoints nécessitent une authentification
+    return true;
   }
 
   // Méthode générique pour les requêtes
@@ -93,6 +124,15 @@ class BaseApiService {
     // Si les mocks sont activés, simuler une réponse
     if (this.useMocks) {
       return this.mockRequest<T>(endpoint, options);
+    }
+
+    // Vérifier si l'endpoint nécessite une authentification
+    const requiresAuth = this.requiresAuthentication(endpoint);
+    
+    // Si l'endpoint nécessite une authentification mais qu'aucun token n'est présent
+    if (requiresAuth && !this.token) {
+      console.warn(`🔐 Tentative d'accès à un endpoint authentifié sans token: ${endpoint}`);
+      throw new Error('Authentification requise pour accéder à cette ressource');
     }
 
     const url = buildApiUrl(endpoint);

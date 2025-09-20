@@ -1,33 +1,35 @@
+import { BrandColors } from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  Alert,
-  FlatList,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    FlatList,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import ChatComments from '../../components/ChatComments';
 import InfoMessage from '../../components/InfoMessage';
 import PullToRefresh from '../../components/PullToRefresh';
+import UserProfileModal from '../../components/UserProfileModal';
 import { usePullToRefresh } from '../../hooks';
 import { useComments } from '../../hooks/useComments';
-import { useGetFriends, useGetSessionById, useInviteFriends, useRespondToInvitation } from '../../services';
-import { formatCommentDate, formatDate } from '../../utils/dateHelpers';
+import { useCancelParticipation, useCancelSession, useGetFriends, useGetSessionById, useInviteFriends, useRespondToInvitation, useUpdateSession } from '../../services';
+import { formatCommentDate, formatDate, formatTimeFrance } from '../../utils/dateHelpers';
 import { useAuth } from '../context/auth';
 import { height } from '../utils/dimensions';
 
 export default function SessionDetailsScreen() {
-  const { id } = useLocalSearchParams();
+  const { id, source } = useLocalSearchParams();
   const router = useRouter();
   const { user } = useAuth(); // Récupérer l'utilisateur actuel
   // COMMENTÉ - Variable newComment retirée (maintenant gérée dans la modal)
@@ -37,6 +39,10 @@ export default function SessionDetailsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
   const [showComments, setShowComments] = useState(false);
+  const [showUserProfile, setShowUserProfile] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [selectedUserFirstname, setSelectedUserFirstname] = useState<string>('');
+  const [selectedUserLastname, setSelectedUserLastname] = useState<string>('');
 
   const sessionId = typeof id === 'string' ? id : '';
 
@@ -44,6 +50,9 @@ export default function SessionDetailsScreen() {
   const { data: friends, isLoading: friendsLoading } = useGetFriends();
   const { inviteFriends, isLoading: isInviting } = useInviteFriends();
   const { respondToInvitation, isLoading: isResponding } = useRespondToInvitation();
+  const { cancelParticipation, isLoading: isCancelling } = useCancelParticipation();
+  const { cancelSession, isLoading: isCancellingSession } = useCancelSession();
+  const { updateSession, isLoading: isUpdating } = useUpdateSession();
 
   // Hook pour le pull-to-refresh
   const { refreshing, onRefresh } = usePullToRefresh({
@@ -66,6 +75,14 @@ export default function SessionDetailsScreen() {
     getOnlineUsersCount,
     reloadComments
   } = useComments(sessionId);
+
+  // Fonction pour ouvrir la modal de profil utilisateur
+  const handleUserPress = (userId: string, firstname?: string, lastname?: string) => {
+    setSelectedUserId(userId);
+    setSelectedUserFirstname(firstname || '');
+    setSelectedUserLastname(lastname || '');
+    setShowUserProfile(true);
+  };
 
   // Déterminer le statut de l'utilisateur dans cette session
   const getUserStatus = () => {
@@ -90,6 +107,10 @@ export default function SessionDetailsScreen() {
   const isOrganizer = userStatus === 'organizer';
   const isParticipant = userStatus === 'accepted' || userStatus === 'declined' || userStatus === 'pending';
   const canRespondToInvitation = userStatus === 'pending';
+  const canCancelParticipation = userStatus === 'accepted'; // Peut annuler sa participation si acceptée
+  
+  // Détecter si l'utilisateur vient de l'historique
+  const isFromHistory = source === 'history';
 
   // Vérifier si la limite de participants est atteinte
   const acceptedParticipantsCount = session?.participants?.filter(p => p.status === 'accepted').length || 0;
@@ -196,6 +217,81 @@ export default function SessionDetailsScreen() {
     );
   };
 
+  const handleCancelParticipation = async () => {
+    Alert.alert(
+      'Annuler ma participation',
+      'Êtes-vous sûr de vouloir annuler votre participation à cette session ?',
+      [
+        {
+          text: 'Annuler',
+          style: 'cancel'
+        },
+        {
+          text: 'Confirmer',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const result = await cancelParticipation(sessionId);
+              getSessionById(sessionId);
+              Alert.alert(
+                'Participation annulée',
+                'Votre participation à cette session a été annulée avec succès.',
+                [
+                  {
+                    text: 'OK',
+                    onPress: () => router.back()
+                  }
+                ]
+              );
+            } catch (error: any) {
+              Alert.alert(
+                'Erreur',
+                error.message || 'Impossible d\'annuler votre participation'
+              );
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleCancelSession = async () => {
+    Alert.alert(
+      'Annuler la session',
+      'Êtes-vous sûr de vouloir annuler complètement cette session ? Cette action est irréversible et tous les participants seront notifiés.',
+      [
+        {
+          text: 'Annuler',
+          style: 'cancel'
+        },
+        {
+          text: 'Confirmer',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const result = await cancelSession(sessionId);
+              Alert.alert(
+                'Session annulée',
+                'La session a été annulée avec succès. Tous les participants ont été notifiés.',
+                [
+                  {
+                    text: 'OK',
+                    onPress: () => router.back()
+                  }
+                ]
+              );
+            } catch (error: any) {
+              Alert.alert(
+                'Erreur',
+                error.message || 'Impossible d\'annuler la session'
+              );
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const handleInviteFriends = () => {
     // Ici, vous ajouterez la logique pour envoyer les invitations
 
@@ -259,7 +355,7 @@ export default function SessionDetailsScreen() {
   };
 
   const filteredFriends = friends.filter(friend =>
-    !session.participants.some(p => p.id === friend.id)
+    !session.participants.some(p => p.id === friend.id && p.status !== 'declined')
   );
 
   const renderFriendItem = ({ item }: { item: any }) => (
@@ -289,13 +385,24 @@ export default function SessionDetailsScreen() {
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Détails de la Session</Text>
-        {/* Bouton d'invitation - Afficher pour tous les utilisateurs */}
-        <TouchableOpacity
-          style={styles.headerInviteButton}
-          onPress={() => setIsInviteModalVisible(true)}
-        >
-          <Ionicons name="person-add-outline" size={24} color="#007AFF" />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          {/* Bouton d'édition - Afficher seulement pour l'organisateur */}
+          {isOrganizer && (
+            <TouchableOpacity
+              style={styles.headerEditButton}
+              onPress={() => router.push(`/edit-session/${sessionId}`)}
+            >
+              <Ionicons name="create-outline" size={24} color="BrandColors.primary" />
+            </TouchableOpacity>
+          )}
+          {/* Bouton d'invitation - Afficher pour tous les utilisateurs */}
+          <TouchableOpacity
+            style={styles.headerInviteButton}
+            onPress={() => setIsInviteModalVisible(true)}
+          >
+            <Ionicons name="person-add-outline" size={24} color="BrandColors.primary" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <KeyboardAvoidingView
@@ -317,7 +424,7 @@ export default function SessionDetailsScreen() {
             <View style={styles.sessionHeaderLeft}>
               <Text style={styles.sportTitle}>{session.sport.toUpperCase()}</Text>
               <Text style={styles.dateTime}>
-                {formatDate(session.date)} à {session.time}
+                {formatDate(session.date)} à {formatTimeFrance(session.time)}
               </Text>
               <View style={styles.locationContainer}>
                 <Ionicons name="location-outline" size={16} color="#666" />
@@ -326,8 +433,8 @@ export default function SessionDetailsScreen() {
             </View>
           </View>
 
-          {/* Boutons d'action pour les invitations - Afficher seulement si l'utilisateur peut répondre ET que la limite n'est pas atteinte */}
-          {canActuallyRespondToInvitation && (
+          {/* Boutons d'action pour les invitations - Afficher seulement si l'utilisateur peut répondre ET que la limite n'est pas atteinte ET qu'il ne vient pas de l'historique */}
+          {canActuallyRespondToInvitation && session.status !== 'cancelled' && !isFromHistory && (
             <View style={styles.invitationActions}>
               <TouchableOpacity
                 style={[
@@ -374,6 +481,60 @@ export default function SessionDetailsScreen() {
             </View>
           )}
 
+          {/* Bouton d'annulation de participation - Afficher seulement si l'utilisateur a accepté l'invitation ET qu'il ne vient pas de l'historique */}
+          {canCancelParticipation && session.status !== 'cancelled' && !isFromHistory && (
+            <View style={styles.invitationActions}>
+              <TouchableOpacity
+                style={[
+                  styles.actionButton,
+                  styles.cancelButton,
+                  isCancelling && styles.actionButtonDisabled
+                ]}
+                onPress={handleCancelParticipation}
+                disabled={isCancelling}
+              >
+                {isCancelling ? (
+                  <>
+                    <Ionicons name="refresh" size={20} color="#fff" style={{ transform: [{ rotate: '360deg' }] }} />
+                    <Text style={styles.actionButtonText}>Annulation en cours...</Text>
+                  </>
+                ) : (
+                  <>
+                    <Ionicons name="person-remove" size={20} color="#fff" />
+                    <Text style={styles.actionButtonText}>Annuler ma participation</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Bouton d'annulation de session - Afficher seulement pour l'organisateur ET qu'il ne vient pas de l'historique */}
+          {isOrganizer && session.status !== 'cancelled' && !isFromHistory && (
+            <View style={styles.invitationActions}>
+              <TouchableOpacity
+                style={[
+                  styles.actionButton,
+                  styles.cancelSessionButton,
+                  isCancellingSession && styles.actionButtonDisabled
+                ]}
+                onPress={handleCancelSession}
+                disabled={isCancellingSession}
+              >
+                {isCancellingSession ? (
+                  <>
+                    <Ionicons name="refresh" size={20} color="#fff" style={{ transform: [{ rotate: '360deg' }] }} />
+                    <Text style={styles.actionButtonText}>Annulation en cours...</Text>
+                  </>
+                ) : (
+                  <>
+                    <Ionicons name="close-circle" size={20} color="#fff" />
+                    <Text style={styles.actionButtonText}>Annuler la session</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* Message quand la limite est atteinte */}
           {canRespondToInvitation && isLimitReached && (
             <InfoMessage
@@ -383,8 +544,17 @@ export default function SessionDetailsScreen() {
             />
           )}
 
+          {/* Message pour session annulée */}
+          {session.status === 'cancelled' && (
+            <InfoMessage
+              message="Cette session a été annulée par l'organisateur. Aucune action n'est possible."
+              type="error"
+              icon="close-circle"
+            />
+          )}
+
           {/* Statut de l'utilisateur dans cette session */}
-          {!canRespondToInvitation && userStatus && (
+          {!canRespondToInvitation && userStatus && session.status !== 'cancelled' && (
             <InfoMessage
               type={
                 userStatus === 'accepted' ? 'success' :
@@ -421,9 +591,20 @@ export default function SessionDetailsScreen() {
               {session.participants.map((participant) => (
                 <View key={participant.id} style={styles.participant}>
                   <View style={styles.participantInfo}>
-                    <Text style={styles.participantName}>
-                      {`${participant.firstname || ''} ${participant.lastname || ''}`.trim()}
-                    </Text>
+                    {participant.id === user?.id ? (
+                      <Text style={styles.participantNameOwn}>
+                        {`${participant.firstname || ''} ${participant.lastname || ''}`.trim()}
+                      </Text>
+                    ) : (
+                      <TouchableOpacity 
+                        onPress={() => handleUserPress(participant.id, participant.firstname, participant.lastname)}
+                        style={styles.participantNameContainer}
+                      >
+                        <Text style={styles.participantName}>
+                          {`${participant.firstname || ''} ${participant.lastname || ''}`.trim()}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
                     {participant.id === session.organizer.id && (
                       <Text style={styles.organizerBadge}>Organisateur</Text>
                     )}
@@ -506,7 +687,7 @@ export default function SessionDetailsScreen() {
             onPress={handleAddComment}
             disabled={!newComment.trim()}
           >
-            <Ionicons name="send" size={24} color={newComment.trim() ? '#007AFF' : '#ccc'} />
+            <Ionicons name="send" size={24} color={newComment.trim() ? BrandColors.primary : '#ccc'} />
           </TouchableOpacity>
         </View>
         */}
@@ -516,7 +697,7 @@ export default function SessionDetailsScreen() {
       <Modal
         visible={isInviteModalVisible}
         animationType="slide"
-        presentationStyle="pageSheet"
+        presentationStyle="fullScreen"
         onRequestClose={() => setIsInviteModalVisible(false)}
       >
         <SafeAreaView style={styles.modalContainer}>
@@ -603,8 +784,9 @@ export default function SessionDetailsScreen() {
       <Modal
         visible={showComments}
         animationType="slide"
-        presentationStyle="pageSheet"
+        presentationStyle="fullScreen"
         onRequestClose={() => setShowComments(false)}
+        statusBarTranslucent
       >
         <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalHeader}>
@@ -618,9 +800,23 @@ export default function SessionDetailsScreen() {
             <View style={styles.modalHeaderRight} />
           </View>
 
-          <ChatComments sessionId={sessionId} onCommentsReload={handleCommentsReload} />
+          <ChatComments 
+            sessionId={sessionId} 
+            onCommentsReload={handleCommentsReload}
+            onUserPress={handleUserPress}
+            onCloseComments={() => setShowComments(false)}
+          />
         </SafeAreaView>
       </Modal>
+
+      {/* Modal de profil utilisateur */}
+      <UserProfileModal
+        visible={showUserProfile}
+        onClose={() => setShowUserProfile(false)}
+        userId={selectedUserId}
+        userFirstname={selectedUserFirstname}
+        userLastname={selectedUserLastname}
+      />
     </SafeAreaView>
   );
 }
@@ -647,6 +843,13 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
   },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  headerEditButton: {
+    padding: 8,
+  },
   headerInviteButton: {
     padding: 8,
   },
@@ -666,7 +869,7 @@ const styles = StyleSheet.create({
   sportTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#007AFF',
+    color: BrandColors.primary,
     marginBottom: 4,
   },
   dateTime: {
@@ -704,12 +907,20 @@ const styles = StyleSheet.create({
   participantInfo: {
     flex: 1,
   },
+  participantNameContainer: {
+    // Pas de style particulier pour l'instant, le TouchableOpacity gérera le press
+  },
   participantName: {
     fontSize: 16,
+    color: BrandColors.primary, // Couleur bleue pour indiquer que c'est cliquable
+  },
+  participantNameOwn: {
+    fontSize: 16,
+    color: '#000', // Couleur normale pour son propre nom
   },
   organizerBadge: {
     fontSize: 12,
-    color: '#007AFF',
+    color: BrandColors.primary,
     marginTop: 2,
   },
   statusBadge: {
@@ -806,6 +1017,7 @@ const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
     backgroundColor: '#fff',
+    paddingTop: Platform.OS === 'ios' ? 0 : 0,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -860,7 +1072,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   checkmark: {
-    color: '#007AFF',
+    color: BrandColors.primary,
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -877,7 +1089,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 16,
     borderRadius: 12,
-    backgroundColor: '#007AFF',
+    backgroundColor: BrandColors.primary,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -925,12 +1137,12 @@ const styles = StyleSheet.create({
   },
   participantsMaxText: {
     fontSize: 16,
-    color: '#007AFF',
+    color: BrandColors.primary,
     fontWeight: '500',
   },
   participantsLimit: {
     fontSize: 16,
-    color: '#007AFF',
+    color: BrandColors.primary,
     fontWeight: '600',
     backgroundColor: '#f0f8ff',
     paddingHorizontal: 8,
@@ -939,14 +1151,20 @@ const styles = StyleSheet.create({
   },
   seeAllText: {
     fontSize: 14,
-    color: '#007AFF',
+    color: BrandColors.primary,
     fontWeight: '500',
   },
   seeMoreText: {
     fontSize: 14,
-    color: '#007AFF',
+    color: BrandColors.primary,
     fontWeight: '500',
     textAlign: 'center',
     marginTop: 8,
+  },
+  cancelButton: {
+    backgroundColor: '#FF3B30', // Couleur rouge pour l'annulation
+  },
+  cancelSessionButton: {
+    backgroundColor: '#FF3B30', // Couleur rouge pour l'annulation de session
   },
 }); 

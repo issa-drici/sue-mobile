@@ -1,3 +1,4 @@
+import { BrandColors } from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -216,7 +217,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   updateButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: BrandColors.primary,
     borderRadius: 8,
     padding: 12,
     alignItems: 'center',

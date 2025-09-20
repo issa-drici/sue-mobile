@@ -83,12 +83,6 @@ export const useComments = (sessionId: string) => {
           }
           
           const newList = [adaptedComment, ...prev];
-          
-          // Recharger les commentaires après un délai pour s'assurer de la synchronisation
-          setTimeout(() => {
-            loadComments();
-          }, 500);
-          
           return newList;
         });
       },
@@ -188,14 +182,7 @@ export const useComments = (sessionId: string) => {
         return newList;
       });
       
-      // Attendre un peu pour voir si l'événement WebSocket arrive
-      setTimeout(() => {
-      }, 1000);
-
-      // Recharger les commentaires après un délai pour s'assurer que le nouveau commentaire est visible
-      setTimeout(() => {
-        loadComments();
-      }, 1500);
+      // Pas de refetch immédiat: éviter les relayouts qui cassent l'ancrage en bas
       
       // Arrêter la frappe
       stopTyping();

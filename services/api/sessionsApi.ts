@@ -67,6 +67,23 @@ export class SessionsApi {
     return apiResponse.data;
   }
 
+  // Annuler sa participation à une session
+  static async cancelParticipation(sessionId: string): Promise<Session> {
+    const apiResponse = await baseApiService.patch<LaravelResponse<Session>>(
+      SESSIONS_ENDPOINTS.CANCEL_PARTICIPATION(sessionId),
+      { status: 'declined' }
+    );
+    return apiResponse.data;
+  }
+
+  static async cancelSession(sessionId: string): Promise<Session> {
+    const apiResponse = await baseApiService.patch<LaravelResponse<Session>>(
+      SESSIONS_ENDPOINTS.CANCEL_SESSION(sessionId),
+      { status: 'cancelled' }
+    );
+    return apiResponse.data;
+  }
+
   // Inviter des amis à une session
   static async inviteFriends(
     sessionId: string, 
@@ -122,14 +139,16 @@ export class SessionsApi {
   // Présence
   static async joinPresence(sessionId: string): Promise<any> {
     const response = await baseApiService.post<LaravelResponse<any>>(
-      SESSIONS_ENDPOINTS.PRESENCE_JOIN(sessionId)
+      SESSIONS_ENDPOINTS.PRESENCE_JOIN(sessionId),
+      {}
     );
     return response.data;
   }
 
   static async leavePresence(sessionId: string): Promise<any> {
     const response = await baseApiService.post<LaravelResponse<any>>(
-      SESSIONS_ENDPOINTS.PRESENCE_LEAVE(sessionId)
+      SESSIONS_ENDPOINTS.PRESENCE_LEAVE(sessionId),
+      {}
     );
     return response.data;
   }

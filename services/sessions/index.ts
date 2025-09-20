@@ -1,4 +1,6 @@
 // Hooks pour les sessions
+export { useCancelParticipation } from './cancelParticipation';
+export { useCancelSession } from './cancelSession';
 export { useCreateSession } from './createSession';
 export { useDeleteSession } from './deleteSession';
 export { useGetSessionById } from './getSessionById';

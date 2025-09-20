@@ -7,6 +7,7 @@ export interface UsePushNotificationsReturn {
   token: string | null;
   initialize: () => Promise<boolean>;
   sendLocalNotification: (payload: PushNotificationPayload) => Promise<void>;
+  sendTestNotification: (userId?: string) => Promise<boolean>;
 }
 
 /**
@@ -43,6 +44,10 @@ export const usePushNotifications = (): UsePushNotificationsReturn => {
     await pushNotificationService.sendLocalNotification(payload);
   };
 
+  const sendTestNotification = async (userId?: string): Promise<boolean> => {
+    return await pushNotificationService.sendTestNotification(userId);
+  };
+
   // Initialisation automatique au montage du composant
   useEffect(() => {
     initialize();
@@ -54,5 +59,6 @@ export const usePushNotifications = (): UsePushNotificationsReturn => {
     token,
     initialize,
     sendLocalNotification,
+    sendTestNotification,
   };
 }; 

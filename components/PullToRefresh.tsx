@@ -1,3 +1,4 @@
+import { BrandColors } from '@/constants/Colors';
 import React, { useRef } from 'react';
 import { RefreshControl, RefreshControlProps } from 'react-native';
 
@@ -18,7 +19,7 @@ interface PullToRefreshProps extends Omit<RefreshControlProps, 'colors' | 'tintC
 const PullToRefresh: React.FC<PullToRefreshProps> = ({ 
   refreshing, 
   onRefresh, 
-  color = '#007AFF',
+  color = BrandColors.primary,
   progressViewOffset = 0,
   ...props 
 }) => {

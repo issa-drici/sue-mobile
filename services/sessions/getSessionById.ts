@@ -1,3 +1,4 @@
+import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useState } from 'react';
 import { ENV } from '../../config/env';
 import { mockSessions } from '../../mocks/sessions';
@@ -29,7 +30,8 @@ function convertToSportSession(session: any): SportSession {
     date: session.date,
     time: session.time,
     location: session.location,
-    maxParticipants: session.maxParticipants, // ✅ Ajouter maxParticipants
+    maxParticipants: session.maxParticipants,
+    status: session.status, // Ajouter le champ status
     organizer: {
       id: session.organizer?.id || '',
       firstname: organizerNameParts[0] || '',
@@ -51,8 +53,10 @@ export function useGetSessionById() {
   const [data, setData] = useState<SportSession | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 
   const getSessionById = useCallback(async (id: string) => {
+    setCurrentSessionId(id);
     setIsLoading(true);
     setError(null);
 
@@ -80,6 +84,15 @@ export function useGetSessionById() {
       setIsLoading(false);
     }
   }, []);
+
+  // Recharger la session quand l'écran est focusé
+  useFocusEffect(
+    useCallback(() => {
+      if (currentSessionId) {
+        getSessionById(currentSessionId);
+      }
+    }, [currentSessionId, getSessionById])
+  );
 
   return {
     data,

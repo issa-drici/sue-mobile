@@ -1,9 +1,9 @@
 import {
-    Friend,
-    FriendRequest,
-    SearchUserResult,
-    UpdateProfileData,
-    UserProfile
+  Friend,
+  FriendRequest,
+  SearchUserResult,
+  UpdateProfileData,
+  UserProfile
 } from '../types/users';
 import { baseApiService } from './baseApi';
 import { FRIEND_REQUESTS_ENDPOINTS, USERS_ENDPOINTS } from './endpoints';
@@ -37,8 +37,25 @@ export class UsersApi {
 
   // Envoyer une demande d'ami
   static async sendFriendRequest(userId: string): Promise<FriendRequest> {
-    const response = await baseApiService.post<LaravelResponse<FriendRequest>>(USERS_ENDPOINTS.FRIEND_REQUESTS, { userId });
-    return response.data;
+    console.log('📡 [UsersApi] Envoi demande d\'ami pour userId:', userId);
+    console.log('📡 [UsersApi] Endpoint:', USERS_ENDPOINTS.FRIEND_REQUESTS);
+    
+    // Vérifier que l'utilisateur n'essaie pas de s'ajouter lui-même
+    if (!userId || userId.trim() === '') {
+      throw new Error('ID utilisateur invalide');
+    }
+    
+    const body = { userId };
+    console.log('📡 [UsersApi] Body:', body);
+    
+    try {
+      const response = await baseApiService.post<LaravelResponse<FriendRequest>>(USERS_ENDPOINTS.FRIEND_REQUESTS, body);
+      console.log('✅ [UsersApi] Réponse reçue:', response);
+      return response.data;
+    } catch (error) {
+      console.error('❌ [UsersApi] Erreur lors de l\'envoi de demande d\'ami:', error);
+      throw error;
+    }
   }
 
   // Accepter/refuser une demande d'ami
@@ -92,5 +109,13 @@ export class UsersApi {
   static async deleteAccount(): Promise<void> {
     const response = await baseApiService.delete<LaravelResponse<void>>(USERS_ENDPOINTS.DELETE_ACCOUNT);
     return response.data;
+  }
+
+  // Récupérer le nombre de demandes d'amis non traitées
+  static async getFriendRequestsCount(): Promise<number> {
+    const response = await baseApiService.get<LaravelResponse<{ count: number }>>(
+      FRIEND_REQUESTS_ENDPOINTS.COUNT
+    );
+    return response.data.count || 0;
   }
 } 

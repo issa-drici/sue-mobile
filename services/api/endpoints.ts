@@ -15,6 +15,8 @@ export const SESSIONS_ENDPOINTS = {
   MY_PARTICIPATIONS: '/sessions/my-participations',
   BY_ID: (id: string) => `/sessions/${id}`,
   RESPOND_TO_INVITATION: (sessionId: string) => `/sessions/${sessionId}/respond`,
+  CANCEL_PARTICIPATION: (sessionId: string) => `/sessions/${sessionId}/cancel-participation`,
+  CANCEL_SESSION: (sessionId: string) => `/sessions/${sessionId}/cancel`,
   ADD_COMMENT: (sessionId: string) => `/sessions/${sessionId}/comments`,
   INVITE_FRIENDS: (sessionId: string) => `/sessions/${sessionId}/invite`,
   // Nouveaux endpoints pour les commentaires
@@ -31,6 +33,7 @@ export const SESSIONS_ENDPOINTS = {
 // Endpoints des utilisateurs
 export const USERS_ENDPOINTS = {
   PROFILE: '/users/profile',
+  GET_USER_BY_ID: (userId: string) => `/users/${userId}`,
   FRIENDS: '/users/friends',
   FRIEND_REQUESTS: '/users/friend-requests',
   SEARCH: (query: string) => `/users/search?q=${encodeURIComponent(query)}`,
@@ -44,6 +47,7 @@ export const USERS_ENDPOINTS = {
 export const FRIEND_REQUESTS_ENDPOINTS = {
   RESPOND: (requestId: string) => `/users/friend-requests/${requestId}`,
   CANCEL: '/users/friend-requests',
+  COUNT: '/users/friend-requests/count',
 } as const;
 
 // Endpoints des notifications
@@ -52,4 +56,6 @@ export const NOTIFICATIONS_ENDPOINTS = {
   MARK_AS_READ: (notificationId: string) => `/notifications/${notificationId}/read`,
   MARK_ALL_AS_READ: '/notifications/read-all',
   UNREAD_COUNT: '/notifications/unread-count',
+  DELETE: (notificationId: string) => `/notifications/${notificationId}`,
+  PUSH_TOKENS: '/push-tokens',
 } as const; 

@@ -1,7 +1,7 @@
-import { io, Socket } from 'socket.io-client';
+import Pusher from 'pusher-js';
 import { ENV } from '../../config/env';
 
-// Types pour les événements WebSocket
+// Import des types existants (on garde les mêmes interfaces)
 export interface WebSocketEvent {
   event: string;
   data: any;
@@ -53,8 +53,8 @@ export interface OnlineUser {
 export interface WebSocketConfig {
   sessionId: string;
   token: string;
-  userId?: string; // Added userId to the interface
-  user?: { // Added user to the interface
+  userId?: string;
+  user?: {
     id: string;
     firstname: string;
     lastname: string;
@@ -74,175 +74,178 @@ export interface WebSocketConfig {
 }
 
 class WebSocketService {
-  private socket: Socket | null = null;
+  private pusher: Pusher | null = null;
   private config: WebSocketConfig | null = null;
-  private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
-  private reconnectDelay = 1000;
   private isConnected = false;
+  private sessionChannel: any = null;
 
-  // Connexion à un canal de session
+  // Connexion à Soketi via Pusher directement
   connect(config: WebSocketConfig): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
+        console.log('🔌 Connexion à Soketi via Pusher...', {
+          host: ENV.PUSHER_HOST,
+          port: ENV.PUSHER_PORT,
+          key: ENV.PUSHER_APP_KEY
+        });
 
-        // Configuration du client Socket.IO selon le guide
-        this.socket = io(ENV.WEBSOCKET_URL, {
-          transports: ['websocket', 'polling'],
+        // Configuration de Pusher pour Soketi
+        this.pusher = new Pusher(ENV.PUSHER_APP_KEY, {
+          wsHost: ENV.PUSHER_HOST,
+          wsPort: parseInt(ENV.PUSHER_PORT),
+          wssPort: parseInt(ENV.PUSHER_PORT),
+          forceTLS: ENV.PUSHER_SCHEME === 'https',
+          enabledTransports: ['ws', 'wss'],
+          disableStats: true,
+          cluster: 'mt1',
           auth: {
-            token: config.token
+            headers: {
+              Authorization: `Bearer ${config.token}`,
+            },
           },
-          reconnection: true,
-          reconnectionAttempts: this.maxReconnectAttempts,
-          reconnectionDelay: this.reconnectDelay,
-          reconnectionDelayMax: 5000,
-          timeout: 20000,
-          forceNew: true,
-          forceBase64: true // Optimisation mobile
         });
 
         this.config = config;
 
         // Événements de connexion
-        this.socket.on('connect', () => {
+        this.pusher.connection.bind('connected', () => {
+          console.log('✅ Connecté à Soketi');
+          console.log('🔑 Socket ID:', this.pusher?.connection.socket_id);
+          console.log('🌐 Host:', ENV.PUSHER_HOST);
+          console.log('🔑 App Key:', ENV.PUSHER_APP_KEY);
+          console.log('📱 Session ID:', config.sessionId);
           this.isConnected = true;
-          this.reconnectAttempts = 0;
+          
+          // Maintenant que la connexion est établie, rejoindre le canal
+          this.joinSessionChannel(config.sessionId);
+          
           this.config?.onConnect?.();
           resolve();
         });
 
-        this.socket.on('disconnect', (reason: string) => {
+        this.pusher.connection.bind('disconnected', () => {
+          console.log('❌ Déconnecté de Soketi');
           this.isConnected = false;
           this.config?.onDisconnect?.();
         });
 
-        this.socket.on('connect_error', (error: Error) => {
-          this.handleReconnection();
+        this.pusher.connection.bind('error', (error: any) => {
+          console.error('🚨 Erreur Soketi:', error);
           this.config?.onError?.(error);
           reject(error);
         });
 
-        this.socket.on('reconnect', (attemptNumber: number) => {
-          this.reconnectAttempts = 0;
-          this.isConnected = true;
-        });
-
-        this.socket.on('reconnect_failed', () => {
-          this.config?.onError?.('Échec de la reconnexion');
-        });
-
-        // Événements Laravel Broadcasting (format utilisé par le backend)
-        this.socket.on('laravel-broadcast', (data: any) => {
-          
-          if (data.event === 'comment.created') {
-            this.config?.onCommentCreated?.(data.data.comment);
-          } else if (data.event === 'comment.updated') {
-            this.config?.onCommentUpdated?.(data.data.comment);
-          } else if (data.event === 'comment.deleted') {
-            this.config?.onCommentDeleted?.(data.data.commentId);
-          }
-        });
-
-        // COMMENTÉ - Événements de présence (typing) désactivés pour l'instant
-        /*
-        // Événements de présence (typing)
-        this.socket.on('user.typing', (data: PresenceEvent) => {
-          this.config?.onUserTyping?.(data);
-        });
-
-        this.socket.on('user.stopped-typing', (userId: string) => {
-          this.config?.onUserStoppedTyping?.(userId);
-        });
-        */
-
-        // Événement des utilisateurs en ligne
-        this.socket.on('online-users', (users: OnlineUser[]) => {
-          this.config?.onOnlineUsers?.(users);
-        });
-
-        // Rejoindre le canal de la session selon le guide
-        this.socket.emit('join-session', {
-          sessionId: config.sessionId,
-          userId: config.userId || 'current-user-id', // Utiliser l'ID réel de l'utilisateur
-          user: config.user || {
-            id: config.userId || 'current-user-id',
-            firstname: 'Utilisateur',
-            lastname: 'Actuel',
-            avatar: null
-          }
-        });
-
       } catch (error) {
+        console.error('🚨 Erreur lors de la connexion:', error);
         reject(error);
       }
     });
   }
 
+  // Rejoindre le canal d'une session
+  private joinSessionChannel(sessionId: string): void {
+    if (!this.pusher) return;
+    
+    // Éviter la double subscription
+    if (this.sessionChannel) {
+      console.log('⚠️ Canal déjà souscrit, déconnexion d\'abord...');
+      this.pusher.unsubscribe(`sport-session.${this.config?.sessionId}`);
+      this.sessionChannel = null;
+    }
+
+    console.log(`📡 Rejoindre le canal sport-session.${sessionId}`);
+    console.log('🔑 Socket ID au moment de la subscription:', this.pusher.connection.socket_id);
+
+    // Canal public pour les commentaires (avec le bon préfixe backend)
+    this.sessionChannel = this.pusher.subscribe(`sport-session.${sessionId}`);
+
+    // Debug : Écouter TOUS les événements sur le canal
+    console.log('🎧 Écoute de tous les événements sur le canal sport-session...');
+    console.log('🔍 Canal complet:', `sport-session.${sessionId}`);
+    console.log('🔑 Socket ID:', this.pusher.connection.socket_id);
+    
+    // Écouter les événements de base Pusher (subscription)
+    this.sessionChannel.bind('pusher:subscription_succeeded', (data: any) => {
+      console.log('🎉 Subscription réussie au canal');
+      console.log('📊 Données subscription:', JSON.stringify(data, null, 2));
+    });
+    
+    this.sessionChannel.bind('pusher:subscription_error', (data: any) => {
+      console.log('❌ Erreur de subscription:', JSON.stringify(data, null, 2));
+    });
+    
+    // Écouter TOUS les événements avec un wildcard (debug)
+    this.sessionChannel.bind_global((eventName: string, data: any) => {
+      if (eventName !== 'pusher:subscription_succeeded') {
+        console.log('🔔 ÉVÉNEMENT RECU (global):', eventName);
+        console.log('📊 Données:', JSON.stringify(data, null, 2));
+      }
+    });
+    
+    // Écouter spécifiquement les événements de commentaires
+    this.sessionChannel.bind('comment.created', (data: any) => {
+      console.log('📨 NOUVEAU COMMENTAIRE RECU !');
+      console.log('📊 Données commentaire:', JSON.stringify(data, null, 2));
+      this.config?.onCommentCreated?.(data.comment || data);
+    });
+    
+    this.sessionChannel.bind('comment.updated', (data: any) => {
+      console.log('✏️ COMMENTAIRE MODIFIÉ !');
+      console.log('📊 Données commentaire:', JSON.stringify(data, null, 2));
+      this.config?.onCommentUpdated?.(data.comment || data);
+    });
+    
+    this.sessionChannel.bind('comment.deleted', (data: any) => {
+      console.log('🗑️ COMMENTAIRE SUPPRIMÉ !');
+      console.log('📊 Données commentaire:', JSON.stringify(data, null, 2));
+      this.config?.onCommentDeleted?.(data.commentId || data.id);
+    });
+
+    // Événements de présence (si canal privé/présence disponible)
+    // TODO: Implémenter quand le backend supportera les canaux de présence
+    /*
+    const presenceChannel = this.pusher.subscribe(`presence-session.${sessionId}`);
+    presenceChannel.bind('pusher:subscription_succeeded', (data: any) => {
+      console.log('👥 Canal de présence rejoint:', data);
+    });
+    */
+  }
+
   // Déconnexion
   disconnect(): void {
-    if (this.socket) {
-      this.socket.disconnect();
-      this.socket = null;
+    if (this.pusher) {
+      console.log('🔌 Déconnexion de Soketi...');
+      
+      // Quitter le canal de session
+      if (this.sessionChannel) {
+        this.pusher.unsubscribe(`sport-session.${this.config?.sessionId}`);
+        this.sessionChannel = null;
+      }
+
+      // Déconnecter Pusher
+      this.pusher.disconnect();
+      this.pusher = null;
       this.config = null;
       this.isConnected = false;
     }
   }
 
-  // COMMENTÉ - Envoyer un événement de frappe (désactivé pour l'instant)
-  /*
-  // Envoyer un événement de frappe
-  sendTyping(sessionId: string, isTyping: boolean): void {
-    if (this.socket && this.config) {
-      this.socket.emit('typing', {
-        sessionId: sessionId,
-        userId: this.config.userId || 'current-user-id',
-        isTyping,
-        user: this.config.user || {
-          id: this.config.userId || 'current-user-id',
-          firstname: 'Utilisateur',
-          lastname: 'Actuel',
-          avatar: null
-        }
-      });
-    }
-  }
-  */
-
-  // Vérifier si connecté
+  // Obtenir le statut de la connexion
   getConnectionStatus(): boolean {
     return this.isConnected;
   }
 
-  // Obtenir l'ID de socket
+  // Obtenir l'ID du socket
   getSocketId(): string | undefined {
-    return this.socket?.id;
-  }
-
-  // Gestion de la reconnexion
-  private handleReconnection(): void {
-    this.reconnectAttempts++;
-    if (this.reconnectAttempts < this.maxReconnectAttempts) {
-      setTimeout(() => {
-      }, this.reconnectDelay * this.reconnectAttempts);
-    }
+    return this.pusher?.connection.socket_id;
   }
 
   // Mettre à jour les informations utilisateur
   updateUserInfo(userId: string, userInfo: { firstname: string; lastname: string; avatar?: string | null }): void {
-    if (this.socket && this.config) {
-      // Mettre à jour les événements avec les vraies informations utilisateur
-      this.socket.emit('update-user-info', {
-        userId,
-        user: {
-          id: userId,
-          firstname: userInfo.firstname,
-          lastname: userInfo.lastname,
-          avatar: userInfo.avatar || null
-        }
-      });
-    }
+    // TODO: Implémenter si nécessaire pour les canaux de présence
+    console.log('👤 Mise à jour des infos utilisateur:', { userId, userInfo });
   }
 }
 
 // Instance singleton
-export const webSocketService = new WebSocketService(); 
+export const webSocketService = new WebSocketService();

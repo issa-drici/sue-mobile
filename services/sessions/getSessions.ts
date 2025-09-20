@@ -1,6 +1,6 @@
-import { useFocusEffect } from '@react-navigation/native';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { ENV } from '../../config/env';
+import { useApiRequest } from '../../hooks/useApiRequest';
 import { mockSessions } from '../../mocks/sessions';
 import { SportSession } from '../../types/sport';
 import { SessionsApi } from '../api/sessionsApi';
@@ -31,6 +31,7 @@ function convertToSportSession(session: any): SportSession {
     time: session.time,
     location: session.location,
     maxParticipants: session.maxParticipants,
+    status: session.status, // Ajouter le champ status
     organizer: {
       id: session.organizer?.id || '',
       firstname: organizerNameParts[0] || '',
@@ -49,50 +50,41 @@ function convertToSportSession(session: any): SportSession {
 }
 
 export function useGetSessions() {
-  const [data, setData] = useState<SportSession[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchSessions = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      if (ENV.USE_MOCKS) {
-        setData(mockSessions);
-      } else {
-        const response = await SessionsApi.getAll();
-        
-        // Extraire les données de la réponse Laravel
-        const sessionsResponse = (response as any).data || response;
-        const sessionsArray = Array.isArray(sessionsResponse) ? sessionsResponse : [];
-        
-        // Convertir les vraies sessions
-        const convertedSessions = sessionsArray.map(convertToSportSession);
-        
-        setData(convertedSessions);
-      }
-    } catch (err: any) {
-      // Ne pas afficher l'erreur si c'est une erreur d'authentification
-      if (err.message !== 'Unauthenticated.') {
-        setError(err.message || 'Erreur lors du chargement des sessions');
-      }
-    } finally {
-      setIsLoading(false);
+  const fetchSessions = useCallback(async (): Promise<SportSession[]> => {
+    if (ENV.USE_MOCKS) {
+      return mockSessions;
+    } else {
+      const response = await SessionsApi.getAll();
+      
+      // Extraire les données de la réponse Laravel
+      const sessionsResponse = (response as any).data || response;
+      const sessionsArray = Array.isArray(sessionsResponse) ? sessionsResponse : [];
+      
+      // Convertir les vraies sessions
+      const convertedSessions = sessionsArray.map(convertToSportSession);
+      
+      return convertedSessions;
     }
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      // Recharger à chaque focus (comportement original)
-      fetchSessions();
-    }, [fetchSessions])
-  );
+  // Stabiliser les options pour éviter les re-créations
+  const options = useMemo(() => ({
+    maxRetries: 5,
+    retryDelay: 1000,
+    enableRetry: true,
+    onRetry: (attempt: number, error: any) => {
+      console.log(`🔄 Tentative ${attempt}/5 pour charger les sessions:`, error.message);
+    },
+    onMaxRetriesReached: (error: any) => {
+      console.error('❌ Échec après 5 tentatives pour charger les sessions:', error.message);
+    },
+  }), []);
 
+  const result = useApiRequest(fetchSessions, options);
+  
+  // S'assurer que data est toujours un tableau
   return {
-    data,
-    isLoading,
-    error,
-    refetch: fetchSessions,
+    ...result,
+    data: result.data || [],
   };
 } 

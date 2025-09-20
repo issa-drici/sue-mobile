@@ -1,239 +1,243 @@
-import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useRef, useState } from 'react';
+import { BrandColors } from '@/constants/Colors';
+import dayjs from 'dayjs';
+import 'dayjs/locale/fr';
+import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
-  FlatList,
-  KeyboardAvoidingView,
+  Keyboard,
   Platform,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
+import { Bubble, GiftedChat, InputToolbar, Send } from 'react-native-gifted-chat';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../app/context/auth';
 import { useComments } from '../hooks/useComments';
+
+dayjs.locale('fr');
 
 interface ChatCommentsProps {
   sessionId: string;
   onCommentsReload?: () => void; // Callback pour recharger les commentaires
+  onUserPress?: (userId: string, firstname?: string, lastname?: string) => void; // Callback pour clic sur utilisateur
+  onCloseComments?: () => void; // Callback pour fermer la modal des commentaires
 }
 
-const CommentItem = ({ comment, isOwnComment }: { comment: any; isOwnComment: boolean }) => {
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('fr-FR', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+// Indicateur de saisie retiré pour simplifier l'écran (réintégrable si besoin)
 
-  // Utiliser la structure de votre backend
-  const userName = comment.user?.firstname && comment.user?.lastname
-    ? `${comment.user.firstname} ${comment.user.lastname}`
-    : comment.fullName || 'Utilisateur inconnu';
-
-  const timeString = comment.created_at || comment.createdAt;
-
-  return (
-    <View style={[styles.commentItem, isOwnComment ? styles.ownComment : styles.otherComment]}>
-      <View style={styles.commentHeader}>
-        <Text style={[styles.userName, isOwnComment ? { color: '#fff', opacity: .7 } : {}]}>
-          {userName}
-        </Text>
-        <Text style={[styles.timeText, isOwnComment ? { color: '#fff' } : {}]}>
-          {formatTime(timeString)}
-        </Text>
-      </View>
-      <Text style={[styles.commentText, isOwnComment ? { color: '#fff' } : {}]}>{comment.content}</Text>
-      {comment.mentions && comment.mentions.length > 0 && (
-        <View style={styles.mentionsContainer}>
-          <Text style={styles.mentionsText}>
-            Mentionné : {comment.mentions.map((m: any) => `${m.firstname} ${m.lastname}`).join(', ')}
-          </Text>
-        </View>
-      )}
-    </View>
-  );
-};
-
-const TypingIndicator = ({ typingUsers }: { typingUsers: string[] }) => {
-  if (typingUsers.length === 0) return null;
-
-  return (
-    <View style={styles.typingIndicator}>
-      <Text style={styles.typingText}>
-        {typingUsers.length === 1
-          ? `${typingUsers[0]} est en train d'écrire...`
-          : `${typingUsers.join(', ')} sont en train d'écrire...`
-        }
-      </Text>
-      <ActivityIndicator size="small" color="#007AFF" style={styles.typingSpinner} />
-    </View>
-  );
-};
-
-export default function ChatComments({ sessionId, onCommentsReload }: ChatCommentsProps) {
+export default function ChatComments({ sessionId, onCommentsReload, onUserPress, onCloseComments }: ChatCommentsProps) {
   const { user } = useAuth();
   const [commentText, setCommentText] = useState('');
-  
-  const flatListRef = useRef<FlatList>(null);
+  const insets = useSafeAreaInsets();
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+
+
+
+
+  // Hauteur de réserve en bas pour ne pas masquer les derniers messages (liste non inversée)
+  // Réserves calculées gérées par GiftedChat, plus besoin ici
+
+  // Pas de logs en production
+
+  // plus de FlatList direct
+  // const inputRef = useRef<TextInput>(null);
+
+  // Scroll utilitaires: aller au dernier message (liste non inversée)
+  // Pas de scroll automatique
+
+  //
+
+  //
 
   const {
     comments,
-    onlineUsers,
-    typingUsers,
-    isConnected,
-    isLoadingComments,
     isCreatingComment,
     sendComment,
-    handleTyping,
-    stopTyping,
-    getTypingUsersNames,
-    getOnlineUsersCount
   } = useComments(sessionId);
 
-  // COMMENTÉ - Indicateurs de frappe désactivés pour l'instant
-  /*
-  // Arrêter l'indicateur de frappe quand le composant se démonte (modal fermée)
+  // Ordonner du plus ancien au plus récent (dernier en bas)
+  // Liste conservée telle quelle (nouveaux d'abord) pour un rendu inversé
+
+  // Aucun scroll automatique au montage ni aux mises à jour de données
+
+  // Gestion clavier déléguée à GiftedChat (marge dynamique pour coller au clavier/safe area)
   useEffect(() => {
+    const showSub = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => setKeyboardOpen(true));
+    const hideSub = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setKeyboardOpen(false));
     return () => {
-      stopTyping();
+      showSub.remove();
+      hideSub.remove();
     };
-  }, [stopTyping]);
-  */
+  }, []);
 
-  // Recharger les commentaires quand le composant se démonte (modal fermée)
-  useEffect(() => {
-    return () => {
-      onCommentsReload?.();
-    };
-  }, [onCommentsReload]);
+  //
 
-
-  const handleSendComment = async () => {
-    if (!commentText.trim()) return;
-
-    try {
-      await sendComment(commentText.trim());
-      setCommentText('');
-    } catch (error: any) {
-      Alert.alert('Erreur', error.message || 'Impossible d\'envoyer le commentaire');
-    }
-  };
+  // envoi géré par GiftedChat via handleGiftedSend
 
   const handleTextChange = (text: string) => {
     setCommentText(text);
-    
-    // COMMENTÉ - Indicateurs de frappe désactivés pour l'instant
-    /*
-    // Si le texte est vide, arrêter immédiatement l'indicateur de frappe
-    if (!text || text.trim().length === 0) {
-      stopTyping();
-    } else {
-      // Sinon, continuer avec la logique normale de frappe
-      handleTyping(text);
+  };
+
+  // Mapping des commentaires vers le format GiftedChat
+  const giftedMessages = React.useMemo(() => {
+    return comments
+      .map((c: any) => {
+        const createdAtRaw = c.created_at || c.createdAt;
+        const createdAt = createdAtRaw ? new Date(createdAtRaw) : new Date();
+        const userId = c.user?.id ?? c.userId ?? 'unknown';
+        const name = c.fullName || (
+          c.user ? `${c.user.firstname || ''} ${c.user.lastname || ''}`.trim() : 'Utilisateur'
+        );
+        return {
+          _id: String(c.id || `${userId}-${createdAtRaw || createdAt.toISOString()}`),
+          text: String(c.content || ''),
+          createdAt,
+          user: {
+            _id: String(userId),
+            name
+          }
+        } as any;
+      })
+      // GiftedChat attend les plus récents en premier
+      .sort((a: any, b: any) => b.createdAt.getTime() - a.createdAt.getTime());
+  }, [comments]);
+
+  const handleGiftedSend = React.useCallback(async (msgs: any[] = []) => {
+    const text = msgs?.[0]?.text?.trim();
+    if (!text || isCreatingComment) return;
+    try {
+      await sendComment(text);
+      setCommentText('');
+    } catch {
+      Alert.alert('Erreur', "Impossible d'envoyer le commentaire");
     }
-    */
-  };
+  }, [isCreatingComment, sendComment]);
 
-  const handleInputBlur = () => {
-    // COMMENTÉ - Indicateurs de frappe désactivés pour l'instant
-    /*
-    // Arrêter l'indicateur de frappe quand le champ perd le focus
-    stopTyping();
-    */
-  };
+  //
 
-  const scrollToBottom = () => {
-    flatListRef.current?.scrollToEnd({ animated: true });
-  };
+  //
 
-  const renderComment = ({ item }: { item: any }) => {
-    const isOwnComment = item.user?.id === user?.id || item.userId === user?.id;
-    return <CommentItem comment={item} isOwnComment={isOwnComment} />;
-  };
+  const renderDay = React.useCallback((props: any) => {
+    const dateValue = props?.currentMessage?.createdAt;
+    if (!dateValue) return null;
+    const date = new Date(dateValue);
+    const weekdays = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+    const months = [
+      'janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'
+    ];
+    const label = `${weekdays[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]}`;
+    return (
+      <View style={{ alignItems: 'center', marginVertical: 8 }}>
+        <View style={{ backgroundColor: '#E5E5EA', borderRadius: 12, paddingVertical: 4, paddingHorizontal: 10 }}>
+          <Text style={{ fontSize: 12, color: '#555', fontWeight: '600' }}>{label}</Text>
+        </View>
+      </View>
+    );
+  }, []);
+
+  // Fonction pour rendre les bulles avec noms cliquables
+  const renderBubble = React.useCallback((props: any) => {
+    const { currentMessage } = props;
+    const isCurrentUser = currentMessage?.user?._id === String(user?.id);
+    
+    return (
+      <View style={styles.messageContainer}>
+        {!isCurrentUser && currentMessage?.user?.name && (
+          <TouchableOpacity 
+            onPress={(e) => {
+              e.stopPropagation(); // Empêcher la propagation vers les éléments parents
+              if (onUserPress && currentMessage?.user?._id) {
+                // Fermer d'abord la modal des commentaires
+                if (onCloseComments) {
+                  onCloseComments();
+                }
+                // Puis ouvrir la modal de profil après un court délai
+                setTimeout(() => {
+                  const fullName = currentMessage.user.name || '';
+                  const nameParts = fullName.split(' ');
+                  const firstname = nameParts[0] || '';
+                  const lastname = nameParts.slice(1).join(' ') || '';
+                  onUserPress(currentMessage.user._id, firstname, lastname);
+                }, 300); // Délai pour laisser le temps à la modal de se fermer
+              }
+            }}
+            style={styles.usernameContainer}
+          >
+            <Text style={styles.usernameText}>
+              {currentMessage.user.name}
+            </Text>
+          </TouchableOpacity>
+        )}
+        <Bubble
+          {...props}
+          wrapperStyle={{
+            left: styles.bubbleLeft,
+            right: styles.bubbleRight,
+          }}
+          textStyle={{
+            left: styles.bubbleTextLeft,
+            right: styles.bubbleTextRight,
+          }}
+        />
+      </View>
+    );
+  }, [onUserPress, user?.id]);
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      {/* COMMENTÉ - En-tête avec statut de connexion désactivé pour l'instant */}
-      {/*
-      <View style={styles.header}>
-        <View style={styles.connectionStatus}>
-          <View style={[styles.statusDot, { backgroundColor: isConnected ? '#4CAF50' : '#FF5722' }]} />
-          <Text style={styles.statusText}>
-            {isConnected ? 'Connecté' : 'Déconnecté'}
-          </Text>
-        </View>
-        {getOnlineUsersCount() > 0 && (
-          <Text style={styles.onlineUsersText}>
-            {getOnlineUsersCount()} en ligne
-          </Text>
+    <View style={styles.container}>
+      <GiftedChat
+        messages={giftedMessages}
+        onSend={handleGiftedSend}
+        user={{ _id: String(user?.id || 'me'), name: `${user?.firstname || ''} ${user?.lastname || ''}`.trim() }}
+        text={commentText}
+        onInputTextChanged={handleTextChange}
+        alwaysShowSend
+        placeholder="Écrivez un message..."
+        // bottomOffset={0}
+        textInputProps={{
+          returnKeyType: 'send',
+          blurOnSubmit: false,
+          submitBehavior: 'submit' as const,
+          enablesReturnKeyAutomatically: true,
+          onSubmitEditing: () => {
+            const t = commentText?.trim();
+            if (t) {
+              void handleGiftedSend([{ text: t }]);
+            }
+          }
+        }}
+        renderAvatar={() => null}
+        renderUsernameOnMessage={false} // Désactivé car on gère nous-mêmes les noms
+        showAvatarForEveryMessage
+        renderBubble={renderBubble}
+        // renderChatFooter={() => <View style={{ height: 8 }} />}
+        renderInputToolbar={(props) => (
+          <InputToolbar
+            {...props}
+            containerStyle={{
+              marginBottom: Platform.OS === 'ios' ? (keyboardOpen ? -insets.bottom : 0) : 0,
+            }}
+          />
         )}
-      </View>
-      */}
 
-      {/* Liste des commentaires */}
-      <FlatList
-        ref={flatListRef}
-        data={comments}
-        renderItem={renderComment}
-        keyExtractor={(item, index) => `${item.id}-${index}`}
-        style={styles.commentsList}
-        inverted={true}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          isLoadingComments ? (
-            <View style={styles.emptyState}>
-              <ActivityIndicator size="large" color="#007AFF" />
-              <Text style={styles.emptyStateText}>Chargement des commentaires...</Text>
-            </View>
-          ) : (
-            <View style={styles.emptyState}>
-              <Ionicons name="chatbubble-outline" size={48} color="#ccc" />
-              <Text style={styles.emptyStateText}>Aucun commentaire pour le moment</Text>
-              <Text style={styles.emptyStateSubtext}>Soyez le premier à commenter !</Text>
-            </View>
-          )
-        }
+        renderSend={(props) => (
+          <Send {...props} containerStyle={{ justifyContent: 'center', alignItems: 'center', paddingHorizontal: 12 }}>
+            <Text style={{ color: BrandColors.primary, fontWeight: '600' }}>Envoyer</Text>
+          </Send>
+        )}
+        renderDay={renderDay}
+        locale="fr"
+        dateFormat="dddd D MMMM"
+        timeFormat="HH:mm"
+        listViewProps={{
+          keyboardDismissMode: Platform.OS === 'ios' ? 'interactive' : 'on-drag',
+          keyboardShouldPersistTaps: 'always',
+          contentContainerStyle: { paddingTop:  12 },
+        } as any}
       />
-
-      {/* COMMENTÉ - Indicateur de frappe désactivé pour l'instant */}
-      {/* <TypingIndicator typingUsers={getTypingUsersNames()} /> */}
-
-      {/* Zone de saisie */}
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.textInput}
-          value={commentText}
-          onChangeText={handleTextChange}
-          // COMMENTÉ - Indicateurs de frappe désactivés pour l'instant
-          // onBlur={handleInputBlur}
-          placeholder="Écrivez un commentaire..."
-          multiline
-          maxLength={1000}
-          editable={!isCreatingComment}
-        />
-        <TouchableOpacity
-          style={[
-            styles.sendButton,
-            (!commentText.trim() || isCreatingComment) && styles.sendButtonDisabled
-          ]}
-          onPress={handleSendComment}
-          disabled={!commentText.trim() || isCreatingComment}
-        >
-          {isCreatingComment ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Ionicons name="send" size={20} color="#fff" />
-          )}
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -241,6 +245,30 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  messageContainer: {
+    marginVertical: 2,
+  },
+  usernameContainer: {
+    marginBottom: 2,
+    marginLeft: 8,
+  },
+  usernameText: {
+    fontSize: 12,
+    color: BrandColors.primary,
+    fontWeight: '600',
+  },
+  bubbleLeft: {
+    backgroundColor: '#f0f0f0',
+  },
+  bubbleRight: {
+    backgroundColor: BrandColors.primary,
+  },
+  bubbleTextLeft: {
+    color: '#000',
+  },
+  bubbleTextRight: {
+    color: '#fff',
   },
   header: {
     flexDirection: 'row',
@@ -267,11 +295,14 @@ const styles = StyleSheet.create({
   },
   onlineUsersText: {
     fontSize: 12,
-    color: '#007AFF',
+    color: BrandColors.primary,
   },
   commentsList: {
     flex: 1,
     paddingHorizontal: 12,
+  },
+  commentsContent: {
+    paddingBottom: 12,
   },
   commentItem: {
     marginVertical: 6,
@@ -281,7 +312,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   ownComment: {
-    backgroundColor: '#007AFF',
+    backgroundColor: BrandColors.primary,
     alignSelf: 'flex-end',
     color: '#fff',
   },
@@ -319,7 +350,7 @@ const styles = StyleSheet.create({
   },
   mentionsText: {
     fontSize: 11,
-    color: '#007AFF',
+    color: BrandColors.primary,
   },
   typingIndicator: {
     flexDirection: 'row',
@@ -337,9 +368,14 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   inputContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     alignItems: 'flex-end',
-    padding: 12,
+    padding: 16,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 16,
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
@@ -360,7 +396,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#007AFF',
+    backgroundColor: BrandColors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -385,4 +421,5 @@ const styles = StyleSheet.create({
     marginTop: 4,
     textAlign: 'center',
   },
+
 }); 

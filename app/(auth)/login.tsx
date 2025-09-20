@@ -1,16 +1,18 @@
+import { BrandColors } from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useAuthScreen } from '../../hooks/useAuthRedirect';
 import { useAuth } from '../context/auth';
@@ -60,8 +62,11 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
-          <Ionicons name="fitness" size={80} color="#007AFF" style={styles.logo} />
-          <Text style={styles.title}>Bienvenue !</Text>
+          <Image
+            source={require('../../assets/images/logo.png')}
+            style={styles.logo}
+          />
+          {/* <Text style={styles.title}>Bienvenue !</Text> */}
           <Text style={styles.subtitle}>
             Connectez-vous pour accéder à votre compte
           </Text>
@@ -73,6 +78,7 @@ export default function LoginScreen() {
             <TextInput
               style={styles.input}
               placeholder="Email"
+              placeholderTextColor="#999"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -87,6 +93,7 @@ export default function LoginScreen() {
             <TextInput
               style={styles.input}
               placeholder="Mot de passe"
+              placeholderTextColor="#999"
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
@@ -158,7 +165,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: BrandColors.primary,
   },
   loadingContainer: {
     justifyContent: 'center',
@@ -174,20 +181,22 @@ const styles = StyleSheet.create({
     marginBottom: 48,
   },
   logo: {
-    width: 120,
-    height: 120,
+    width: 200,
+    height: 108,
     marginBottom: 24,
+    resizeMode: 'contain',
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 8,
-    color: '#000',
+    color: BrandColors.white,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: BrandColors.white,
     textAlign: 'center',
+    opacity: 0.9,
   },
   form: {
     marginBottom: 24,
@@ -215,11 +224,12 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   forgotPasswordText: {
-    color: '#007AFF',
+    color: BrandColors.white,
     fontSize: 14,
+    opacity: 0.9,
   },
   loginButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: BrandColors.white,
     borderRadius: 12,
     height: 56,
     alignItems: 'center',
@@ -230,7 +240,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   loginButtonText: {
-    color: '#fff',
+    color: BrandColors.primary,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -269,12 +279,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   footerText: {
-    color: '#666',
+    color: BrandColors.white,
     fontSize: 14,
+    opacity: 0.9,
   },
   footerLink: {
-    color: '#007AFF',
+    color: BrandColors.white,
     fontSize: 14,
     fontWeight: '600',
+    textDecorationLine: 'underline',
   },
 }); 

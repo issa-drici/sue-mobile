@@ -17,14 +17,172 @@ export const formatDate = (date: string) => {
 
 /**
  * Formate une heure au format français
- * @param time - Heure au format string (HH:MM)
+ * @param time - Heure au format string (HH:MM ou HH:MM:SS)
  * @returns Heure formatée en français (ex: "18:00")
  */
 export const formatTime = (time: string) => {
-  return new Date(`1970-01-01T${time}`).toLocaleTimeString('fr-FR', {
-    hour: '2-digit',
-    minute: '2-digit'
-  });
+  // Extraire seulement les heures et minutes
+  const timeMatch = time.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  
+  if (!timeMatch) {
+    console.warn(`Format d'heure invalide: ${time}`);
+    return time; // Retourner l'heure originale si le format est invalide
+  }
+  
+  const hours = parseInt(timeMatch[1], 10);
+  const minutes = parseInt(timeMatch[2], 10);
+  
+  // Vérifier que les heures et minutes sont valides
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+    console.warn(`Heure invalide: ${hours}:${minutes}`);
+    return time;
+  }
+  
+  // Formater avec padding des zéros
+  const formattedHours = hours.toString().padStart(2, '0');
+  const formattedMinutes = minutes.toString().padStart(2, '0');
+  
+  return `${formattedHours}:${formattedMinutes}`;
+};
+
+/**
+ * Formate une heure en utilisant le fuseau horaire local
+ * @param time - Heure au format string (HH:MM ou HH:MM:SS)
+ * @returns Heure formatée en français (ex: "18:00")
+ */
+export const formatTimeLocal = (time: string) => {
+  try {
+    // Créer une date avec l'heure d'aujourd'hui pour éviter les problèmes de fuseau
+    const today = new Date();
+    const [hours, minutes] = time.split(':').map(Number);
+    
+    if (isNaN(hours) || isNaN(minutes)) {
+      console.warn(`Format d'heure invalide: ${time}`);
+      return formatTime(time); // Fallback vers la fonction simple
+    }
+    
+    const dateWithTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), hours, minutes);
+    
+    return dateWithTime.toLocaleTimeString('fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+  } catch (error: unknown) {
+    console.warn(`Erreur lors du formatage local de l'heure: ${error instanceof Error ? error.message : String(error)}`);
+    return formatTime(time); // Fallback vers la fonction simple
+  }
+};
+
+/**
+ * Formate une heure en forçant le fuseau horaire français (Europe/Paris)
+ * @param time - Heure au format string (HH:MM ou HH:MM:SS)
+ * @returns Heure formatée en français (ex: "18:00")
+ */
+export const formatTimeFrance = (time: string) => {
+  try {
+    // Extraire les heures et minutes
+    const timeMatch = time.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+    
+    if (!timeMatch) {
+      console.warn(`Format d'heure invalide: ${time}`);
+      return formatTime(time); // Fallback vers la fonction simple
+    }
+    
+    const hours = parseInt(timeMatch[1], 10);
+    const minutes = parseInt(timeMatch[2], 10);
+    
+    // Vérifier que les heures et minutes sont valides
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+      console.warn(`Heure invalide: ${hours}:${minutes}`);
+      return formatTime(time);
+    }
+    
+    // Créer une date avec l'heure d'aujourd'hui en France
+    const today = new Date();
+    const dateWithTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), hours, minutes);
+    
+    // Forcer le fuseau horaire français
+    return dateWithTime.toLocaleTimeString('fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: 'Europe/Paris'
+    });
+  } catch (error: unknown) {
+    console.warn(`Erreur lors du formatage en heure française: ${error instanceof Error ? error.message : String(error)}`);
+    return formatTime(time); // Fallback vers la fonction simple
+  }
+};
+
+/**
+ * Formate une heure en utilisant le fuseau horaire UTC (pour comparaison)
+ * @param time - Heure au format string (HH:MM ou HH:MM:SS)
+ * @returns Heure formatée en UTC (ex: "18:00")
+ */
+export const formatTimeUTC = (time: string) => {
+  try {
+    // Extraire les heures et minutes
+    const timeMatch = time.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+    
+    if (!timeMatch) {
+      console.warn(`Format d'heure invalide: ${time}`);
+      return formatTime(time); // Fallback vers la fonction simple
+    }
+    
+    const hours = parseInt(timeMatch[1], 10);
+    const minutes = parseInt(timeMatch[2], 10);
+    
+    // Vérifier que les heures et minutes sont valides
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+      console.warn(`Heure invalide: ${hours}:${minutes}`);
+      return formatTime(time);
+    }
+    
+    // Créer une date avec l'heure d'aujourd'hui
+    const today = new Date();
+    const dateWithTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), hours, minutes);
+    
+    // Utiliser le fuseau UTC
+    return dateWithTime.toLocaleTimeString('fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: 'UTC'
+    });
+  } catch (error: unknown) {
+    console.warn(`Erreur lors du formatage en UTC: ${error instanceof Error ? error.message : String(error)}`);
+    return formatTime(time); // Fallback vers la fonction simple
+  }
+};
+
+/**
+ * Débogue les informations de fuseau horaire
+ * @param time - Heure à déboguer
+ * @returns Informations de débogage
+ */
+export const debugTimeZone = (time: string) => {
+  try {
+    const today = new Date();
+    const [hours, minutes] = time.split(':').map(Number);
+    const dateWithTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), hours, minutes);
+    
+    return {
+      originalTime: time,
+      parsedHours: hours,
+      parsedMinutes: minutes,
+      dateObject: dateWithTime,
+      localTime: dateWithTime.toLocaleTimeString('fr-FR'),
+      utcTime: dateWithTime.toUTCString(),
+      timezoneOffset: dateWithTime.getTimezoneOffset(),
+      timezoneOffsetHours: dateWithTime.getTimezoneOffset() / 60
+    };
+  } catch (error: unknown) {
+    return {
+      error: error instanceof Error ? error.message : String(error),
+      originalTime: time
+    };
+  }
 };
 
 /**

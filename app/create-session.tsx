@@ -1,3 +1,5 @@
+import { ENV } from '@/config/env';
+import { BrandColors } from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
@@ -70,7 +72,7 @@ export default function CreateSessionScreen() {
     try {
 
       // Préparer les données de la session
-      const selectedFriendsData = friends
+      const selectedFriendsData = (friends || [])
         .filter(friend => selectedFriends.includes(friend.id))
         .map(friend => ({
           id: friend.id,
@@ -96,7 +98,7 @@ export default function CreateSessionScreen() {
         try {
           for (const friendId of selectedFriends) {
             // Appel à l'API d'envoi de notification
-            const response = await fetch('http://localhost:8000/api/notifications/send', {
+            const response = await fetch(`${ENV.API_BASE_URL}/notifications/send`, {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer 172|XIxo3WMAxfIq2LlnBYBKdcnV33w4NkbkTjsvEbmH424d7021`,
@@ -138,10 +140,11 @@ export default function CreateSessionScreen() {
   };
 
   const handleSelectAllFriends = () => {
-    if (selectedFriends.length === friends.length) {
+    const friendsArray = friends || [];
+    if (selectedFriends.length === friendsArray.length) {
       setSelectedFriends([]);
     } else {
-      setSelectedFriends(friends.map(friend => friend.id));
+      setSelectedFriends(friendsArray.map(friend => friend.id));
     }
   };
 
@@ -282,6 +285,7 @@ export default function CreateSessionScreen() {
             <TextInput
               style={styles.input}
               placeholder="Entrez le lieu de la session"
+              placeholderTextColor="#999"
               value={location}
               onChangeText={setLocation}
             />
@@ -296,6 +300,7 @@ export default function CreateSessionScreen() {
             <TextInput
               style={styles.input}
               placeholder="Entrez le nombre maximum de participants"
+              placeholderTextColor="#999"
               value={maxParticipants}
               onChangeText={setMaxParticipants}
               keyboardType="numeric"
@@ -312,13 +317,13 @@ export default function CreateSessionScreen() {
             onPress={handleSelectAllFriends}
           >
             <Text style={styles.selectAllText}>
-              {selectedFriends.length === friends.length
+              {selectedFriends.length === (friends?.length || 0)
                 ? 'Désélectionner tout'
                 : 'Sélectionner tout'}
             </Text>
           </TouchableOpacity>
 
-          {friends.map((friend) => (
+          {(friends || []).map((friend) => (
             <FriendItem key={friend.id} friend={friend} />
           ))}
         </View>
@@ -404,7 +409,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   sportButtonSelected: {
-    backgroundColor: '#007AFF',
+    backgroundColor: BrandColors.primary,
   },
   sportButtonText: {
     color: '#666',
@@ -441,7 +446,7 @@ const styles = StyleSheet.create({
     color: '#000',
   },
   createButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: BrandColors.primary,
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
@@ -463,7 +468,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   selectAllText: {
-    color: '#007AFF',
+    color: BrandColors.primary,
     fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
@@ -506,12 +511,12 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#007AFF',
+    borderColor: BrandColors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   checkboxSelected: {
-    backgroundColor: '#007AFF',
+    backgroundColor: BrandColors.primary,
   },
   modalOverlay: {
     flex: 1,
@@ -537,7 +542,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   modalDoneButton: {
-    color: '#007AFF',
+    color: BrandColors.primary,
     fontSize: 16,
     fontWeight: '600',
   },

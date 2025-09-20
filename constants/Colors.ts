@@ -1,8 +1,18 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * Couleurs de l'application Alarrache
+ * Palette de couleurs principale basée sur le rouge #f93e34
  */
 
+// Couleurs principales
+export const BrandColors = {
+  primary: '#f93e34',      // Rouge principal
+  white: '#fcfcfc',        // Blanc
+  lightPink: '#fbe0df',    // Rose clair
+  mediumPink: '#fbc5c2',   // Rose moyen
+  darkPink: '#faaaa6',     // Rose foncé
+};
+
+// Couleurs système (héritées)
 const tintColorLight = '#0a7ea4';
 const tintColorDark = '#fff';
 
@@ -23,4 +33,6 @@ export const Colors = {
     tabIconDefault: '#9BA1A6',
     tabIconSelected: tintColorDark,
   },
+  // Ajout des couleurs de marque
+  brand: BrandColors,
 };

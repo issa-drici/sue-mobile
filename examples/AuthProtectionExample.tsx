@@ -1,3 +1,4 @@
+import { BrandColors } from '@/constants/Colors';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -190,7 +191,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   button: {
-    backgroundColor: '#007AFF',
+    backgroundColor: BrandColors.primary,
     padding: 12,
     borderRadius: 8,
     marginBottom: 8,

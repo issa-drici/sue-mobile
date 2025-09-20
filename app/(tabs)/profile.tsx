@@ -1,3 +1,4 @@
+import { BrandColors } from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
@@ -308,7 +309,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#007AFF',
+    backgroundColor: BrandColors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
@@ -346,7 +347,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#007AFF',
+    color: BrandColors.primary,
     marginBottom: 4,
   },
   statLabel: {

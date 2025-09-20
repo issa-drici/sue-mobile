@@ -1,6 +1,7 @@
+import { BrandColors } from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -12,6 +13,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import UserProfileModal from '../components/UserProfileModal';
 import { useCancelFriendRequest, useSearchUsers, useSendFriendRequest } from '../services';
 
 export default function AddFriendScreen() {
@@ -19,6 +21,9 @@ export default function AddFriendScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [localSearchResults, setLocalSearchResults] = useState<any[]>([]);
+  const [isProfileModalVisible, setIsProfileModalVisible] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { data: searchResults, isLoading, error, searchUsers } = useSearchUsers();
   const { sendFriendRequest, isLoading: isSendingRequest } = useSendFriendRequest();
@@ -40,18 +45,47 @@ export default function AddFriendScreen() {
     );
   };
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
+  const handleSearch = async (query: string) => {
+    if (!query.trim()) {
+      setLocalSearchResults([]);
+      return;
+    }
 
     setIsSearching(true);
     try {
-      await searchUsers(searchQuery);
+      await searchUsers(query);
     } catch (error) {
       Alert.alert('Erreur', 'Impossible de rechercher des utilisateurs');
     } finally {
       setIsSearching(false);
     }
   };
+
+  // Recherche automatique avec debounce
+  useEffect(() => {
+    // Annuler la recherche précédente si elle existe
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    // Si la requête est vide ou moins de 2 caractères, vider les résultats immédiatement
+    if (!searchQuery.trim() || searchQuery.trim().length < 2) {
+      setLocalSearchResults([]);
+      return;
+    }
+
+    // Programmer une nouvelle recherche avec un délai de 300ms
+    searchTimeoutRef.current = setTimeout(() => {
+      handleSearch(searchQuery);
+    }, 300);
+
+    // Cleanup function
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchQuery]);
 
   const handleAddFriend = async (userId: string, userName: string) => {
     try {
@@ -113,9 +147,9 @@ export default function AddFriendScreen() {
       if (item.isFriend) {
         return { icon: 'checkmark-circle', color: '#34C759', text: 'Ami', action: null };
       } else if (item.hasPendingRequest && item.relationshipStatus !== 'cancelled') {
-        return { icon: 'close-circle', color: '#FF3B30', text: 'Annuler', action: 'cancel' };
+        return { icon: 'close-circle', color: BrandColors.primary, text: 'Annuler', action: 'cancel' };
       } else {
-        return { icon: 'person-add', color: '#007AFF', text: 'Ajouter', action: 'add' };
+        return { icon: 'person-add', color: BrandColors.primary, text: 'Ajouter', action: 'add' };
       }
     };
 
@@ -124,7 +158,14 @@ export default function AddFriendScreen() {
 
     return (
       <View style={styles.searchResultItem}>
-        <View style={styles.searchResultInfo}>
+        <TouchableOpacity
+          style={styles.searchResultInfo}
+          onPress={() => {
+            setSelectedUser(item);
+            setIsProfileModalVisible(true);
+          }}
+          activeOpacity={0.7}
+        >
           <View style={styles.nameContainer}>
             <Text style={styles.searchResultName}>
               {displayName}
@@ -136,7 +177,7 @@ export default function AddFriendScreen() {
             ) : null}
           </View>
           <Text style={styles.searchResultEmail}>{item.email}</Text>
-        </View>
+        </TouchableOpacity>
         <TouchableOpacity
           style={styles.addFriendButton}
           onPress={() => {
@@ -191,11 +232,11 @@ export default function AddFriendScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Nom ou adresse email..."
+                placeholderTextColor="#999"
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 autoCapitalize="none"
                 keyboardType="email-address"
-                onSubmitEditing={handleSearch}
               />
               {searchQuery ? (
                 <TouchableOpacity onPress={() => setSearchQuery('')}>
@@ -207,14 +248,10 @@ export default function AddFriendScreen() {
         </View>
 
         {/* Résultats de recherche */}
-        {searchQuery && (
+        {searchQuery && searchQuery.trim().length >= 2 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Résultats</Text>
-            {isLoading ? (
-              <View style={styles.loadingContainer}>
-                <Text>Recherche en cours...</Text>
-              </View>
-            ) : error ? (
+            {error ? (
               <View style={styles.errorContainer}>
                 <Text style={styles.errorText}>Erreur: {error}</Text>
               </View>
@@ -236,13 +273,13 @@ export default function AddFriendScreen() {
         )}
 
         {/* Instructions */}
-        {!searchQuery && (
+        {(!searchQuery || searchQuery.trim().length < 2) && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Comment ça marche ?</Text>
             <View style={styles.instructionsContainer}>
               <View style={styles.instructionItem}>
                 <View style={styles.instructionIcon}>
-                  <Ionicons name="search" size={24} color="#007AFF" />
+                  <Ionicons name="search" size={24} color={BrandColors.primary} />
                 </View>
                 <View style={styles.instructionContent}>
                   <Text style={styles.instructionTitle}>1. Recherchez</Text>
@@ -254,7 +291,7 @@ export default function AddFriendScreen() {
 
               <View style={styles.instructionItem}>
                 <View style={styles.instructionIcon}>
-                  <Ionicons name="mail" size={24} color="#007AFF" />
+                  <Ionicons name="mail" size={24} color={BrandColors.primary} />
                 </View>
                 <View style={styles.instructionContent}>
                   <Text style={styles.instructionTitle}>2. Invitez</Text>
@@ -266,7 +303,7 @@ export default function AddFriendScreen() {
 
               <View style={styles.instructionItem}>
                 <View style={styles.instructionIcon}>
-                  <Ionicons name="people" size={24} color="#007AFF" />
+                  <Ionicons name="people" size={24} color={BrandColors.primary} />
                 </View>
                 <View style={styles.instructionContent}>
                   <Text style={styles.instructionTitle}>3. Connectez-vous</Text>
@@ -279,20 +316,17 @@ export default function AddFriendScreen() {
           </View>
         )}
 
-        {/* Bouton de recherche */}
-        <TouchableOpacity
-          style={[
-            styles.searchButton,
-            (!searchQuery.trim() || isLoading) && styles.searchButtonDisabled
-          ]}
-          onPress={handleSearch}
-          disabled={!searchQuery.trim() || isLoading}
-        >
-          <Text style={styles.searchButtonText}>
-            {isLoading ? 'Recherche...' : 'Rechercher'}
-          </Text>
-        </TouchableOpacity>
+
       </View>
+
+      {/* Modal de profil utilisateur */}
+      <UserProfileModal
+        visible={isProfileModalVisible}
+        onClose={() => setIsProfileModalVisible(false)}
+        userId={selectedUser?.id}
+        userFirstname={selectedUser?.firstname}
+        userLastname={selectedUser?.lastname}
+      />
     </SafeAreaView>
   );
 }
@@ -389,6 +423,7 @@ const styles = StyleSheet.create({
   },
   searchResultInfo: {
     flex: 1,
+    paddingVertical: 4,
   },
   nameContainer: {
     flexDirection: 'row',
@@ -457,7 +492,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   searchButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: BrandColors.primary,
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 8,
@@ -468,7 +503,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ccc',
   },
   searchButtonText: {
-    color: '#fff',
+    color: BrandColors.white,
     fontSize: 16,
     fontWeight: '600',
   },

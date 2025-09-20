@@ -1,3 +1,4 @@
+import { BrandColors } from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
@@ -11,14 +12,14 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { useGetSessions } from '../services';
+import { useGetHistory } from '../services';
 import { Sport, SportSession } from '../types/sport';
 
 const SPORTS: Sport[] = ['tennis', 'golf', 'musculation', 'football', 'basketball'];
 
 export default function HistoryScreen() {
   const router = useRouter();
-  const { data: sessions, isLoading, error } = useGetSessions();
+  const { data: sessions, isLoading, error } = useGetHistory();
   const [selectedSport, setSelectedSport] = useState<string>('Tous');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -182,7 +183,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#007AFF',
+    color: BrandColors.primary,
   },
   content: {
     flex: 1,
@@ -203,8 +204,8 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   filterButtonActive: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+    backgroundColor: BrandColors.primary,
+    borderColor: BrandColors.primary,
   },
   filterButtonText: {
     color: '#333',
@@ -239,7 +240,7 @@ const styles = StyleSheet.create({
   sportTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#007AFF',
+    color: BrandColors.primary,
     marginBottom: 4,
   },
   date: {

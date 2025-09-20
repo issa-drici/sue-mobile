@@ -1,3 +1,4 @@
+import { BrandColors } from '@/constants/Colors';
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useProtectedRoute } from '../hooks/useAuthRedirect';
@@ -18,7 +19,7 @@ export function ProtectedScreen({ children, fallback }: ProtectedScreenProps) {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={BrandColors.primary} />
         <Text style={styles.loadingText}>Vérification de l&apos;authentification...</Text>
       </View>
     );

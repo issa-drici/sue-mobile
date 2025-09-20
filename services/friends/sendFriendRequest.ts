@@ -22,8 +22,23 @@ export function useSendFriendRequest() {
         return response;
       }
     } catch (err: any) {
-      setError(err.message || 'Erreur lors de l\'envoi de la demande d\'ami');
-      throw err;
+      console.error('❌ [useSendFriendRequest] Erreur API:', err);
+      
+      // Extraire le message d'erreur de manière plus robuste
+      let errorMessage = 'Erreur lors de l\'envoi de la demande d\'ami';
+      
+      if (err.message) {
+        errorMessage = err.message;
+      } else if (err.error?.message) {
+        errorMessage = err.error.message;
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.response?.data?.error?.message) {
+        errorMessage = err.response.data.error.message;
+      }
+      
+      setError(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
     }

@@ -6,17 +6,17 @@ Ce fichier centralise le suivi de toutes les demandes adressées à l'équipe ba
 
 | Type | En attente | En cours | Terminé | Annulé | Total |
 |------|------------|----------|---------|--------|-------|
-| **Feature Request** | 3 | 0 | 0 | 0 | 3 |
-| **Bug Report** | 1 | 0 | 1 | 0 | 2 |
-| **API Improvement** | 1 | 0 | 0 | 0 | 1 |
+| **Feature Request** | 6 | 0 | 0 | 0 | 6 |
+| **Bug Report** | 3 | 0 | 1 | 0 | 4 |
+| **API Improvement** | 2 | 0 | 0 | 0 | 2 |
 | **Breaking Change** | 0 | 0 | 0 | 0 | 0 |
-| **Total** | 5 | 0 | 1 | 0 | 6 |
+| **Total** | 11 | 0 | 1 | 0 | 12 |
 
 ## 🔴 Demandes critiques
 
 | ID | Titre | Type | Priorité | Deadline | Status |
 |----|-------|------|----------|----------|--------|
-| - | - | - | - | - | - |
+| BUG-20250122-001 | Erreur 500 lors de l'envoi de demandes d'ami | Bug | CRITICAL | ASAP | ⏳ En attente |
 
 ## 🟡 Demandes importantes
 
@@ -26,8 +26,13 @@ Ce fichier centralise le suivi de toutes les demandes adressées à l'équipe ba
 | FR-20241220-002 | Endpoint compteur notifications | Feature | HIGH | 10/01/2025 | ⏳ En attente |
 | FR-20241220-003 | Autoriser tous les utilisateurs à inviter | Feature | HIGH | 15/01/2025 | ⏳ En attente |
 | BR-20241220-001 | Incohérence structure réponse | Bug | HIGH | 15/01/2025 | ⏳ En attente |
+| BR-20250122-001 | Incohérence pagination notifications | Bug | HIGH | 25/01/2025 | ⏳ En attente |
 | BR-20241220-002 | Erreur validation push-tokens | Bug | HIGH | 10/01/2025 | ✅ RÉSOLU |
 | AI-20241220-001 | Standardisation API | Improvement | HIGH | 10/01/2025 | ⏳ En attente |
+| IMPROV-20250122-001 | Amélioration gestion erreurs API | Improvement | HIGH | 20/01/2025 | ⏳ En attente |
+| FR-20250122-006 | Ajouter statut relation complet au profil utilisateur | Feature | HIGH | 25/01/2025 | ⏳ En attente |
+| FR-20250122-007 | Optimiser recherche utilisateurs pour prénom/nom | Feature | MEDIUM | 30/01/2025 | ⏳ En attente |
+| FR-20250122-008 | Endpoint comptage demandes d'amis non traitées | Feature | HIGH | 25/01/2025 | ⏳ En attente |
 
 ## 🟢 Demandes moyennes
 
@@ -47,6 +52,7 @@ Ce fichier centralise le suivi de toutes les demandes adressées à l'équipe ba
 - **10/01** - FR-20241220-002 (Endpoint compteur notifications)
 - **10/01** - AI-20241220-001 (Standardisation API)
 - **15/01** - BR-20241220-001 (Bug structure réponse)
+- **25/01** - BR-20250122-001 (Bug pagination notifications)
 
 ### Février 2025
 - **15/02** - FR-20241220-001 (Notifications push)
@@ -122,5 +128,11 @@ Ce fichier centralise le suivi de toutes les demandes adressées à l'équipe ba
 
 ---
 
-**Dernière mise à jour :** 20/12/2024
+## 🆕 Nouvelles demandes
+
+|| ID | Titre | Type | Priorité | Deadline | Status |
+||----|-------|------|----------|----------|--------|
+|| FR-20250122-009 | Tri des participants par statut | Feature | MEDIUM | 30/01/2025 | ⏳ En attente |
+
+**Dernière mise à jour :** 22/01/2025
 **Responsable :** Équipe Mobile 
