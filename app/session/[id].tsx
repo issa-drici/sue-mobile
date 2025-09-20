@@ -4,18 +4,18 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import ChatComments from '../../components/ChatComments';
 import InfoMessage from '../../components/InfoMessage';
@@ -796,7 +796,7 @@ export default function SessionDetailsScreen() {
             >
               <Ionicons name="close" size={24} color="#000" />
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Commentaires</Text>
+            <Text style={styles.modalTitle}>Commdddentaires</Text>
             <View style={styles.modalHeaderRight} />
           </View>
 
