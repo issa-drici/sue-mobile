@@ -5,7 +5,7 @@ interface GlobalNotificationsContextType {
   unreadCount: number;
   isLoading: boolean;
   error: any;
-  refetch: () => Promise<void>;
+  refetch: () => void;
 }
 
 const GlobalNotificationsContext = createContext<GlobalNotificationsContextType | undefined>(undefined);
@@ -26,6 +26,11 @@ export const GlobalNotificationsProvider: React.FC<GlobalNotificationsProviderPr
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const { count: unreadCount, isLoading, error, refetch } = useGetUnreadCount();
   
+  // Protection contre les valeurs undefined
+  const safeUnreadCount = unreadCount || 0;
+  const safeIsLoading = isLoading || false;
+  const safeError = error || null;
+  
   // Polling global toutes les 30 secondes
   useEffect(() => {
     // Nettoyer l'intervalle existant
@@ -34,13 +39,13 @@ export const GlobalNotificationsProvider: React.FC<GlobalNotificationsProviderPr
     }
     
     // Créer un nouvel intervalle
-    intervalRef.current = setInterval(async () => {
+    intervalRef.current = setInterval(() => {
       try {
-        await refetch();
+        refetch();
       } catch (error) {
         console.error('❌ [GlobalNotifications] Erreur lors du polling:', error);
       }
-    }, 30000); // 30 secondes comme avant
+    }, 30000) as unknown as NodeJS.Timeout; // 30 secondes comme avant
     
     // Cleanup à la destruction du composant
     return () => {
@@ -51,9 +56,9 @@ export const GlobalNotificationsProvider: React.FC<GlobalNotificationsProviderPr
   }, [refetch]);
   
   const contextValue: GlobalNotificationsContextType = {
-    unreadCount: unreadCount || 0,
-    isLoading,
-    error,
+    unreadCount: safeUnreadCount,
+    isLoading: safeIsLoading,
+    error: safeError,
     refetch
   };
 

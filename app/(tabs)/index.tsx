@@ -26,7 +26,7 @@ const SessionCard = ({ session }: { session: SportSession }) => {
           {(session.sport || 'Sport').toUpperCase()}
         </Text>
         <Text style={styles.date}>
-          {formatDate(session.date)} à {formatTime(session.time)}
+          {formatDate(session.date)} de {formatTime(session.startTime)} à {formatTime(session.endTime)}
         </Text>
       </View>
 

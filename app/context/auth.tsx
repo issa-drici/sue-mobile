@@ -20,6 +20,7 @@ interface AuthContextType {
   refreshAuth: () => Promise<boolean>;
   completeOnboarding: () => Promise<void>;
   resetOnboarding: () => Promise<void>;
+  getAuthToken: () => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -49,7 +50,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const forceSignOut = async () => {
     try {
       console.log('🔄 Déconnexion forcée en cours...');
-      
+
       // Désinscrire le token de notifications push
       try {
         await pushNotificationService.unregisterToken();
@@ -57,16 +58,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } catch (error) {
         console.warn('⚠️ Erreur lors de la désinscription du token push:', error);
       }
-      
+
       // Nettoyer le stockage local
       await AsyncStorage.multiRemove(['user', 'authToken', 'refreshToken']);
-      
+
       // Nettoyer le token de l'API
       baseApiService.clearAuthToken();
-      
+
       // Réinitialiser l'état
       setUser(null);
-      
+
       console.log('✅ Déconnexion forcée terminée');
     } catch (error) {
       console.error('❌ Erreur lors de la déconnexion forcée:', error);
@@ -76,11 +77,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Rafraîchir l'authentification
   const refreshAuth = async (): Promise<boolean> => {
     if (isRefreshing) return false;
-    
+
     try {
       setIsRefreshing(true);
       console.log('🔄 Tentative de rafraîchissement de l\'authentification...');
-      
+
       const refreshToken = await AsyncStorage.getItem('refreshToken');
       if (!refreshToken) {
         console.log('❌ Pas de refresh token disponible');
@@ -100,17 +101,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (response.ok) {
         const data = await response.json();
         const newToken = data.token || data.access_token;
-        
+
         if (newToken) {
           // Sauvegarder le nouveau token
           await AsyncStorage.setItem('authToken', newToken);
           baseApiService.setAuthToken(newToken);
-          
+
           console.log('✅ Token rafraîchi avec succès');
           return true;
         }
       }
-      
+
       console.log('❌ Échec du rafraîchissement du token');
       return false;
     } catch (error) {
@@ -131,7 +132,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       console.log('🔍 Vérification de la validité du token...');
-      
+
       const response = await fetch(`${ENV.API_BASE_URL}/profile`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -144,14 +145,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return true;
       } else if (response.status === 401) {
         console.log('⚠️ Token expiré, tentative de rafraîchissement...');
-        
+
         // Essayer de rafraîchir le token
         const refreshSuccess = await refreshAuth();
         if (refreshSuccess) {
           // Vérifier à nouveau avec le nouveau token
           return await checkTokenValidity();
         }
-        
+
         // Si le refresh échoue, on ne déconnecte PAS automatiquement
         // L'utilisateur reste connecté avec l'ancien token
         console.log('⚠️ Échec du refresh, mais l\'utilisateur reste connecté');
@@ -164,11 +165,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     } catch (error) {
       console.error('❌ Erreur lors de la vérification du token:', error);
-      
+
       // En cas d'erreur réseau, on ne déconnecte PAS automatiquement
       // L'utilisateur reste connecté
       console.log('🌐 Erreur réseau détectée, mais l\'utilisateur reste connecté');
       return true;
+    }
+  };
+
+  // Récupérer le token d'authentification
+  const getAuthToken = async (): Promise<string | null> => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      return token;
+    } catch (error) {
+      console.error('❌ Erreur lors de la récupération du token:', error);
+      return null;
     }
   };
 
@@ -209,30 +221,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const loadUser = async () => {
       try {
         console.log('🚀 Chargement de l\'utilisateur depuis le stockage...');
-        
+
         // Délai pour éviter les crashes au démarrage
         await new Promise(resolve => setTimeout(resolve, 100));
-        
+
         // Charger le statut d'onboarding en premier
         await checkOnboardingStatus();
-        
+
         const userData = await AsyncStorage.getItem('user');
         const token = await AsyncStorage.getItem('authToken');
-        
+
         if (userData && token) {
           console.log('📱 Utilisateur et token trouvés dans le stockage');
-          
+
           const parsedUser = JSON.parse(userData);
           setUser(parsedUser);
           baseApiService.setAuthToken(token);
-          
+
           // Configurer le callback de déconnexion automatique
           baseApiService.setLogoutCallback(forceSignOut);
-          
+
           // Vérifier la validité du token en arrière-plan SANS déconnexion automatique
           console.log('🔍 Vérification de la validité du token (sans déconnexion automatique)...');
           const isValid = await checkTokenValidity();
-          
+
           if (isValid) {
             console.log('✅ Utilisateur connecté avec succès');
           } else {
@@ -248,12 +260,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // En cas d'erreur, on ne nettoie PAS automatiquement le stockage
         // L'utilisateur reste connecté
         console.log('⚠️ Erreur lors du chargement, mais l\'utilisateur reste connecté');
-        
+
         // Essayer de récupérer les données malgré l'erreur
         try {
           const userData = await AsyncStorage.getItem('user');
           const token = await AsyncStorage.getItem('authToken');
-          
+
           if (userData && token) {
             const parsedUser = JSON.parse(userData);
             setUser(parsedUser);
@@ -289,10 +301,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await AsyncStorage.setItem('user', JSON.stringify(mockUser));
       await AsyncStorage.setItem('authToken', mockToken);
       await AsyncStorage.setItem('refreshToken', mockRefreshToken);
-      
+
       baseApiService.setAuthToken(mockToken);
       setUser(mockUser);
-      
+
       console.log('✅ Connexion mock réussie');
     } catch (error) {
       throw new Error('Erreur lors de la connexion mock');
@@ -308,7 +320,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       console.log('🔐 Tentative de connexion...');
-      
+
       // Ajouter le device_name requis par l'API
       const loginData = {
         email,
@@ -317,16 +329,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       };
 
       const response = await AuthApi.login(loginData);
-      
+
       // L'API retourne directement {token, user}
       const { token, user: userData, refresh_token } = response;
-      
+
       if (!token || !userData) {
         throw new Error('Format de réponse invalide du serveur');
       }
 
       console.log('✅ Connexion réussie, sauvegarde des données...');
-      
+
       // Sauvegarder l'utilisateur
       await AsyncStorage.setItem('user', JSON.stringify(userData));
       setUser(userData);
@@ -336,10 +348,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (refresh_token) {
         await AsyncStorage.setItem('refreshToken', refresh_token);
       }
-      
+
       // Configurer le token pour les requêtes API
       baseApiService.setAuthToken(token);
-      
+
       console.log('✅ Données d\'authentification sauvegardées');
     } catch (error: any) {
       console.error('❌ Erreur lors de la connexion:', error);
@@ -356,7 +368,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       console.log('📝 Tentative d\'inscription...');
-      
+
       // Ajouter le device_name requis par l'API
       const registerData = {
         firstname,
@@ -368,16 +380,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       };
 
       const response = await AuthApi.register(registerData);
-      
+
       // L'API retourne directement {token, user}
       const { token, user: userData, refresh_token } = response;
-      
+
       if (!token || !userData) {
         throw new Error('Format de réponse invalide du serveur');
       }
 
       console.log('✅ Inscription réussie, sauvegarde des données...');
-      
+
       // Sauvegarder l'utilisateur
       await AsyncStorage.setItem('user', JSON.stringify(userData));
       setUser(userData);
@@ -387,10 +399,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (refresh_token) {
         await AsyncStorage.setItem('refreshToken', refresh_token);
       }
-      
+
       // Configurer le token pour les requêtes API
       baseApiService.setAuthToken(token);
-      
+
       console.log('✅ Données d\'authentification sauvegardées');
     } catch (error: any) {
       console.error('❌ Erreur lors de l\'inscription:', error);
@@ -402,7 +414,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signOut = async () => {
     try {
       console.log('🚪 Déconnexion en cours...');
-      
+
       if (!ENV.USE_MOCKS) {
         try {
           await AuthApi.logout();
@@ -424,7 +436,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await AsyncStorage.multiRemove(['user', 'authToken', 'refreshToken']);
       baseApiService.clearAuthToken();
       setUser(null);
-      
+
       console.log('✅ Déconnexion terminée');
     } catch (error) {
       console.error('❌ Erreur lors de la déconnexion:', error);
@@ -447,6 +459,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     refreshAuth,
     completeOnboarding,
     resetOnboarding,
+    getAuthToken,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

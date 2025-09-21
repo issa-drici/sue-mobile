@@ -21,6 +21,12 @@ export const formatDate = (date: string) => {
  * @returns Heure formatée en français (ex: "18:00")
  */
 export const formatTime = (time: string) => {
+  // Protection contre time undefined ou null
+  if (!time) {
+    console.warn('Format d\'heure invalide: time est undefined ou null');
+    return '00:00';
+  }
+  
   // Extraire seulement les heures et minutes
   const timeMatch = time.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
   

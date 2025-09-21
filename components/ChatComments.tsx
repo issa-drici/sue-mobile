@@ -141,11 +141,11 @@ export default function ChatComments({ sessionId, onCommentsReload, onUserPress,
   const renderBubble = React.useCallback((props: any) => {
     const { currentMessage } = props;
     const isCurrentUser = currentMessage?.user?._id === String(user?.id);
-    
+
     return (
       <View style={styles.messageContainer}>
         {!isCurrentUser && currentMessage?.user?.name && (
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={(e) => {
               e.stopPropagation(); // Empêcher la propagation vers les éléments parents
               if (onUserPress && currentMessage?.user?._id) {
@@ -234,7 +234,7 @@ export default function ChatComments({ sessionId, onCommentsReload, onUserPress,
         listViewProps={{
           keyboardDismissMode: Platform.OS === 'ios' ? 'interactive' : 'on-drag',
           keyboardShouldPersistTaps: 'always',
-          contentContainerStyle: { paddingTop:  12 },
+          contentContainerStyle: { paddingTop: 12 },
         } as any}
       />
     </View>
@@ -244,7 +244,7 @@ export default function ChatComments({ sessionId, onCommentsReload, onUserPress,
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fff',
   },
   messageContainer: {
     marginVertical: 2,

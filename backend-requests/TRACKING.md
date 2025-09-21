@@ -6,17 +6,18 @@ Ce fichier centralise le suivi de toutes les demandes adressées à l'équipe ba
 
 | Type | En attente | En cours | Terminé | Annulé | Total |
 |------|------------|----------|---------|--------|-------|
-| **Feature Request** | 6 | 0 | 0 | 0 | 6 |
-| **Bug Report** | 3 | 0 | 1 | 0 | 4 |
+| **Feature Request** | 7 | 0 | 0 | 0 | 7 |
+| **Bug Report** | 4 | 0 | 1 | 0 | 5 |
 | **API Improvement** | 2 | 0 | 0 | 0 | 2 |
 | **Breaking Change** | 0 | 0 | 0 | 0 | 0 |
-| **Total** | 11 | 0 | 1 | 0 | 12 |
+| **Total** | 13 | 0 | 1 | 0 | 14 |
 
 ## 🔴 Demandes critiques
 
 | ID | Titre | Type | Priorité | Deadline | Status |
 |----|-------|------|----------|----------|--------|
 | BUG-20250122-001 | Erreur 500 lors de l'envoi de demandes d'ami | Bug | CRITICAL | ASAP | ⏳ En attente |
+| BUG-20250122-002 | Mise à jour des champs de session non fonctionnelle | Bug | CRITICAL | 25/01/2025 | ⏳ En attente |
 
 ## 🟡 Demandes importantes
 
@@ -133,6 +134,7 @@ Ce fichier centralise le suivi de toutes les demandes adressées à l'équipe ba
 || ID | Titre | Type | Priorité | Deadline | Status |
 ||----|-------|------|----------|----------|--------|
 || FR-20250122-009 | Tri des participants par statut | Feature | MEDIUM | 30/01/2025 | ⏳ En attente |
+|| FR-20250122-010 | Mise à jour API création de session | Feature | CRITICAL | 30/01/2025 | ⏳ En attente |
 
-**Dernière mise à jour :** 22/01/2025
+**Dernière mise à jour :** 21/09/2025
 **Responsable :** Équipe Mobile 

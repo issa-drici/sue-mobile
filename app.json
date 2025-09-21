@@ -2,7 +2,7 @@
   "expo": {
     "name": "sue",
     "slug": "sue",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "sue",
@@ -11,6 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.alliancetech.com",
+      "deploymentTarget": "15.0",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -59,6 +60,12 @@
         "projectId": "1b831c3a-2180-4050-b751-7e5248737d95"
       }
     },
-    "owner": "alliancetech"
+    "owner": "alliancetech",
+    "runtimeVersion": "1.0.0",
+    "updates": {
+      "enabled": true,
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/1b831c3a-2180-4050-b751-7e5248737d95"
+    }
   }
 }

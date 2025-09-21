@@ -15,10 +15,12 @@ function convertToCreateSessionData(
   return {
     title: sessionData.sport, // Utiliser le sport comme titre
     date: sessionData.date || new Date().toISOString().split("T")[0],
-    time: sessionData.time || "18:00",
+    startTime: sessionData.startTime || "18:00",
+    endTime: sessionData.endTime || "20:00",
     location: sessionData.location || "Lieu par défaut",
     sport: sessionData.sport || "tennis",
-         maxParticipants: sessionData.maxParticipants ?? null, // ✅ Utiliser null si pas de valeur
+    maxParticipants: sessionData.maxParticipants ?? null,
+    pricePerPerson: sessionData.pricePerPerson ?? null,
     participantIds: participantIds, // ✅ Ajouter les IDs des participants
   };
 }
@@ -33,8 +35,11 @@ function convertToSportSession(session: any): SportSession {
     id: session.id,
     sport: session.sport,
     date: session.date,
-    time: session.time,
+    startTime: session.startTime || session.time || "18:00",
+    endTime: session.endTime || "20:00",
     location: session.location,
+    maxParticipants: session.maxParticipants,
+    pricePerPerson: session.pricePerPerson,
     organizer: {
       id: session.organizer?.id || "",
       firstname: nameParts[0] || "",
@@ -72,9 +77,11 @@ export function useCreateSession() {
             id: Date.now().toString(),
             sport: sessionData.sport || "tennis",
             date: sessionData.date || new Date().toISOString().split("T")[0],
-            time: sessionData.time || "18:00",
+            startTime: sessionData.startTime || "18:00",
+            endTime: sessionData.endTime || "20:00",
             location: sessionData.location || "Lieu par défaut",
             maxParticipants: sessionData.maxParticipants ?? null,
+            pricePerPerson: sessionData.pricePerPerson ?? null,
             organizer: sessionData.organizer || {
               id: user?.id || "1",
               firstname: user?.firstname || "Utilisateur",

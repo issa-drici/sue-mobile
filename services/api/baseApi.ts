@@ -144,6 +144,10 @@ class BaseApiService {
 
     try {
       console.log(`🌐 API Request: ${options.method || 'GET'} ${url}`);
+      console.log('📋 Request headers:', config.headers);
+      if (options.body) {
+        console.log('📋 Request body:', options.body);
+      }
       
       const response = await fetch(url, config);
       

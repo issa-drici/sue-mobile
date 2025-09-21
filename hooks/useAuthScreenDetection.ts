@@ -16,11 +16,12 @@ export function useAuthScreenDetection() {
   ];
   
   // Vérifier si la route actuelle est une route d'authentification
-  const isAuthScreen = authRoutes.some(route => pathname === route || pathname.includes(route));
+  // Protection contre pathname undefined
+  const isAuthScreen = pathname ? authRoutes.some(route => pathname === route || pathname.includes(route)) : false;
   
   return {
     isAuthScreen,
-    currentPath: pathname
+    currentPath: pathname || ''
   };
 }
 

@@ -28,9 +28,11 @@ function convertToSportSession(session: any): SportSession {
     id: session.id,
     sport: session.sport,
     date: session.date,
-    time: session.time,
+    startTime: session.startTime || session.time || '18:00',
+    endTime: session.endTime || '20:00',
     location: session.location,
     maxParticipants: session.maxParticipants,
+    pricePerPerson: session.pricePerPerson,
     status: session.status, // Ajouter le champ status
     organizer: {
       id: session.organizer?.id || '',

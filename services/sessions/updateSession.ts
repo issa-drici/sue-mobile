@@ -5,14 +5,32 @@ import { Session, UpdateSessionData } from '../types/sessions';
 
 // Fonction de conversion de SportSession vers UpdateSessionData
 function convertToUpdateSessionData(sessionData: Partial<SportSession>): UpdateSessionData {
-  return {
+  const updateData: UpdateSessionData = {
     title: sessionData.sport, // Utiliser le sport comme titre
     date: sessionData.date,
-    time: sessionData.time,
     location: sessionData.location,
     sport: sessionData.sport,
-    maxParticipants: sessionData.maxParticipants ?? null,
   };
+
+  // Ajouter startTime et endTime si disponibles
+  if (sessionData.startTime) {
+    updateData.startTime = sessionData.startTime;
+  }
+  if (sessionData.endTime) {
+    updateData.endTime = sessionData.endTime;
+  }
+
+  // Ajouter maxParticipants seulement s'il a une valeur
+  if (sessionData.maxParticipants !== undefined && sessionData.maxParticipants !== null) {
+    updateData.maxParticipants = sessionData.maxParticipants;
+  }
+
+  // Ajouter pricePerPerson seulement s'il a une valeur
+  if (sessionData.pricePerPerson !== undefined && sessionData.pricePerPerson !== null) {
+    updateData.pricePerPerson = sessionData.pricePerPerson;
+  }
+
+  return updateData;
 }
 
 // Fonction de conversion de Session vers SportSession
@@ -21,9 +39,11 @@ function convertToSportSession(session: Session): SportSession {
     id: session.id,
     sport: session.sport,
     date: session.date,
-    time: session.time,
+    startTime: session.startTime || session.time || '18:00',
+    endTime: session.endTime || '20:00',
     location: session.location,
     maxParticipants: session.maxParticipants,
+    pricePerPerson: session.pricePerPerson,
     organizer: {
       id: session.organizer?.id || '',
       firstname: session.organizer?.firstname || '',

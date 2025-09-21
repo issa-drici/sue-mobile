@@ -6,10 +6,13 @@ export interface Session {
   title?: string;
   description?: string;
   date: string;
-  time: string;
+  time: string; // Ancien champ pour compatibilité
+  startTime?: string; // Nouveau champ
+  endTime?: string; // Nouveau champ
   location: string;
   sport: Sport;
   maxParticipants?: number;
+  pricePerPerson?: number;
   currentParticipants?: number;
   createdBy?: string;
   status: 'open' | 'full' | 'cancelled' | SessionStatus;
@@ -33,14 +36,16 @@ export interface CreateSessionData {
   title?: string;
   description?: string;
   date: string;
-  time: string;
+  startTime: string;
+  endTime: string;
   location: string;
   sport: Sport;
   maxParticipants?: number | null;
+  pricePerPerson?: number | null;
   participantIds?: string[]; // ✅ IDs des participants à inviter
 }
 
-export interface UpdateSessionData extends Partial<CreateSessionData> {}
+export type UpdateSessionData = Partial<CreateSessionData>;
 
 export interface Comment {
   id: string;

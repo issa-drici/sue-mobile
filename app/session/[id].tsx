@@ -108,7 +108,7 @@ export default function SessionDetailsScreen() {
   const isParticipant = userStatus === 'accepted' || userStatus === 'declined' || userStatus === 'pending';
   const canRespondToInvitation = userStatus === 'pending';
   const canCancelParticipation = userStatus === 'accepted'; // Peut annuler sa participation si acceptée
-  
+
   // Détecter si l'utilisateur vient de l'historique
   const isFromHistory = source === 'history';
 
@@ -424,12 +424,18 @@ export default function SessionDetailsScreen() {
             <View style={styles.sessionHeaderLeft}>
               <Text style={styles.sportTitle}>{session.sport.toUpperCase()}</Text>
               <Text style={styles.dateTime}>
-                {formatDate(session.date)} à {formatTimeFrance(session.time)}
+                {formatDate(session.date)} de {formatTimeFrance(session.startTime)} à {formatTimeFrance(session.endTime)}
               </Text>
               <View style={styles.locationContainer}>
                 <Ionicons name="location-outline" size={16} color="#666" />
                 <Text style={styles.location}>{session.location}</Text>
               </View>
+              {session.pricePerPerson && (
+                <View style={styles.priceContainer}>
+                  <Ionicons name="card-outline" size={16} color="#666" />
+                  <Text style={styles.price}>{session.pricePerPerson}€ par personne</Text>
+                </View>
+              )}
             </View>
           </View>
 
@@ -596,7 +602,7 @@ export default function SessionDetailsScreen() {
                         {`${participant.firstname || ''} ${participant.lastname || ''}`.trim()}
                       </Text>
                     ) : (
-                      <TouchableOpacity 
+                      <TouchableOpacity
                         onPress={() => handleUserPress(participant.id, participant.firstname, participant.lastname)}
                         style={styles.participantNameContainer}
                       >
@@ -796,12 +802,12 @@ export default function SessionDetailsScreen() {
             >
               <Ionicons name="close" size={24} color="#000" />
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Commdddentaires</Text>
+            <Text style={styles.modalTitle}>Commentaires</Text>
             <View style={styles.modalHeaderRight} />
           </View>
 
-          <ChatComments 
-            sessionId={sessionId} 
+          <ChatComments
+            sessionId={sessionId}
             onCommentsReload={handleCommentsReload}
             onUserPress={handleUserPress}
             onCloseComments={() => setShowComments(false)}
@@ -885,6 +891,17 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     fontSize: 14,
     color: '#666',
+  },
+  priceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  price: {
+    marginLeft: 4,
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
   },
   section: {
     backgroundColor: '#fff',

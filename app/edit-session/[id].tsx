@@ -15,10 +15,9 @@ import {
     View,
 } from 'react-native';
 import { useGetSessionById, useUpdateSession } from '../../services';
-import { Sport, SportSession } from '../../types/sport';
+import { SportSession } from '../../types/sport';
 import { useAuth } from '../context/auth';
 
-const SPORTS: Sport[] = ['tennis', 'golf', 'musculation', 'football', 'basketball'];
 
 export default function EditSessionScreen() {
     const { id } = useLocalSearchParams();
@@ -32,8 +31,11 @@ export default function EditSessionScreen() {
 
     // États pour les champs de formulaire
     const [date, setDate] = useState(new Date());
-    const [time, setTime] = useState(new Date());
+    const [startTime, setStartTime] = useState(new Date());
+    const [endTime, setEndTime] = useState(new Date());
     const [location, setLocation] = useState('');
+    const [maxParticipants, setMaxParticipants] = useState('');
+    const [pricePerPerson, setPricePerPerson] = useState('');
 
     // Charger les données de la session
     useEffect(() => {
@@ -46,8 +48,11 @@ export default function EditSessionScreen() {
     useEffect(() => {
         if (session) {
             setDate(new Date(session.date));
-            setTime(new Date(`2000-01-01T${session.time}`));
+            setStartTime(new Date(`2000-01-01T${session.startTime}`));
+            setEndTime(new Date(`2000-01-01T${session.endTime}`));
             setLocation(session.location);
+            setMaxParticipants(session.maxParticipants?.toString() || '');
+            setPricePerPerson(session.pricePerPerson?.toString() || '');
         }
     }, [session]);
 
@@ -73,26 +78,18 @@ export default function EditSessionScreen() {
         }
     };
 
-    const onChangeTimePicker = (event: any, selectedTime?: Date) => {
+    const onChangeStartTimePicker = (event: any, selectedTime?: Date) => {
         if (selectedTime) {
-            setTime(selectedTime);
+            setStartTime(selectedTime);
         }
     };
 
-    const formatDate = (date: Date) => {
-        return date.toLocaleDateString('fr-FR', {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long'
-        }).toLowerCase();
+    const onChangeEndTimePicker = (event: any, selectedTime?: Date) => {
+        if (selectedTime) {
+            setEndTime(selectedTime);
+        }
     };
 
-    const formatTime = (date: Date) => {
-        return date.toLocaleTimeString('fr-FR', {
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    };
 
     const handleUpdateSession = async () => {
         if (!location.trim()) {
@@ -100,18 +97,42 @@ export default function EditSessionScreen() {
             return;
         }
 
+        // Vérifier que l'heure de fin est après l'heure de début
+        if (endTime <= startTime) {
+            Alert.alert('Erreur', 'L\'heure de fin doit être après l\'heure de début');
+            return;
+        }
+
         try {
             const sessionData: Partial<SportSession> = {
                 date: date.toISOString().split('T')[0],
-                time: time.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+                startTime: startTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+                endTime: endTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
                 location: location.trim(),
             };
 
+            // Ajouter maxParticipants seulement s'il a une valeur
+            if (maxParticipants && maxParticipants.trim() !== '') {
+                sessionData.maxParticipants = parseInt(maxParticipants);
+            }
+
+            // Ajouter pricePerPerson seulement s'il a une valeur
+            if (pricePerPerson && pricePerPerson.trim() !== '') {
+                sessionData.pricePerPerson = parseFloat(pricePerPerson);
+            }
+
+            // Debug: Afficher les données envoyées
+            console.log('Données de session à mettre à jour:', JSON.stringify(sessionData, null, 2));
+            console.log('Date formatée:', date.toISOString().split('T')[0]);
+            console.log('StartTime formaté:', startTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }));
+            console.log('EndTime formaté:', endTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }));
+
             await updateSession(sessionId, sessionData);
 
-            // Rediriger directement sans alerte de succès
-            router.back();
+            // Rediriger directement vers le détail de la session
+            router.replace(`/session/${sessionId}`);
         } catch (error: any) {
+            console.error('Erreur lors de la mise à jour:', error);
             Alert.alert(
                 'Erreur',
                 error.message || 'Une erreur est survenue lors de la mise à jour de la session'
@@ -156,29 +177,44 @@ export default function EditSessionScreen() {
                 </View>
 
                 {/* Sélection de la date */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Date*</Text>
+                    <View style={{ alignItems: 'flex-start' }}>
+                        <DateTimePicker
+                            value={date}
+                            mode="date"
+                            onChange={onChangeDatePicker}
+                            minimumDate={new Date()}
+                            themeVariant='light'
+                            locale="fr-FR"
+                        />
+                    </View>
+                </View>
+
+                {/* Sélection des heures */}
                 <View style={{ flexDirection: 'row' }}>
+                    {/* Heure de début */}
                     <View style={[styles.section, { flex: 1 }]}>
-                        <Text style={styles.sectionTitle}>Date*</Text>
-                        <View style={{ marginLeft: -10 }}>
+                        <Text style={styles.sectionTitle}>Heure de début*</Text>
+                        <View style={{ marginLeft: -10, alignItems: 'flex-start' }}>
                             <DateTimePicker
-                                value={date}
-                                mode="date"
-                                onChange={onChangeDatePicker}
-                                minimumDate={new Date()}
+                                value={startTime}
+                                mode="time"
+                                onChange={onChangeStartTimePicker}
                                 themeVariant='light'
                                 locale="fr-FR"
                             />
                         </View>
                     </View>
 
-                    {/* Sélection de l'heure */}
+                    {/* Heure de fin */}
                     <View style={[styles.section, { flex: 1 }]}>
-                        <Text style={styles.sectionTitle}>Heure*</Text>
-                        <View style={{ marginLeft: -10 }}>
+                        <Text style={styles.sectionTitle}>Heure de fin*</Text>
+                        <View style={{ marginLeft: -10, alignItems: 'flex-start' }}>
                             <DateTimePicker
-                                value={time}
+                                value={endTime}
                                 mode="time"
-                                onChange={onChangeTimePicker}
+                                onChange={onChangeEndTimePicker}
                                 themeVariant='light'
                                 locale="fr-FR"
                             />
@@ -197,6 +233,39 @@ export default function EditSessionScreen() {
                             placeholderTextColor="#999"
                             value={location}
                             onChangeText={setLocation}
+                        />
+                    </View>
+                </View>
+
+                {/* Nombre maximum de participants */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Nombre maximum de participants</Text>
+                    <View style={styles.inputContainer}>
+                        <Ionicons name="people-outline" size={20} color="#666" />
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Entrez le nombre maximum de participants"
+                            placeholderTextColor="#999"
+                            value={maxParticipants}
+                            onChangeText={setMaxParticipants}
+                            keyboardType="numeric"
+                            maxLength={2}
+                        />
+                    </View>
+                </View>
+
+                {/* Prix par personne */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Prix par personne (€)</Text>
+                    <View style={styles.inputContainer}>
+                        <Ionicons name="card-outline" size={20} color="#666" />
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Entrez le prix par personne (optionnel)"
+                            placeholderTextColor="#999"
+                            value={pricePerPerson}
+                            onChangeText={setPricePerPerson}
+                            keyboardType="decimal-pad"
                         />
                     </View>
                 </View>

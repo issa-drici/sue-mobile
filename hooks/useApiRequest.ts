@@ -30,6 +30,9 @@ export function useApiRequest<T>(
   // Détecter si on est sur un écran d'authentification
   const { isAuthScreen } = useAuthScreenDetection();
   
+  // Protection contre isAuthScreen undefined
+  const isOnAuthScreen = isAuthScreen || false;
+  
   // Vérifier l'état d'authentification
   const { isAuthenticated } = useAuth();
 
@@ -116,7 +119,7 @@ export function useApiRequest<T>(
       
       // Si le retry est activé et qu'on n'a pas atteint le maximum de tentatives
       // ET qu'on n'est PAS sur un écran d'authentification
-      if (enableRetry && attemptNumber < maxRetries && !isAuthScreen) {
+      if (enableRetry && attemptNumber < maxRetries && !isOnAuthScreen) {
         console.log(`🔄 [useApiRequest] Programmation du retry ${attemptNumber + 1}/${maxRetries} dans ${retryDelay}ms`);
         setRetryCount(attemptNumber + 1);
         setIsRetrying(true);
@@ -134,7 +137,7 @@ export function useApiRequest<T>(
         }, retryDelay) as unknown as NodeJS.Timeout;
       } else {
         // Échec final ou retry désactivé
-        if (isAuthScreen) {
+        if (isOnAuthScreen) {
           console.log(`🔐 [useApiRequest] Retry désactivé car sur écran d'authentification`);
         } else {
           console.log(`💥 [useApiRequest] Échec final ou retry désactivé`);
@@ -143,13 +146,13 @@ export function useApiRequest<T>(
         setIsLoading(false);
         setIsRetrying(false);
         
-        if (enableRetry && attemptNumber >= maxRetries && !isAuthScreen) {
+        if (enableRetry && attemptNumber >= maxRetries && !isOnAuthScreen) {
           console.log(`🚫 [useApiRequest] Maximum de tentatives atteint`);
           onMaxRetriesReached?.(err);
         }
       }
     }
-  }, [apiCall, enableRetry, maxRetries, retryDelay, onRetry, onMaxRetriesReached, isAuthScreen, requiresAuth, isAuthenticated]);
+  }, [apiCall, enableRetry, maxRetries, retryDelay, onRetry, onMaxRetriesReached, isOnAuthScreen, requiresAuth, isAuthenticated]);
 
   const cancelRetry = useCallback(() => {
     if (timeoutRef.current) {

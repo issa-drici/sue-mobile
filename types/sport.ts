@@ -9,9 +9,11 @@ export interface ApiSportSession {
   id: string;
   sport: Sport;
   date: string;
-  time: string;
+  startTime: string;
+  endTime: string;
   location: string;
   maxParticipants?: number | null;
+  pricePerPerson?: number | null;
   status?: SessionStatusType;
   organizer: {
     id: string;
@@ -36,9 +38,11 @@ export interface SportSession {
   id: string;
   sport: Sport;
   date: string;
-  time: string;
+  startTime: string;
+  endTime: string;
   location: string;
   maxParticipants?: number | null;
+  pricePerPerson?: number | null;
   status?: SessionStatusType;
   organizer: {
     id: string;

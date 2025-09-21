@@ -18,34 +18,43 @@ import {
 import { useCreateSession, useGetFriends } from '../services';
 import { Friend } from '../services/types/users';
 import { Sport } from '../types/sport';
+import { useAuth } from './context/auth';
 
 const SPORTS: Sport[] = ['tennis', 'golf', 'musculation', 'football', 'basketball'];
 
 export default function CreateSessionScreen() {
   const router = useRouter();
+  const { getAuthToken } = useAuth();
   const { data: friends, isLoading, error } = useGetFriends();
   const { createSession, isLoading: isCreating } = useCreateSession();
   const [selectedSport, setSelectedSport] = useState<Sport | null>(null);
   const [date, setDate] = useState(new Date());
-  const [time, setTime] = useState(new Date());
+  
+  // Debug: Afficher la date par défaut
+  console.log('Date par défaut du formulaire:', date.toISOString().split('T')[0]);
+  const [startTime, setStartTime] = useState(new Date());
+  const [endTime, setEndTime] = useState(new Date());
   const [location, setLocation] = useState('');
   const [maxParticipants, setMaxParticipants] = useState('');
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [pricePerPerson, setPricePerPerson] = useState('');
   const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
 
   const onChangeDatePicker = (event: any, selectedDate?: Date) => {
     if (selectedDate) {
       setDate(selectedDate);
     }
-    setShowDatePicker(false);
   };
 
-  const onChangeTimePicker = (event: any, selectedTime?: Date) => {
+  const onChangeStartTimePicker = (event: any, selectedTime?: Date) => {
     if (selectedTime) {
-      setTime(selectedTime);
+      setStartTime(selectedTime);
     }
-    setShowTimePicker(false);
+  };
+
+  const onChangeEndTimePicker = (event: any, selectedTime?: Date) => {
+    if (selectedTime) {
+      setEndTime(selectedTime);
+    }
   };
 
   const formatDate = (date: Date) => {
@@ -64,8 +73,14 @@ export default function CreateSessionScreen() {
   };
 
   const handleCreateSession = async () => {
-    if (!selectedSport || !date || !time || !location) {
+    if (!selectedSport || !date || !startTime || !endTime || !location) {
       Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires');
+      return;
+    }
+
+    // Vérifier que l'heure de fin est après l'heure de début
+    if (endTime <= startTime) {
+      Alert.alert('Erreur', 'L\'heure de fin doit être après l\'heure de début');
       return;
     }
 
@@ -84,11 +99,19 @@ export default function CreateSessionScreen() {
       const sessionData = {
         sport: selectedSport,
         date: date.toISOString().split('T')[0], // Format YYYY-MM-DD
-        time: time.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+        startTime: startTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+        endTime: endTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
         location: location,
         maxParticipants: maxParticipants ? parseInt(maxParticipants) : null,
+        pricePerPerson: pricePerPerson ? parseFloat(pricePerPerson) : null,
         participants: selectedFriendsData,
       };
+
+      // Debug: Afficher les données envoyées
+      console.log('Données de session à envoyer:', JSON.stringify(sessionData, null, 2));
+      console.log('Date formatée:', date.toISOString().split('T')[0]);
+      console.log('StartTime formaté:', startTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }));
+      console.log('EndTime formaté:', endTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }));
 
       // Créer la session via l'API
       const newSession = await createSession(sessionData);
@@ -96,32 +119,41 @@ export default function CreateSessionScreen() {
       // Envoyer les notifications d'invitation aux participants
       if (selectedFriends.length > 0) {
         try {
+          // Récupérer le token d'authentification de l'utilisateur
+          const authToken = await getAuthToken();
+          if (!authToken) {
+            console.warn('⚠️ Aucun token d\'authentification disponible pour les notifications');
+            return;
+          }
+
           for (const friendId of selectedFriends) {
             // Appel à l'API d'envoi de notification
             const response = await fetch(`${ENV.API_BASE_URL}/notifications/send`, {
               method: 'POST',
               headers: {
-                'Authorization': `Bearer 172|XIxo3WMAxfIq2LlnBYBKdcnV33w4NkbkTjsvEbmH424d7021`,
+                'Authorization': `Bearer ${authToken}`,
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
               },
               body: JSON.stringify({
                 recipientId: friendId,
                 title: `Invitation à une session de ${selectedSport}`,
-                body: `Vous avez été invité à une session de ${selectedSport} le ${formatDate(date)} à ${formatTime(time)}`,
+                body: `Vous avez été invité à une session de ${selectedSport} le ${formatDate(date)} de ${formatTime(startTime)} à ${formatTime(endTime)}`,
                 data: {
                   type: 'session_invitation',
                   session_id: newSession.id,
                   sport: selectedSport,
                   date: date.toISOString().split('T')[0],
-                  time: formatTime(time)
+                  startTime: formatTime(startTime),
+                  endTime: formatTime(endTime)
                 }
               })
             });
 
-            const result = await response.json();
+            await response.json();
           }
-        } catch (error) {
+        } catch {
+          // Erreur silencieuse pour les notifications
         }
       }
 
@@ -240,40 +272,48 @@ export default function CreateSessionScreen() {
         </View>
 
         {/* Sélection de la date */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Date*</Text>
+          <View style={{ alignItems: 'flex-start' }}>
+            <DateTimePicker
+              value={date}
+              mode="date"
+              onChange={onChangeDatePicker}
+              minimumDate={new Date()}
+              themeVariant='light'
+              locale="fr-FR"
+            />
+          </View>
+        </View>
+
+        {/* Sélection des heures */}
         <View style={{ flexDirection: 'row' }}>
+          {/* Heure de début */}
           <View style={[styles.section, { flex: 1 }]}>
-            <Text style={styles.sectionTitle}>Date*</Text>
-
-            {/* <View style={[styles.inputContainer, { padding: 0 }]}> */}
-            <View style={{ marginLeft: -10 }}>
-
+            <Text style={styles.sectionTitle}>Heure de début*</Text>
+            <View style={{ marginLeft: -10, alignItems: 'flex-start' }}>
               <DateTimePicker
-                value={date}
-                mode="date"
-                onChange={onChangeDatePicker}
-                minimumDate={new Date()}
+                value={startTime}
+                mode="time"
+                onChange={onChangeStartTimePicker}
                 themeVariant='light'
                 locale="fr-FR"
               />
             </View>
-            {/* </View> */}
           </View>
 
-          {/* Sélection de l'heure */}
+          {/* Heure de fin */}
           <View style={[styles.section, { flex: 1 }]}>
-            <Text style={styles.sectionTitle}>Heure*</Text>
-            {/* <View style={[styles.inputContainer, { padding: 0, backgroundColor: '#e5e5e7' }]}> */}
-            <View style={{ marginLeft: -10 }}>
-
+            <Text style={styles.sectionTitle}>Heure de fin*</Text>
+            <View style={{ marginLeft: -10, alignItems: 'flex-start' }}>
               <DateTimePicker
-                value={time}
+                value={endTime}
                 mode="time"
-                onChange={onChangeTimePicker}
+                onChange={onChangeEndTimePicker}
                 themeVariant='light'
                 locale="fr-FR"
               />
             </View>
-            {/* </View> */}
           </View>
         </View>
 
@@ -305,6 +345,22 @@ export default function CreateSessionScreen() {
               onChangeText={setMaxParticipants}
               keyboardType="numeric"
               maxLength={2}
+            />
+          </View>
+        </View>
+
+        {/* Prix par personne */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Prix par personne (€)</Text>
+          <View style={styles.inputContainer}>
+            <Ionicons name="card-outline" size={20} color="#666" />
+            <TextInput
+              style={styles.input}
+              placeholder="Entrez le prix par personne (optionnel)"
+              placeholderTextColor="#999"
+              value={pricePerPerson}
+              onChangeText={setPricePerPerson}
+              keyboardType="decimal-pad"
             />
           </View>
         </View>
