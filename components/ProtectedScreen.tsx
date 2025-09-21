@@ -1,6 +1,5 @@
-import { BrandColors } from '@/constants/Colors';
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useProtectedRoute } from '../hooks/useAuthRedirect';
 
 interface ProtectedScreenProps {
@@ -15,13 +14,15 @@ interface ProtectedScreenProps {
 export function ProtectedScreen({ children, fallback }: ProtectedScreenProps) {
   const { isAuthenticated, isLoading } = useProtectedRoute();
 
-  // Afficher un loader pendant la vérification d'authentification
+  // Ne plus afficher d'écran de chargement bloquant
+  // L'authentification se fait en arrière-plan
   if (isLoading) {
+    // Afficher le contenu avec un indicateur discret si nécessaire
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={BrandColors.primary} />
-        <Text style={styles.loadingText}>Vérification de l&apos;authentification...</Text>
-      </View>
+      <>
+        {children}
+        {/* Indicateur de chargement discret en overlay si vraiment nécessaire */}
+      </>
     );
   }
 

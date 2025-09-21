@@ -3,16 +3,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useAuthScreen } from '../../hooks/useAuthRedirect';
 import { useAuth } from '../context/auth';
@@ -43,14 +43,8 @@ export default function LoginScreen() {
     }
   };
 
-  // Afficher un loader pendant la vérification d'authentification
-  if (isAuthLoading) {
-    return (
-      <View style={[styles.container, styles.loadingContainer]}>
-        <Text>Chargement...</Text>
-      </View>
-    );
-  }
+  // Ne plus afficher d'écran de chargement bloquant
+  // L'authentification se fait en arrière-plan
 
   return (
     <KeyboardAvoidingView
@@ -166,10 +160,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: BrandColors.primary,
-  },
-  loadingContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   scrollContent: {
     flexGrow: 1,

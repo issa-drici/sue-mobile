@@ -8,6 +8,7 @@ import { useGetSessions } from '../../services';
 import { SportSession } from '../../types/sport';
 
 import { BrandColors } from '@/constants/Colors';
+import { InlineLoading } from '../../components/OptimizedLoading';
 import { formatDate, formatTime } from '../../utils/dateHelpers';
 
 const SessionCard = ({ session }: { session: SportSession }) => {
@@ -91,9 +92,12 @@ export default function HomeScreen() {
 
   // Utilisation du nouveau hook avec délai minimum
   const { refreshing, onRefresh } = usePullToRefresh({
-    onRefresh: refetch,
+    onRefresh: async () => {
+      await refetch();
+    },
     minDelay: 1000, // Délai minimum de 1 seconde
     onError: (error) => {
+      console.error('Erreur lors du rafraîchissement:', error);
     }
   });
 
@@ -107,8 +111,9 @@ export default function HomeScreen() {
 
 
 
-  // Ne pas afficher d'écran de chargement séparé, toujours afficher l'interface
-  // Le loading sera géré par le pull-to-refresh et les états vides
+  // Optimisation : Ne pas afficher d'écran de chargement séparé
+  // Toujours afficher l'interface, le loading est géré par le pull-to-refresh et les états vides
+  // Cela évite les écrans de chargement bloquants entre les transitions
 
   return (
     <SafeAreaView style={styles.container}>
@@ -132,10 +137,7 @@ export default function HomeScreen() {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             {isLoading ? (
-              <>
-                <Ionicons name="refresh-outline" size={64} color="#ccc" />
-                <Text style={styles.emptyText}>Chargement des sessions...</Text>
-              </>
+              <InlineLoading message="Chargement des sessions..." />
             ) : error ? (
               <>
                 <Ionicons name="alert-circle-outline" size={64} color="#ff6b6b" />

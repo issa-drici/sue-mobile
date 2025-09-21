@@ -18,67 +18,22 @@ function TabLayoutContent() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: BrandColors.primary,
-        // tabBarInactiveTintColor: '#666',
-        // tabBarStyle: {
-        //   backgroundColor: '#fff',
-        //   borderTopWidth: 1,
-        //   borderTopColor: '#e0e0e0',
-        // },
-
-        // headerShown: false,
-        // tabBarStyle: {
-        //   padding: 10,
-        //   display: 'flex',
-        //   flexDirection: 'row',
-        //   justifyContent: 'space-between',
-        //   alignItems: 'center',
-
-        //   borderRadius: 12,
-        //   paddingHorizontal: 14,
-        //   gap: 100,
-        // },
-        // tabBarStyle: {
-        //   paddingVertical: 10,
-        //   display: 'flex',
-        //   flexDirection: 'row',
-        //   justifyContent: 'space-around',
-        //   alignItems: 'center',
-        //   gap: 100,
-        // },
-
-        tabBarBadgeStyle: {
-          // backgroundColor: '#FF6600',
-          color: '#fff',
-          fontSize: 10.5,
-          fontWeight: 'bold',
-          height: 17.5,
-        },
-
-        // tabBarButton: (props) => {
-        //   const isSelected = props.accessibilityState?.selected;
-        //   return (
-        //     <Pressable {...props} style={{
-        //       display: 'flex',
-        //       flexDirection: 'column',
-        //       justifyContent: 'center',
-        //       alignItems: 'center',
-        //       // flex: 1,
-        //       backgroundColor: isSelected ? '#FFF4F2' : undefined,
-        //       borderRadius: 12,
-        //       paddingHorizontal: 14,
-        //       paddingVertical: 7,
-        //     }}>
-        //       {props.children}
-        //     </Pressable>
-        //   )
-        // },
-        // tabBarActiveTintColor: '#FF6600',
         tabBarInactiveTintColor: 'gray',
         tabBarLabelStyle: {
           fontSize: 10.5,
           fontWeight: '600',
         },
+        tabBarBadgeStyle: {
+          color: '#fff',
+          fontSize: 10.5,
+          fontWeight: 'bold',
+          height: 17.5,
+        },
         headerShown: false,
+        // Optimiser les transitions entre les onglets avec fade
+        animation: 'fade',
+        // Améliorer les performances
+        lazy: true,
       }}
     >
       <Tabs.Screen

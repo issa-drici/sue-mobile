@@ -11,6 +11,7 @@ import {
     View,
 } from 'react-native';
 import { SwipeListView } from 'react-native-swipe-list-view';
+import { InlineLoading } from '../../components/OptimizedLoading';
 import PullToRefresh from '../../components/PullToRefresh';
 import { useGlobalNotifications } from '../../context/globalNotifications';
 import { useNotificationsContext } from '../../context/notifications';
@@ -328,9 +329,7 @@ export default function NotificationsScreen() {
           onEndReachedThreshold={0.1}
           ListFooterComponent={() =>
             isLoadingMore ? (
-              <View style={styles.loadingMore}>
-                <Text style={styles.loadingMoreText}>Chargement...</Text>
-              </View>
+              <InlineLoading message="Chargement..." />
             ) : null
           }
           refreshControl={

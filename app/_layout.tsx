@@ -11,7 +11,23 @@ function RootLayoutNav() {
   const router = useRouter();
 
   useEffect(() => {
-    if (authLoading || isOnboardingLoading) return;
+    // Ne pas bloquer la navigation pendant le chargement initial
+    // Laisser l'utilisateur naviguer pendant que l'auth se charge en arrière-plan
+    if (authLoading || isOnboardingLoading) {
+      // Si on est déjà sur une page valide, ne pas rediriger
+      const inAuthGroup = segments[0] === '(auth)';
+      const inOnboardingGroup = segments[0] === '(onboarding)';
+      const inTabsGroup = segments[0] === '(tabs)';
+      
+      // Si on est déjà sur une page appropriée, ne pas faire de redirection
+      if (inAuthGroup || inOnboardingGroup || inTabsGroup) {
+        return;
+      }
+      
+      // Sinon, rediriger vers une page par défaut sans attendre
+      router.replace('/(auth)/login');
+      return;
+    }
 
     const inAuthGroup = segments[0] === '(auth)';
     const inOnboardingGroup = segments[0] === '(onboarding)';
@@ -36,16 +52,25 @@ function RootLayoutNav() {
   }, [user, isOnboardingCompleted, segments, authLoading, isOnboardingLoading, router]);
 
   return (
-    <Stack>
-      <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
-      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="session/[id]" options={{ headerShown: false }} />
-      <Stack.Screen name="edit-session/[id]" options={{ headerShown: false }} />
-      <Stack.Screen name="create-session" options={{ headerShown: false }} />
-      <Stack.Screen name="add-friend" options={{ headerShown: false }} />
-      <Stack.Screen name="privacy" options={{ headerShown: false }} />
-      <Stack.Screen name="debug" options={{ headerShown: false }} />
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        // Optimiser les transitions pour plus de fluidité
+        animation: 'fade',
+        animationDuration: 200,
+        gestureEnabled: true,
+        gestureDirection: 'horizontal',
+      }}
+    >
+      <Stack.Screen name="(onboarding)" />
+      <Stack.Screen name="(auth)" />
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="session/[id]" />
+      <Stack.Screen name="edit-session/[id]" />
+      <Stack.Screen name="create-session" />
+      <Stack.Screen name="add-friend" />
+      <Stack.Screen name="privacy" />
+      <Stack.Screen name="debug" />
     </Stack>
   );
 }

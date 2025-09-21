@@ -222,8 +222,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         console.log('🚀 Chargement de l\'utilisateur depuis le stockage...');
 
-        // Délai pour éviter les crashes au démarrage
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Réduire le délai pour une navigation plus fluide
+        await new Promise(resolve => setTimeout(resolve, 50));
 
         // Charger le statut d'onboarding en premier
         await checkOnboardingStatus();

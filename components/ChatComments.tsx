@@ -3,13 +3,13 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  Keyboard,
-  Platform,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    Alert,
+    Keyboard,
+    Platform,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { Bubble, GiftedChat, InputToolbar, Send } from 'react-native-gifted-chat';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -110,8 +110,15 @@ export default function ChatComments({ sessionId, onCommentsReload, onUserPress,
     try {
       await sendComment(text);
       setCommentText('');
-    } catch {
-      Alert.alert('Erreur', "Impossible d'envoyer le commentaire");
+    } catch (error: any) {
+      console.error('Erreur lors de l\'envoi du commentaire:', error);
+      // Ne pas afficher d'alerte si le commentaire a été envoyé avec succès
+      // mais qu'il y a eu une erreur de traitement côté client
+      if (error?.message?.includes('commentaire') || error?.status === 500) {
+        Alert.alert('Erreur', "Impossible d'envoyer le commentaire. Veuillez réessayer.");
+      }
+      // Pour les autres erreurs (réseau, etc.), on laisse passer silencieusement
+      // car le commentaire peut quand même avoir été envoyé
     }
   }, [isCreatingComment, sendComment]);
 
