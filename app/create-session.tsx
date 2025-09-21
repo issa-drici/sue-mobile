@@ -211,13 +211,8 @@ export default function CreateSessionScreen() {
     );
   };
 
-  if (isLoading) {
-    return (
-      <View style={styles.container}>
-        <Text>Chargement des amis...</Text>
-      </View>
-    );
-  }
+  // Ne plus afficher d'écran de chargement bloquant
+  // L'interface s'affiche directement, les amis se chargent en arrière-plan
 
   if (error) {
     return (
