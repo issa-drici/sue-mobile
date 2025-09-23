@@ -152,18 +152,8 @@ export default function ProfileScreen() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Profil</Text>
-        </View>
-        <View style={styles.loadingContainer}>
-          <Text>Chargement...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  // Ne plus afficher d'écran de chargement bloquant
+  // L'interface s'affiche directement, les données se chargent en arrière-plan
 
   if (error) {
     return (

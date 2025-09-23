@@ -96,9 +96,7 @@ export default function DebugConfig() {
             <Text style={styles.text}>Token: {storageData.token || '❌ Absent'}</Text>
             <Text style={styles.text}>Refresh Token: {storageData.refreshToken || '❌ Absent'}</Text>
           </>
-        ) : (
-          <Text style={styles.text}>Chargement...</Text>
-        )}
+        ) : null}
       </View>
 
       <View style={styles.section}>

@@ -101,18 +101,8 @@ export default function HistoryScreen() {
     </TouchableOpacity>
   );
 
-  if (isLoading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Historique</Text>
-        </View>
-        <View style={styles.loadingContainer}>
-          <Text>Chargement de l'historique...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  // Ne plus afficher d'écran de chargement bloquant
+  // L'interface s'affiche directement, les données se chargent en arrière-plan
 
   if (error) {
     return (

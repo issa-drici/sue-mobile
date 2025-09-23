@@ -140,13 +140,8 @@ export default function EditSessionScreen() {
         }
     };
 
-    if (isLoading) {
-        return (
-            <SafeAreaView style={styles.container}>
-                <Text>Chargement de la session...</Text>
-            </SafeAreaView>
-        );
-    }
+    // Ne plus afficher d'écran de chargement bloquant
+    // L'interface s'affiche directement, les données se chargent en arrière-plan
 
     if (!session) {
         return (

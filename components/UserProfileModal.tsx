@@ -2,15 +2,15 @@ import { BrandColors } from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect } from 'react';
 import {
-    Alert,
-    Image,
-    Modal,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Alert,
+  Image,
+  Modal,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useAuth } from '../app/context/auth';
 import { useCancelFriendRequest, useGetUserById, useSendFriendRequest } from '../services';
@@ -30,7 +30,7 @@ export default function UserProfileModal({
   userFirstname,
   userLastname,
 }: UserProfileModalProps) {
-  const { data: userProfile, fetchUserById, isLoading } = useGetUserById();
+  const { data: userProfile, fetchUserById } = useGetUserById();
   const { sendFriendRequest, isLoading: isSendingRequest } = useSendFriendRequest();
   const { cancelFriendRequest, isLoading: isCancellingRequest } = useCancelFriendRequest();
   const { user: currentUser } = useAuth(); // Récupérer l'utilisateur connecté
@@ -146,10 +146,6 @@ export default function UserProfileModal({
     }
   };
 
-  const handleNavigateToSession = (sessionId: string) => {
-    // Navigation vers la session (à implémenter si nécessaire)
-    console.log('Navigation vers la session:', sessionId);
-  };
 
   return (
     <Modal
@@ -168,11 +164,7 @@ export default function UserProfileModal({
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {isLoading && isInitialLoad ? (
-            <View style={styles.loadingContainer}>
-              <Text style={styles.loadingText}>Chargement...</Text>
-            </View>
-          ) : userProfile ? (
+          {userProfile ? (
             <>
                              {/* Avatar et informations principales */}
                <View style={styles.profileHeader}>

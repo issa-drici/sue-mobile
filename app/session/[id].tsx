@@ -4,18 +4,18 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  Alert,
-  FlatList,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    FlatList,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import ChatComments from '../../components/ChatComments';
 import InfoMessage from '../../components/InfoMessage';
@@ -135,13 +135,8 @@ export default function SessionDetailsScreen() {
     reloadComments();
   };
 
-  if (isLoading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <Text>Chargement de la session...</Text>
-      </SafeAreaView>
-    );
-  }
+  // Ne plus afficher d'écran de chargement bloquant
+  // L'interface s'affiche directement, les données se chargent en arrière-plan
 
   if (error || !session) {
     return (
