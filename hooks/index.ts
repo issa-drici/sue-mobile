@@ -10,6 +10,7 @@ export { useAuthRedirect, useAuthScreen, useProtectedRoute } from './useAuthRedi
 export { usePullToRefresh } from './usePullToRefresh';
 
 // Hook pour les notifications push
+export { useAppState } from './useAppState';
 export { usePushNotifications } from './usePushNotifications';
 
 // Hooks des services (nouvelle structure)

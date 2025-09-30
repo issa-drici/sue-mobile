@@ -19,9 +19,9 @@ export default function NotificationsScreen() {
       const hasPermission = await pushNotificationService.requestPermissions();
 
       if (hasPermission) {
-        // Enregistrer le token si les permissions sont accordées
+        // Initialiser les notifications et stocker le token localement
         await pushNotificationService.initialize();
-        console.log('✅ Notifications activées avec succès');
+        console.log('✅ Notifications activées et token stocké localement');
       } else {
         console.log('⚠️ Permissions de notifications refusées');
       }

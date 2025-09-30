@@ -8,6 +8,7 @@ import { usePullToRefresh } from '../../hooks/usePullToRefresh';
 import { useGetHistory } from '../../services';
 import { SportSession } from '../../types/sport';
 import { formatDate, formatTimeFrance } from '../../utils/dateHelpers';
+import { getSportEmoji } from '../../utils/sportEmojis';
 
 // Sports statiques (toujours présents)
 const STATIC_SPORTS = ['Tous'];
@@ -76,6 +77,11 @@ export default function HistoryScreen() {
       ]}
       onPress={() => router.push(`/session/${item.id}?source=history`)}
     >
+      {/* Bloc emoji dans le coin supérieur droit */}
+      <View style={styles.sportEmojiContainer}>
+        <Text style={styles.sportEmoji}>{getSportEmoji(item.sport)}</Text>
+      </View>
+
       <View style={styles.cardHeader}>
         <Text style={styles.sportTitle}>
           {item.sport.toUpperCase()}
@@ -312,6 +318,32 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    position: 'relative',
+  },
+  sportEmojiContainer: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    backgroundColor: '#f8f9fa',
+    borderTopRightRadius: 12,
+    borderBottomLeftRadius: 12,
+    width: 50,
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  sportEmoji: {
+    fontSize: 20,
   },
   cancelledCard: {
     opacity: 0.7, // Indiquer que la session est annulée

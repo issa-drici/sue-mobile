@@ -51,6 +51,7 @@ export default function ProfileScreen() {
     }
   };
 
+
   const pickImage = async () => {
     Alert.alert(
       "Changer la photo de profil",

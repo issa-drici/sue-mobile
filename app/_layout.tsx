@@ -70,7 +70,6 @@ function RootLayoutNav() {
       <Stack.Screen name="create-session" />
       <Stack.Screen name="add-friend" />
       <Stack.Screen name="privacy" />
-      <Stack.Screen name="debug" />
     </Stack>
   );
 }

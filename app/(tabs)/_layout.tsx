@@ -5,10 +5,14 @@ import React from 'react';
 import { useGlobalFriendRequests } from '../../context/globalFriendRequests';
 import { useGlobalNotifications } from '../../context/globalNotifications';
 import { NotificationsProvider } from '../../context/notifications';
+import { useAppState } from '../../hooks/useAppState';
 
 function TabLayoutContent() {
   const { unreadCount } = useGlobalNotifications();
   const { friendRequestsCount } = useGlobalFriendRequests();
+  
+  // Vérifier les permissions de notifications quand l'app revient au premier plan
+  useAppState();
 
   // Calculer les badges
   const notificationsBadge = unreadCount > 0 ? unreadCount : undefined;

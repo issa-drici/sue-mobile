@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Application from 'expo-application';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
@@ -33,6 +34,7 @@ export class PushNotificationService {
   private static instance: PushNotificationService;
   private expoPushToken: string | null = null;
   private isInitialized = false;
+  private static readonly STORAGE_KEY = 'expo_push_token';
 
   private constructor() {}
 
@@ -44,7 +46,7 @@ export class PushNotificationService {
   }
 
   /**
-   * Initialise le service de notifications push
+   * Initialise le service de notifications push (onboarding)
    */
   async initialize(): Promise<boolean> {
     if (this.isInitialized) {
@@ -65,11 +67,9 @@ export class PushNotificationService {
         return false;
       }
 
-      // Obtenir le token Expo
+      // Obtenir et stocker le token localement
       const token = await this.getExpoPushToken();
-      if (token) {
-        await this.registerToken(token);
-      } else {
+      if (!token) {
         return false;
       }
 
@@ -79,12 +79,13 @@ export class PushNotificationService {
       this.isInitialized = true;
       return true;
     } catch (error) {
+      console.error('❌ Erreur lors de l\'initialisation:', error);
       return false;
     }
   }
 
   /**
-   * Obtient le token Expo Push
+   * Obtient le token Expo Push et le stocke localement
    */
   private async getExpoPushToken(): Promise<string | null> {
     try {
@@ -93,10 +94,26 @@ export class PushNotificationService {
       });
       
       this.expoPushToken = token.data;
-      console.log('📱 Expo Push Token obtenu:', token.data);
+      
+      // Stocker le token localement
+      await AsyncStorage.setItem(PushNotificationService.STORAGE_KEY, token.data);
+      
+      console.log('📱 Token Expo obtenu et stocké localement:', token.data);
       return token.data;
     } catch (error: any) {
       console.error('❌ Erreur lors de l\'obtention du token:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Récupère le token stocké localement
+   */
+  private async getStoredToken(): Promise<string | null> {
+    try {
+      return await AsyncStorage.getItem(PushNotificationService.STORAGE_KEY);
+    } catch (error) {
+      console.error('❌ Erreur lors de la récupération du token stocké:', error);
       return null;
     }
   }
@@ -120,35 +137,58 @@ export class PushNotificationService {
   }
 
   /**
-   * Enregistre le token côté backend
+   * Enregistre le token en base de données (lors de la connexion)
    */
-  private async registerToken(token: string): Promise<boolean> {
+  async registerTokenInDatabase(): Promise<boolean> {
     try {
-      const deviceId = this.getDeviceId();
-      
-      const payload: any = {
-        token,
-        platform: Platform.OS,
-      };
-
-      // Ajouter device_id si disponible
-      if (deviceId) {
-        payload.device_id = deviceId;
+      const token = await this.getStoredToken();
+      if (!token) {
+        console.log('⚠️ Aucun token stocké localement');
+        return false;
       }
 
-      console.log('📤 Enregistrement du token:', payload);
-      
+      const payload = {
+        token,
+        platform: Platform.OS
+      };
+
       const response = await baseApiService.post('/push-tokens', payload) as any;
 
       if (response?.success) {
-        console.log('✅ Token enregistré avec succès');
+        console.log('✅ Token enregistré en BDD avec succès');
         return true;
       } else {
-        console.log('❌ Échec de l\'enregistrement du token');
+        console.log('❌ Échec de l\'enregistrement du token en BDD');
         return false;
       }
     } catch (error: any) {
-      console.error('❌ Erreur lors de l\'enregistrement du token:', error);
+      console.error('❌ Erreur lors de l\'enregistrement du token en BDD:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Supprime le token de la base de données (lors de la déconnexion)
+   */
+  async unregisterTokenFromDatabase(): Promise<boolean> {
+    try {
+      const token = await this.getStoredToken();
+      if (!token) {
+        console.log('⚠️ Aucun token stocké localement');
+        return true; // Pas d'erreur si pas de token
+      }
+
+      const response = await baseApiService.delete('/push-tokens', { token }) as any;
+
+      if (response?.success) {
+        console.log('✅ Token supprimé de la BDD avec succès');
+        return true;
+      } else {
+        console.log('❌ Échec de la suppression du token de la BDD');
+        return false;
+      }
+    } catch (error: any) {
+      console.error('❌ Erreur lors de la suppression du token de la BDD:', error);
       return false;
     }
   }
@@ -174,13 +214,94 @@ export class PushNotificationService {
   }
 
   /**
-   * Enregistre le token push
+   * Récupère le statut des permissions
+   */
+  async getPermissions(): Promise<{ status: string }> {
+    try {
+      const { status } = await Notifications.getPermissionsAsync();
+      return { status };
+    } catch (error) {
+      console.error('❌ Erreur lors de la récupération des permissions:', error);
+      return { status: 'unknown' };
+    }
+  }
+
+  /**
+   * Vérifie si les permissions sont accordées et réinitialise si nécessaire
+   */
+  async checkAndReinitializePermissions(): Promise<boolean> {
+    try {
+      const { status } = await Notifications.getPermissionsAsync();
+      
+      if (status === 'granted') {
+        // Les permissions sont maintenant accordées
+        const storedToken = await this.getStoredToken();
+        
+        if (!storedToken) {
+          // Pas de token stocké, on en obtient un nouveau
+          console.log('🔄 Permissions accordées, obtention d\'un nouveau token...');
+          const token = await this.getExpoPushToken();
+          
+          if (token) {
+            // Configurer les listeners si pas déjà fait
+            if (!this.isInitialized) {
+              this.setupNotificationListeners();
+              this.isInitialized = true;
+            }
+            
+            console.log('✅ Token obtenu après activation des permissions');
+            return true;
+          }
+        } else {
+          // Token déjà stocké, on vérifie juste que les listeners sont configurés
+          if (!this.isInitialized) {
+            this.setupNotificationListeners();
+            this.isInitialized = true;
+          }
+          
+          console.log('✅ Permissions accordées, token déjà disponible');
+          return true;
+        }
+      } else {
+        // Les permissions ne sont plus accordées
+        console.log('⚠️ Permissions de notifications révoquées');
+        
+        // Supprimer le token de la BDD si l'utilisateur est connecté
+        try {
+          await this.unregisterTokenFromDatabase();
+          console.log('✅ Token supprimé de la BDD après révocation des permissions');
+        } catch (error) {
+          console.warn('⚠️ Erreur lors de la suppression du token après révocation:', error);
+        }
+        
+        // Nettoyer l'état local
+        this.expoPushToken = null;
+        this.isInitialized = false;
+        
+        // Supprimer le token du stockage local
+        try {
+          await AsyncStorage.removeItem(PushNotificationService.STORAGE_KEY);
+          console.log('✅ Token supprimé du stockage local');
+        } catch (error) {
+          console.warn('⚠️ Erreur lors de la suppression du token du stockage local:', error);
+        }
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('❌ Erreur lors de la vérification des permissions:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Enregistre le token push (méthode de compatibilité)
    */
   async registerToken(): Promise<boolean> {
     try {
       const token = await this.getExpoPushToken();
       if (token) {
-        return await this.registerTokenWithBackend(token);
+        return await this.registerTokenInDatabase();
       }
       return false;
     } catch (error) {
@@ -190,30 +311,17 @@ export class PushNotificationService {
   }
 
   /**
-   * Désinscrit le token côté backend
+   * Désinscrit le token côté backend (méthode de compatibilité)
    */
   async unregisterToken(): Promise<boolean> {
     try {
-      if (!this.expoPushToken) {
-        console.log('⚠️ Aucun token à désinscrire');
-        return true;
-      }
-
-      console.log('📤 Désinscription du token:', this.expoPushToken);
+      const result = await this.unregisterTokenFromDatabase();
       
-      const response = await baseApiService.delete('/push-tokens', {
-        data: { token: this.expoPushToken }
-      }) as any;
-
-      if (response?.success) {
-        console.log('✅ Token désinscrit avec succès');
-        this.expoPushToken = null;
-        this.isInitialized = false;
-        return true;
-      } else {
-        console.log('❌ Échec de la désinscription du token');
-        return false;
-      }
+      // Nettoyer l'état local
+      this.expoPushToken = null;
+      this.isInitialized = false;
+      
+      return result;
     } catch (error: any) {
       console.error('❌ Erreur lors de la désinscription du token:', error);
       // Même en cas d'erreur, on nettoie localement
@@ -258,6 +366,40 @@ export class PushNotificationService {
   }
 
   /**
+   * Envoie une notification de test pour les commentaires
+   */
+  async sendTestCommentNotification(sessionId: string, userId?: string): Promise<boolean> {
+    try {
+      console.log('📤 Envoi d\'une notification de test pour commentaire...');
+      
+      const recipientId = userId || 'self';
+      
+      const response = await baseApiService.post('/notifications/send', {
+        recipientId,
+        title: 'Nouveau commentaire',
+        body: 'Test: Un nouveau commentaire a été ajouté à la session',
+        data: {
+          type: 'comment',
+          session_id: sessionId,
+          notification_id: `comment-test-${Date.now()}`,
+          extra: { test: true }
+        }
+      }) as any;
+
+      if (response?.success) {
+        console.log('✅ Notification de commentaire de test envoyée avec succès');
+        return true;
+      } else {
+        console.log('❌ Échec de l\'envoi de la notification de commentaire de test');
+        return false;
+      }
+    } catch (error: any) {
+      console.error('❌ Erreur lors de l\'envoi de la notification de commentaire de test:', error);
+      return false;
+    }
+  }
+
+  /**
    * Configure les listeners de notifications
    */
   private setupNotificationListeners(): void {
@@ -276,10 +418,9 @@ export class PushNotificationService {
    * Gère une notification reçue
    */
   private handleNotificationReceived(notification: Notifications.Notification): void {
-    const { title, body, data } = notification.request.content;
-    
     // Ici on peut ajouter de la logique pour traiter la notification
     // Par exemple, mettre à jour le badge, stocker en local, etc.
+    console.log('📨 Notification reçue:', notification.request.content.title);
   }
 
   /**
@@ -337,7 +478,8 @@ export class PushNotificationService {
           const sessionIdComment = data.session_id || data.sessionId;
           if (sessionIdComment) {
             console.log('📍 Redirection vers session (commentaire):', sessionIdComment);
-            router.push(`/session/${sessionIdComment}`);
+            // Passer un paramètre pour ouvrir automatiquement la modal de commentaires
+            router.push(`/session/${sessionIdComment}?openComments=true`);
           } else {
             console.log('❌ session_id manquant pour commentaire - données:', JSON.stringify(data, null, 2));
             // Fallback vers la liste des sessions si pas de session_id
@@ -371,7 +513,7 @@ export class PushNotificationService {
       };
       
       await Notifications.scheduleNotificationAsync(notificationContent);
-    } catch (error: any) {
+    } catch {
       // Gestion silencieuse des erreurs
     }
   }
@@ -388,6 +530,8 @@ export class PushNotificationService {
    */
   debugInfo(): void {
     if (this.expoPushToken) {
+      console.log('🔍 Debug - Token Expo:', this.expoPushToken);
+      console.log('🔍 Debug - Service initialisé:', this.isInitialized);
     }
   }
 
@@ -405,7 +549,8 @@ export class PushNotificationService {
     try {
       // Note: removeAllNotificationListeners n'existe pas dans expo-notifications
       // Les listeners sont automatiquement nettoyés quand l'app se ferme
-    } catch (error) {
+      console.log('🧹 Nettoyage des ressources de notifications');
+    } catch {
       // Gestion silencieuse des erreurs
     }
   }

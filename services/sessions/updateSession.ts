@@ -20,13 +20,11 @@ function convertToUpdateSessionData(sessionData: Partial<SportSession>): UpdateS
     updateData.endTime = sessionData.endTime;
   }
 
-  // Ajouter maxParticipants seulement s'il a une valeur
-  if (sessionData.maxParticipants !== undefined && sessionData.maxParticipants !== null) {
+  // Toujours inclure maxParticipants et pricePerPerson (même si null pour vider les champs)
+  if (sessionData.maxParticipants !== undefined) {
     updateData.maxParticipants = sessionData.maxParticipants;
   }
-
-  // Ajouter pricePerPerson seulement s'il a une valeur
-  if (sessionData.pricePerPerson !== undefined && sessionData.pricePerPerson !== null) {
+  if (sessionData.pricePerPerson !== undefined) {
     updateData.pricePerPerson = sessionData.pricePerPerson;
   }
 
@@ -55,14 +53,28 @@ function convertToSportSession(session: Session): SportSession {
       lastname: participant.lastname || '',
       status: participant.status,
     })),
-    comments: session.comments.map(comment => ({
-      id: comment.id,
-      userId: comment.authorId,
-      firstname: comment.authorName.split(' ')[0] || '',
-      lastname: comment.authorName.split(' ').slice(1).join(' ') || '',
-      content: comment.content,
-      createdAt: comment.createdAt,
-    })),
+    comments: session.comments.map(comment => {
+      // Fonction pour extraire firstname et lastname de authorName
+      const extractNames = (authorName: string | undefined | null) => {
+        if (!authorName || typeof authorName !== 'string') {
+          return { firstname: 'Utilisateur', lastname: '' };
+        }
+        const parts = authorName.split(' ');
+        const lastname = parts.pop() || '';
+        const firstname = parts.join(' ') || '';
+        return { firstname, lastname };
+      };
+      
+      const commentNames = extractNames(comment.authorName);
+      return {
+        id: comment.id,
+        userId: comment.authorId,
+        firstname: commentNames.firstname,
+        lastname: commentNames.lastname,
+        content: comment.content,
+        createdAt: comment.createdAt,
+      };
+    }),
   };
 }
 

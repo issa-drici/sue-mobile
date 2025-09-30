@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { useGetSessionById, useUpdateSession } from '../../services';
 import { SportSession } from '../../types/sport';
+import { getDefaultEndTime, isValidEndTime, roundToNearestHalfHour } from '../../utils';
 import { useAuth } from '../context/auth';
 
 
@@ -26,7 +27,7 @@ export default function EditSessionScreen() {
 
     const sessionId = typeof id === 'string' ? id : '';
 
-    const { data: session, isLoading, getSessionById } = useGetSessionById();
+    const { data: session, getSessionById } = useGetSessionById();
     const { updateSession, isLoading: isUpdating } = useUpdateSession();
 
     // États pour les champs de formulaire
@@ -48,8 +49,20 @@ export default function EditSessionScreen() {
     useEffect(() => {
         if (session) {
             setDate(new Date(session.date));
-            setStartTime(new Date(`2000-01-01T${session.startTime}`));
-            setEndTime(new Date(`2000-01-01T${session.endTime}`));
+            const sessionStartTime = new Date(`2000-01-01T${session.startTime}`);
+            const sessionEndTime = new Date(`2000-01-01T${session.endTime}`);
+            
+            // Arrondir l'heure de début à la demi-heure la plus proche
+            const roundedStartTime = roundToNearestHalfHour(sessionStartTime);
+            setStartTime(roundedStartTime);
+            
+            // Vérifier et ajuster l'heure de fin si nécessaire
+            if (isValidEndTime(roundedStartTime, sessionEndTime)) {
+                setEndTime(sessionEndTime);
+            } else {
+                setEndTime(getDefaultEndTime(roundedStartTime));
+            }
+            
             setLocation(session.location);
             setMaxParticipants(session.maxParticipants?.toString() || '');
             setPricePerPerson(session.pricePerPerson?.toString() || '');
@@ -80,13 +93,26 @@ export default function EditSessionScreen() {
 
     const onChangeStartTimePicker = (event: any, selectedTime?: Date) => {
         if (selectedTime) {
-            setStartTime(selectedTime);
+            // Arrondir l'heure de début à la demi-heure la plus proche
+            const roundedStartTime = roundToNearestHalfHour(selectedTime);
+            setStartTime(roundedStartTime);
+            
+            // Mettre à jour l'heure de fin si elle devient invalide
+            if (!isValidEndTime(roundedStartTime, endTime)) {
+                setEndTime(getDefaultEndTime(roundedStartTime));
+            }
         }
     };
 
     const onChangeEndTimePicker = (event: any, selectedTime?: Date) => {
         if (selectedTime) {
-            setEndTime(selectedTime);
+            // Vérifier que l'heure de fin est valide
+            if (isValidEndTime(startTime, selectedTime)) {
+                setEndTime(selectedTime);
+            } else {
+                // Si l'heure de fin n'est pas valide, utiliser l'heure par défaut
+                setEndTime(getDefaultEndTime(startTime));
+            }
         }
     };
 
@@ -98,7 +124,7 @@ export default function EditSessionScreen() {
         }
 
         // Vérifier que l'heure de fin est après l'heure de début
-        if (endTime <= startTime) {
+        if (!isValidEndTime(startTime, endTime)) {
             Alert.alert('Erreur', 'L\'heure de fin doit être après l\'heure de début');
             return;
         }
@@ -109,17 +135,10 @@ export default function EditSessionScreen() {
                 startTime: startTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
                 endTime: endTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
                 location: location.trim(),
+                // Toujours inclure maxParticipants et pricePerPerson, même si vides
+                maxParticipants: maxParticipants && maxParticipants.trim() !== '' ? parseInt(maxParticipants) : null,
+                pricePerPerson: pricePerPerson && pricePerPerson.trim() !== '' ? parseFloat(pricePerPerson) : null,
             };
-
-            // Ajouter maxParticipants seulement s'il a une valeur
-            if (maxParticipants && maxParticipants.trim() !== '') {
-                sessionData.maxParticipants = parseInt(maxParticipants);
-            }
-
-            // Ajouter pricePerPerson seulement s'il a une valeur
-            if (pricePerPerson && pricePerPerson.trim() !== '') {
-                sessionData.pricePerPerson = parseFloat(pricePerPerson);
-            }
 
             // Debug: Afficher les données envoyées
             console.log('Données de session à mettre à jour:', JSON.stringify(sessionData, null, 2));

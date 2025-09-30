@@ -5,19 +5,20 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  Alert,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Alert,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useCreateSession, useGetFriends } from '../services';
 import { Friend } from '../services/types/users';
 import { Sport } from '../types/sport';
+import { getDefaultEndTime, isValidEndTime, roundToNearestHalfHour, roundToNextHalfHour } from '../utils';
 import { useAuth } from './context/auth';
 
 const SPORTS: Sport[] = ['tennis', 'golf', 'musculation', 'football', 'basketball'];
@@ -25,15 +26,18 @@ const SPORTS: Sport[] = ['tennis', 'golf', 'musculation', 'football', 'basketbal
 export default function CreateSessionScreen() {
   const router = useRouter();
   const { getAuthToken } = useAuth();
-  const { data: friends, isLoading, error } = useGetFriends();
+  const { data: friends, error } = useGetFriends();
   const { createSession, isLoading: isCreating } = useCreateSession();
   const [selectedSport, setSelectedSport] = useState<Sport | null>(null);
   const [date, setDate] = useState(new Date());
   
   // Debug: Afficher la date par défaut
   console.log('Date par défaut du formulaire:', date.toISOString().split('T')[0]);
-  const [startTime, setStartTime] = useState(new Date());
-  const [endTime, setEndTime] = useState(new Date());
+  
+  // Initialiser avec l'heure arrondie à la demi-heure suivante pour les valeurs par défaut
+  const initialStartTime = roundToNextHalfHour(new Date());
+  const [startTime, setStartTime] = useState(initialStartTime);
+  const [endTime, setEndTime] = useState(getDefaultEndTime(initialStartTime));
   const [location, setLocation] = useState('');
   const [maxParticipants, setMaxParticipants] = useState('');
   const [pricePerPerson, setPricePerPerson] = useState('');
@@ -47,13 +51,26 @@ export default function CreateSessionScreen() {
 
   const onChangeStartTimePicker = (event: any, selectedTime?: Date) => {
     if (selectedTime) {
-      setStartTime(selectedTime);
+      // Arrondir l'heure de début à la demi-heure la plus proche
+      const roundedStartTime = roundToNearestHalfHour(selectedTime);
+      setStartTime(roundedStartTime);
+      
+      // Mettre à jour l'heure de fin si elle devient invalide
+      if (!isValidEndTime(roundedStartTime, endTime)) {
+        setEndTime(getDefaultEndTime(roundedStartTime));
+      }
     }
   };
 
   const onChangeEndTimePicker = (event: any, selectedTime?: Date) => {
     if (selectedTime) {
-      setEndTime(selectedTime);
+      // Vérifier que l'heure de fin est valide
+      if (isValidEndTime(startTime, selectedTime)) {
+        setEndTime(selectedTime);
+      } else {
+        // Si l'heure de fin n'est pas valide, utiliser l'heure par défaut
+        setEndTime(getDefaultEndTime(startTime));
+      }
     }
   };
 
@@ -79,7 +96,7 @@ export default function CreateSessionScreen() {
     }
 
     // Vérifier que l'heure de fin est après l'heure de début
-    if (endTime <= startTime) {
+    if (!isValidEndTime(startTime, endTime)) {
       Alert.alert('Erreur', 'L\'heure de fin doit être après l\'heure de début');
       return;
     }

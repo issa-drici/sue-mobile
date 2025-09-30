@@ -1,22 +1,27 @@
 import { BrandColors } from '@/constants/Colors';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
+import timezone from 'dayjs/plugin/timezone';
+import utc from 'dayjs/plugin/utc';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    Keyboard,
-    Platform,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Alert,
+  Keyboard,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { Bubble, GiftedChat, InputToolbar, Send } from 'react-native-gifted-chat';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../app/context/auth';
 import { useComments } from '../hooks/useComments';
 
+dayjs.extend(utc);
+dayjs.extend(timezone);
 dayjs.locale('fr');
+
 
 interface ChatCommentsProps {
   sessionId: string;
@@ -191,6 +196,8 @@ export default function ChatComments({ sessionId, onCommentsReload, onUserPress,
       </View>
     );
   }, [onUserPress, user?.id]);
+
+
 
   return (
     <View style={styles.container}>

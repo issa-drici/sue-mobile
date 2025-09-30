@@ -10,6 +10,7 @@ import { SportSession } from '../../types/sport';
 import { BrandColors } from '@/constants/Colors';
 import { InlineLoading } from '../../components/OptimizedLoading';
 import { formatDate, formatTime } from '../../utils/dateHelpers';
+import { getSportEmoji } from '../../utils/sportEmojis';
 
 const SessionCard = ({ session }: { session: SportSession }) => {
   const router = useRouter();
@@ -22,6 +23,11 @@ const SessionCard = ({ session }: { session: SportSession }) => {
       ]}
       onPress={() => router.push(`/session/${session.id}`)}
     >
+      {/* Bloc emoji dans le coin supérieur droit */}
+      <View style={styles.sportEmojiContainer}>
+        <Text style={styles.sportEmoji}>{getSportEmoji(session.sport)}</Text>
+      </View>
+
       <View style={styles.cardHeader}>
         <Text style={styles.sportTitle}>
           {(session.sport || 'Sport').toUpperCase()}
@@ -73,6 +79,16 @@ const SessionCard = ({ session }: { session: SportSession }) => {
         )}
       </View>
 
+      {/* Affichage du nombre de commentaires */}
+      {(session.comments && session.comments.length > 0) && (
+        <View style={styles.commentsContainer}>
+          <Ionicons name="chatbubble-outline" size={16} color="#666" />
+          <Text style={styles.commentsCount}>
+            {session.comments.length} commentaire{session.comments.length > 1 ? 's' : ''}
+          </Text>
+        </View>
+      )}
+
       {/* Indicateur de session annulée */}
       {session.status === 'cancelled' && (
         <View style={styles.cancelledBanner}>
@@ -108,6 +124,7 @@ export default function HomeScreen() {
       });
     }
   }, [sessions]);
+
 
 
 
@@ -219,6 +236,32 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    position: 'relative',
+  },
+  sportEmojiContainer: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    backgroundColor: '#f8f9fa',
+    borderTopRightRadius: 12,
+    borderBottomLeftRadius: 12,
+    width: 50,
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  sportEmoji: {
+    fontSize: 20,
   },
   cancelledCard: {
     backgroundColor: '#ffebee', // Light red background for cancelled sessions
@@ -303,6 +346,19 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     marginTop: 8,
+  },
+  commentsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+    paddingTop: 12,
+    marginTop: 12,
+  },
+  commentsCount: {
+    marginLeft: 4,
+    fontSize: 14,
+    color: '#666',
   },
   emptyContainer: {
     justifyContent: 'center',

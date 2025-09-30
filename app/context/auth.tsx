@@ -51,12 +51,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       console.log('🔄 Déconnexion forcée en cours...');
 
-      // Désinscrire le token de notifications push
+      // Supprimer le token push de la BDD avant déconnexion
       try {
-        await pushNotificationService.unregisterToken();
-        console.log('✅ Token de notifications désinscrit');
+        await pushNotificationService.unregisterTokenFromDatabase();
+        console.log('✅ Token push supprimé de la BDD avant déconnexion');
       } catch (error) {
-        console.warn('⚠️ Erreur lors de la désinscription du token push:', error);
+        console.warn('⚠️ Erreur lors de la suppression du token push:', error);
       }
 
       // Nettoyer le stockage local
@@ -305,8 +305,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       baseApiService.setAuthToken(mockToken);
       setUser(mockUser);
 
+      // Vérifier et réinitialiser les permissions de notifications si nécessaire (mode mock)
+      try {
+        const permissionsGranted = await pushNotificationService.checkAndReinitializePermissions();
+        if (permissionsGranted) {
+          // Enregistrer le token push en BDD après connexion
+          await pushNotificationService.registerTokenInDatabase();
+          console.log('✅ Token push enregistré en BDD après connexion (mock)');
+        } else {
+          console.log('ℹ️ Permissions de notifications non accordées, pas d\'enregistrement de token (mock)');
+        }
+      } catch (error) {
+        console.warn('⚠️ Erreur lors de l\'enregistrement du token push (mock):', error);
+      }
+
       console.log('✅ Connexion mock réussie');
-    } catch (error) {
+    } catch {
       throw new Error('Erreur lors de la connexion mock');
     }
   };
@@ -351,6 +365,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Configurer le token pour les requêtes API
       baseApiService.setAuthToken(token);
+
+      // Vérifier et réinitialiser les permissions de notifications si nécessaire
+      try {
+        const permissionsGranted = await pushNotificationService.checkAndReinitializePermissions();
+        if (permissionsGranted) {
+          // Enregistrer le token push en BDD après connexion
+          await pushNotificationService.registerTokenInDatabase();
+          console.log('✅ Token push enregistré en BDD après connexion');
+        } else {
+          console.log('ℹ️ Permissions de notifications non accordées, pas d\'enregistrement de token');
+        }
+      } catch (error) {
+        console.warn('⚠️ Erreur lors de l\'enregistrement du token push:', error);
+      }
 
       console.log('✅ Données d\'authentification sauvegardées');
     } catch (error: any) {
@@ -415,6 +443,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       console.log('🚪 Déconnexion en cours...');
 
+      // Supprimer le token push de la BDD AVANT de déconnecter l'utilisateur
+      try {
+        await pushNotificationService.unregisterTokenFromDatabase();
+        console.log('✅ Token push supprimé de la BDD avant déconnexion');
+      } catch (error) {
+        console.warn('⚠️ Erreur lors de la suppression du token push:', error);
+      }
+
       if (!ENV.USE_MOCKS) {
         try {
           await AuthApi.logout();
@@ -422,14 +458,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } catch (error) {
           console.warn('⚠️ Erreur lors de la déconnexion API, continuation...');
         }
-      }
-
-      // Désinscrire le token de notifications push
-      try {
-        await pushNotificationService.unregisterToken();
-        console.log('✅ Token de notifications désinscrit');
-      } catch (error) {
-        console.warn('⚠️ Erreur lors de la désinscription du token push:', error);
       }
 
       // Nettoyer le stockage local

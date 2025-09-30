@@ -2,20 +2,20 @@ import { BrandColors } from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import ChatComments from '../../components/ChatComments';
 import InfoMessage from '../../components/InfoMessage';
@@ -29,7 +29,7 @@ import { useAuth } from '../context/auth';
 import { height } from '../utils/dimensions';
 
 export default function SessionDetailsScreen() {
-  const { id, source } = useLocalSearchParams();
+  const { id, source, openComments } = useLocalSearchParams();
   const router = useRouter();
   const { user } = useAuth(); // Récupérer l'utilisateur actuel
   // COMMENTÉ - Variable newComment retirée (maintenant gérée dans la modal)
@@ -45,8 +45,17 @@ export default function SessionDetailsScreen() {
   const [selectedUserLastname, setSelectedUserLastname] = useState<string>('');
 
   const sessionId = typeof id === 'string' ? id : '';
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const { data: session, isLoading, error, getSessionById } = useGetSessionById();
+
+  // Ouvrir automatiquement la modal de commentaires si on vient d'une notification
+  React.useEffect(() => {
+    if (openComments === 'true') {
+      console.log('🔔 Ouverture automatique de la modal de commentaires depuis notification');
+      setShowComments(true);
+    }
+  }, [openComments]);
   const { data: friends, isLoading: friendsLoading } = useGetFriends();
   const { inviteFriends, isLoading: isInviting } = useInviteFriends();
   const { respondToInvitation, isLoading: isResponding } = useRespondToInvitation();
@@ -406,6 +415,7 @@ export default function SessionDetailsScreen() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? height.tabBar + height.safeAreaBottom : 0}
       >
         <ScrollView
+          ref={scrollViewRef}
           style={styles.scrollView}
           refreshControl={
             <PullToRefresh
@@ -628,12 +638,14 @@ export default function SessionDetailsScreen() {
           </View>
 
           {/* Section Commentaires */}
-          <View style={styles.section}>
+          <TouchableOpacity 
+            style={styles.section}
+            onPress={() => setShowComments(true)}
+            activeOpacity={0.7}
+          >
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Commentaires</Text>
-              <TouchableOpacity onPress={() => setShowComments(true)}>
-                <Text style={styles.seeAllText}>Voir tout</Text>
-              </TouchableOpacity>
+              <Ionicons name="chevron-forward" size={20} color="#666" />
             </View>
             <View style={styles.commentsList}>
               {comments.length > 0 ? (
@@ -660,14 +672,12 @@ export default function SessionDetailsScreen() {
                 </View>
               )}
               {comments.length > 3 && (
-                <TouchableOpacity onPress={() => setShowComments(true)}>
-                  <Text style={styles.seeMoreText}>
-                    Voir {comments.length - 3} commentaire(s) de plus
-                  </Text>
-                </TouchableOpacity>
+                <Text style={styles.seeMoreText}>
+                  Voir {comments.length - 3} commentaire(s) de plus
+                </Text>
               )}
             </View>
-          </View>
+          </TouchableOpacity>
         </ScrollView>
 
         {/* COMMENTÉ - Zone de saisie des commentaires retirée */}
@@ -797,8 +807,21 @@ export default function SessionDetailsScreen() {
             >
               <Ionicons name="close" size={24} color="#000" />
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Commentaires</Text>
-            <View style={styles.modalHeaderRight} />
+            <Text style={styles.modalTitle}>
+              {session?.sport?.toUpperCase()} - {session?.date ? formatDate(session.date) : 'Session'}
+            </Text>
+            <TouchableOpacity
+              style={styles.modalDetailsButton}
+              onPress={() => {
+                setShowComments(false);
+                // Scroll vers le haut de la page pour voir les détails
+                setTimeout(() => {
+                  scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+                }, 100);
+              }}
+            >
+              <Ionicons name="information-circle-outline" size={24} color={BrandColors.primary} />
+            </TouchableOpacity>
           </View>
 
           <ChatComments
@@ -1000,8 +1023,6 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 12,
     backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
   },
   actionButton: {
     flexDirection: 'row',
@@ -1050,6 +1071,10 @@ const styles = StyleSheet.create({
   },
   modalHeaderRight: {
     width: 40,
+  },
+  modalDetailsButton: {
+    padding: 8,
+    marginRight: -8,
   },
   searchContainer: {
     flexDirection: 'row',

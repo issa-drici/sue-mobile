@@ -6,18 +6,27 @@ import { SessionsApi } from '../api/sessionsApi';
 
 // Fonction de conversion de Session vers SportSession
 function convertToSportSession(session: any): SportSession {
-  const organizerName = session.organizer?.fullName || 'Organisateur';
-  const organizerNameParts = organizerName.split(' ');
+  // Fonction pour extraire firstname et lastname de fullName
+  const extractNames = (fullName: string | undefined | null) => {
+    if (!fullName || typeof fullName !== 'string') {
+      return { firstname: 'Utilisateur', lastname: '' };
+    }
+    const parts = fullName.split(' ');
+    const lastname = parts.pop() || '';
+    const firstname = parts.join(' ') || '';
+    return { firstname, lastname };
+  };
+
+  const organizerNames = extractNames(session.organizer?.fullName);
   
   // Convertir les participants selon la structure réelle de l'API
   const participants = (session.participants || []).map((participant: any) => {
-    const participantName = participant.fullName || 'Participant';
-    const nameParts = participantName.split(' ');
+    const participantNames = extractNames(participant.fullName);
     
     return {
       id: participant.id || '',
-      firstname: nameParts[0] || '',
-      lastname: nameParts.slice(1).join(' ') || '',
+      firstname: participantNames.firstname,
+      lastname: participantNames.lastname,
       status: participant.status || 'pending',
     };
   });
@@ -33,18 +42,21 @@ function convertToSportSession(session: any): SportSession {
     pricePerPerson: session.pricePerPerson,
     organizer: {
       id: session.organizer?.id || '',
-      firstname: organizerNameParts[0] || '',
-      lastname: organizerNameParts.slice(1).join(' ') || '',
+      firstname: organizerNames.firstname,
+      lastname: organizerNames.lastname,
     },
     participants: participants,
-    comments: (session.comments || []).map((comment: any) => ({
-      id: comment.id,
-      userId: comment.authorId || comment.userId || '',
-      firstname: comment.authorName?.split(' ')[0] || comment.firstname || '',
-      lastname: comment.authorName?.split(' ').slice(1).join(' ') || comment.lastname || '',
-      content: comment.content,
-      createdAt: comment.createdAt,
-    })),
+    comments: (session.comments || []).map((comment: any) => {
+      const commentNames = extractNames(comment.authorName || comment.fullName);
+      return {
+        id: comment.id,
+        userId: comment.authorId || comment.userId || '',
+        firstname: commentNames.firstname,
+        lastname: commentNames.lastname,
+        content: comment.content,
+        createdAt: comment.createdAt,
+      };
+    }),
   };
 }
 
