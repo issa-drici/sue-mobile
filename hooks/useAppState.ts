@@ -12,9 +12,15 @@ export const useAppState = () => {
   const { isAuthenticated } = useAuth();
 
   useEffect(() => {
-    // Initialiser le service de notifications au démarrage
+    // Initialiser le service de notifications au démarrage SEULEMENT si l'utilisateur est connecté
     const initializeService = async () => {
       try {
+        // Ne pas initialiser les notifications si l'utilisateur n'est pas connecté
+        if (!isAuthenticated) {
+          console.log('ℹ️ Utilisateur non connecté, pas d\'initialisation des notifications');
+          return;
+        }
+
         const isInitialized = pushNotificationService.isServiceInitialized();
         if (!isInitialized) {
           console.log('🚀 Initialisation du service de notifications...');
@@ -58,5 +64,5 @@ export const useAppState = () => {
     return () => {
       subscription?.remove();
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated]); // Dépendance ajoutée pour réagir aux changements d'authentification
 };

@@ -1,18 +1,45 @@
 import { BrandColors } from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
-import { Tabs } from 'expo-router';
-import React from 'react';
+import { Tabs, useRouter } from 'expo-router';
+import React, { useEffect } from 'react';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { useGlobalFriendRequests } from '../../context/globalFriendRequests';
 import { useGlobalNotifications } from '../../context/globalNotifications';
 import { NotificationsProvider } from '../../context/notifications';
-import { useAppState } from '../../hooks/useAppState';
+import { useAuth } from '../context/auth';
 
 function TabLayoutContent() {
   const { unreadCount } = useGlobalNotifications();
   const { friendRequestsCount } = useGlobalFriendRequests();
-  
-  // Vérifier les permissions de notifications quand l'app revient au premier plan
-  useAppState();
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
+
+  // Protection d'authentification : rediriger si pas d'utilisateur connecté
+  useEffect(() => {
+    if (!isLoading && !user) {
+      console.log('🚫 Accès aux tabs refusé : aucun utilisateur connecté');
+      router.replace('/(auth)/login');
+    }
+  }, [user, isLoading, router]);
+
+  // Afficher un loader pendant le chargement
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={BrandColors.primary} />
+        <Text style={{ marginTop: 10, color: '#666' }}>Chargement...</Text>
+      </View>
+    );
+  }
+
+  // Ne pas rendre les tabs si pas d'utilisateur connecté
+  if (!user) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ color: '#666' }}>Redirection vers la connexion...</Text>
+      </View>
+    );
+  }
 
   // Calculer les badges
   const notificationsBadge = unreadCount > 0 ? unreadCount : undefined;
