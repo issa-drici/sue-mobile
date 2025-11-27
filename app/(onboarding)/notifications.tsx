@@ -1,9 +1,9 @@
-import { BrandColors } from '@/constants/Colors';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import OnboardingProgress from '../../components/OnboardingProgress';
+import { ScreenLayout } from '../../components/ui/ScreenLayout';
+import { DesignTokens } from '../../constants/DesignSystem';
 import { pushNotificationService } from '../../services/notifications/pushNotifications';
 import { useAuth } from '../context/auth';
 
@@ -37,7 +37,7 @@ export default function NotificationsScreen() {
 
 
   return (
-    <SafeAreaView style={styles.container}>
+    <ScreenLayout style={styles.container}>
       <View style={styles.content}>
         <OnboardingProgress currentStep={3} totalSteps={3} />
 
@@ -53,7 +53,7 @@ export default function NotificationsScreen() {
           <Text style={styles.primaryButtonText}>Activer les notifications</Text>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </ScreenLayout>
   );
 }
 
@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   primaryButton: {
-    backgroundColor: BrandColors.primary,
+    backgroundColor: DesignTokens.colors.primary,
     paddingVertical: 16,
     paddingHorizontal: 32,
     borderRadius: 12,

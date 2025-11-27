@@ -1,11 +1,15 @@
-import { BrandColors } from '@/constants/Colors';
-import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
-import { Alert, Animated, Easing, Image, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Animated, Easing, Image, StyleSheet, View } from 'react-native';
+import { Button, Icon, Text } from '../../components/atoms';
+import { Card } from '../../components/ui/Card';
+import { MainScreenLayout } from '../../components/ui/ScreenLayout';
 import { ENV } from '../../config/env';
+import { DesignTokens } from '../../constants/DesignSystem';
+import { useDevMode } from '../../hooks/useDevMode';
 import { useGetUserProfile, useUpdateUser } from '../../services';
+import { CommonStyles, TextStyles } from '../../styles/CommonStyles';
 import { useAuth } from '../context/auth';
 
 export default function ProfileScreen() {
@@ -13,6 +17,7 @@ export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const { data: userProfile, isLoading, error, refetch } = useGetUserProfile();
   const { updateUser, isLoading: isUpdating } = useUpdateUser();
+  const { isDev } = useDevMode();
 
   const [isUploading, setIsUploading] = useState(false);
   const rotation = useRef(new Animated.Value(0)).current;
@@ -158,25 +163,20 @@ export default function ProfileScreen() {
 
   if (error) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Profil</Text>
+      <MainScreenLayout title="Profil">
+        <View style={CommonStyles.centerContent}>
+          <Text style={[TextStyles.body, { color: DesignTokens.colors.error }]}>Erreur: {error}</Text>
         </View>
-        <View style={styles.loadingContainer}>
-          <Text style={{ color: 'red' }}>Erreur: {error}</Text>
-        </View>
-      </SafeAreaView>
+      </MainScreenLayout>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-      <ScrollView>
-        <View style={styles.header}>
-          <Text style={styles.title}>Profil</Text>
-        </View>
-
+    <MainScreenLayout 
+      title="Profil"
+      scrollable
+      horizontalPadding="md"
+    >
         <View style={styles.userInfo}>
           <View style={styles.avatarContainer}>
             <Image
@@ -197,20 +197,30 @@ export default function ProfileScreen() {
               )}
             </TouchableOpacity> */}
           </View>
-          <Text style={styles.name}>
+          <Text variant="h3" style={{ textAlign: 'center', marginBottom: DesignTokens.spacing.xs }}>
             {userProfile?.firstname || user?.firstname || 'Utilisateur'} {userProfile?.lastname || user?.lastname || 'Test'}
           </Text>
-          <Text style={styles.email}>{userProfile?.email || user?.email || 'email@example.com'}</Text>
+          <Text variant="body" color="secondary" style={{ textAlign: 'center' }}>
+            {userProfile?.email || user?.email || 'email@example.com'}
+          </Text>
         </View>
 
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>{userProfile?.stats?.sessionsCreated || 0}</Text>
-            <Text style={styles.statLabel}>Sessions créées</Text>
+            <Text variant="h2" color="primary" style={{ textAlign: 'center' }}>
+              {userProfile?.stats?.sessionsCreated || 0}
+            </Text>
+            <Text variant="caption" color="secondary" style={{ textAlign: 'center' }}>
+              Sessions créées
+            </Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>{userProfile?.stats?.sessionsParticipated || 0}</Text>
-            <Text style={styles.statLabel}>Participations</Text>
+            <Text variant="h2" color="primary" style={{ textAlign: 'center' }}>
+              {userProfile?.stats?.sessionsParticipated || 0}
+            </Text>
+            <Text variant="caption" color="secondary" style={{ textAlign: 'center' }}>
+              Participations
+            </Text>
           </View>
           {/* <View style={styles.statCard}>
             <Text style={styles.statValue}>{userProfile?.stats?.favoriteSport || 'Aucun'}</Text>
@@ -219,7 +229,9 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Paramètres</Text>
+          <Text variant="h4" style={{ marginBottom: DesignTokens.spacing.md }}>
+            Paramètres
+          </Text>
 
           {/* <TouchableOpacity style={styles.menuItem}>
             <Ionicons name="person-outline" size={24} color="#666" />
@@ -233,11 +245,14 @@ export default function ProfileScreen() {
             <Ionicons name="chevron-forward" size={24} color="#666" />
           </TouchableOpacity> */}
 
-          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/privacy')}>
-            <Ionicons name="shield-outline" size={24} color="#666" />
-            <Text style={styles.menuItemText}>Confidentialité</Text>
-            <Ionicons name="chevron-forward" size={24} color="#666" />
-          </TouchableOpacity>
+          <Button
+            title="Confidentialité"
+            variant="ghost"
+            onPress={() => router.push('/privacy')}
+            leftIcon={<Icon name="shield-outline" size="md" color="secondary" />}
+            rightIcon={<Icon name="chevron-forward" size="md" color="secondary" />}
+            style={{ justifyContent: 'space-between', paddingHorizontal: 0 }}
+          />
 
           {/* <TouchableOpacity style={styles.menuItem}>
             <Ionicons name="help-circle-outline" size={24} color="#666" />
@@ -246,12 +261,40 @@ export default function ProfileScreen() {
           </TouchableOpacity> */}
         </View>
 
-        <TouchableOpacity style={styles.logoutButton} onPress={handleSignOut}>
-          <Ionicons name="log-out-outline" size={24} color="#FF3B30" />
-          <Text style={styles.logoutText}>Se déconnecter</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </SafeAreaView>
+        {isDev && (
+          <Card padding="md" style={{ marginBottom: DesignTokens.spacing.lg }}>
+            <Text variant="h4" style={{ marginBottom: DesignTokens.spacing.md }}>
+              🚀 Développement
+            </Text>
+            
+            <View style={{ gap: DesignTokens.spacing.sm }}>
+              <Button
+                title="Atoms Demo"
+                variant="outline"
+                onPress={() => router.push('/atoms-demo')}
+                style={{ justifyContent: 'flex-start' }}
+                leftIcon={<Icon name="code-outline" size="md" color="primary" />}
+              />
+              
+              <Button
+                title="Menu Développeur"
+                variant="outline"
+                onPress={() => router.push('/dev-menu')}
+                style={{ justifyContent: 'flex-start' }}
+                leftIcon={<Icon name="construct-outline" size="md" color="primary" />}
+              />
+            </View>
+          </Card>
+        )}
+
+        <Button
+          title="Se déconnecter"
+          variant="danger"
+          onPress={handleSignOut}
+          leftIcon={<Icon name="log-out-outline" size="md" color="textInverse" />}
+          style={{ marginTop: DesignTokens.spacing.lg }}
+        />
+    </MainScreenLayout>
   );
 }
 
@@ -300,7 +343,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: BrandColors.primary,
+    backgroundColor: DesignTokens.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
@@ -338,7 +381,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: BrandColors.primary,
+    color: DesignTokens.colors.primary,
     marginBottom: 4,
   },
   statLabel: {

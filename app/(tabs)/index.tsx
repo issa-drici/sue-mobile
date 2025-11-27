@@ -1,104 +1,17 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { FlatList, SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, StyleSheet } from 'react-native';
+import { Button, Icon } from '../../components/atoms';
+import { EmptyState, SessionCard } from '../../components/molecules';
 import PullToRefresh from '../../components/PullToRefresh';
+import { MainScreenLayout } from '../../components/ui/ScreenLayout';
+import { DesignTokens } from '../../constants/DesignSystem';
 import { usePullToRefresh } from '../../hooks';
 import { useGetSessions } from '../../services';
-import { SportSession } from '../../types/sport';
+import { CommonStyles, TextStyles } from '../../styles/CommonStyles';
 
-import { BrandColors } from '@/constants/Colors';
 import { InlineLoading } from '../../components/OptimizedLoading';
-import { formatDate, formatTime } from '../../utils/dateHelpers';
-import { getSportEmoji } from '../../utils/sportEmojis';
 
-const SessionCard = ({ session }: { session: SportSession }) => {
-  const router = useRouter();
-
-  return (
-    <TouchableOpacity
-      style={[
-        styles.card,
-        session.status === 'cancelled' && styles.cancelledCard
-      ]}
-      onPress={() => router.push(`/session/${session.id}`)}
-    >
-      {/* Bloc emoji dans le coin supérieur droit */}
-      <View style={styles.sportEmojiContainer}>
-        <Text style={styles.sportEmoji}>{getSportEmoji(session.sport)}</Text>
-      </View>
-
-      <View style={styles.cardHeader}>
-        <Text style={styles.sportTitle}>
-          {(session.sport || 'Sport').toUpperCase()}
-        </Text>
-        <Text style={styles.date}>
-          {formatDate(session.date)} de {formatTime(session.startTime)} à {formatTime(session.endTime)}
-        </Text>
-      </View>
-
-      <View style={styles.locationContainer}>
-        <Ionicons name="location-outline" size={16} color="#666" />
-        <Text style={styles.location}>{session.location}</Text>
-      </View>
-
-      <View style={styles.participantsContainer}>
-        <Text style={styles.participantsTitle}>
-          Participants ({(session.participants || []).filter(p => p.status === 'accepted').length}) :
-        </Text>
-        <View style={styles.participantsList}>
-          {(session.participants || []).slice(0, 5).map((participant, index) => (
-            <View key={participant.id || `participant-${index}`} style={styles.participant}>
-              <Text style={styles.participantName}>
-                {participant.firstname} {participant.lastname}
-              </Text>
-              <View style={[
-                styles.statusBadge,
-                {
-                  backgroundColor: participant.status === 'accepted' ? '#4CAF50' :
-                    participant.status === 'declined' ? '#F44336' : '#FFC107'
-                }
-              ]}>
-                <Text style={styles.statusText}>
-                  {participant.status === 'accepted' ? '✓' :
-                    participant.status === 'declined' ? '✕' : '?'}
-                </Text>
-              </View>
-            </View>
-          ))}
-          {(session.participants || []).length > 5 && (
-            <View style={styles.participant}>
-              <Text style={styles.participantName}>
-                +{(session.participants || []).length - 5} autre{(session.participants || []).length - 5 > 1 ? 's' : ''}
-              </Text>
-            </View>
-          )}
-        </View>
-        {(!session.participants || session.participants.length === 0) && (
-          <Text style={styles.noParticipantsText}>Aucun participant</Text>
-        )}
-      </View>
-
-      {/* Affichage du nombre de commentaires */}
-      {(session.comments && session.comments.length > 0) && (
-        <View style={styles.commentsContainer}>
-          <Ionicons name="chatbubble-outline" size={16} color="#666" />
-          <Text style={styles.commentsCount}>
-            {session.comments.length} commentaire{session.comments.length > 1 ? 's' : ''}
-          </Text>
-        </View>
-      )}
-
-      {/* Indicateur de session annulée */}
-      {session.status === 'cancelled' && (
-        <View style={styles.cancelledBanner}>
-          <Ionicons name="close-circle" size={16} color="#fff" />
-          <Text style={styles.cancelledText}>ANNULÉE</Text>
-        </View>
-      )}
-    </TouchableOpacity>
-  );
-};
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -132,43 +45,59 @@ export default function HomeScreen() {
   // Toujours afficher l'interface, le loading est géré par le pull-to-refresh et les états vides
   // Cela évite les écrans de chargement bloquants entre les transitions
 
+  // Bouton de création de session pour le header
+  const CreateSessionButton = () => (
+    <Button
+      title="Nouvelle Session"
+      onPress={() => router.push('/create-session')}
+      leftIcon={<Icon name="add-circle" size="md" color="textInverse" />}
+      size="sm"
+    />
+  );
+
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-      <View style={styles.header}>
-        <Text style={styles.title}>Mes Sessions</Text>
-        <TouchableOpacity
-          style={styles.createButton}
-          onPress={() => router.push('/create-session')}
-        >
-          <Ionicons name="add-circle" size={20} color="#fff" />
-          <Text style={styles.createButtonText}>Nouvelle Session</Text>
-        </TouchableOpacity>
-      </View>
+    <MainScreenLayout
+      title="Mes Sessions"
+      rightAction={<CreateSessionButton />}
+      containerStyle={CommonStyles.container}
+    >
 
       <FlatList
         data={sessions}
-        renderItem={({ item }) => <SessionCard session={item} />}
+        renderItem={({ item }) => (
+          <SessionCard 
+            session={{
+              id: item.id,
+              title: item.sport.charAt(0).toUpperCase() + item.sport.slice(1),
+              sport: item.sport,
+              location: item.location,
+              startTime: item.startTime,
+              maxParticipants: item.maxParticipants || undefined,
+              participants: item.participants,
+              status: item.status,
+            }}
+          />
+        )}
         keyExtractor={(item) => item.id || `session-${Math.random()}`}
         contentContainerStyle={styles.listContainer}
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            {isLoading ? (
-              <InlineLoading message="Chargement des sessions..." />
-            ) : error ? (
-              <>
-                <Ionicons name="alert-circle-outline" size={64} color="#ff6b6b" />
-                <Text style={[styles.emptyText, { color: '#ff6b6b' }]}>Erreur de chargement</Text>
-                <Text style={styles.emptySubtext}>{error}</Text>
-              </>
-            ) : (
-              <>
-                <Ionicons name="calendar-outline" size={64} color="#ccc" />
-                <Text style={styles.emptyText}>Aucune session trouvée</Text>
-                <Text style={styles.emptySubtext}>Créez votre première session !</Text>
-              </>
-            )}
-          </View>
+          isLoading ? (
+            <InlineLoading message="Chargement des sessions..." />
+          ) : error ? (
+            <EmptyState
+              variant="error"
+              title="Erreur de chargement"
+              subtitle={error}
+            />
+          ) : (
+            <EmptyState
+              icon="calendar-outline"
+              title="Aucune session trouvée"
+              subtitle="Créez votre première session !"
+              actionTitle="Créer une session"
+              onAction={() => router.push('/create-session')}
+            />
+          )
         }
         refreshControl={
           <PullToRefresh
@@ -177,204 +106,128 @@ export default function HomeScreen() {
           />
         }
       />
-    </SafeAreaView>
+    </MainScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  header: {
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
+  // Bouton de création de session
   createButton: {
-    backgroundColor: BrandColors.primary,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 25,
-    flexDirection: 'row',
-    alignItems: 'center',
+    ...CommonStyles.buttonPrimary,
+    borderRadius: DesignTokens.borderRadius.xxl,
+    paddingHorizontal: DesignTokens.spacing.lg,
+    paddingVertical: DesignTokens.spacing.sm,
   },
-  createButtonText: {
-    color: BrandColors.white,
-    fontSize: 17,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  
+  // Container de la liste
   listContainer: {
-    padding: 16,
+    padding: DesignTokens.spacing.md,
   },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    position: 'relative',
-  },
+  
+  // Styles pour les cartes de session
   sportEmojiContainer: {
     position: 'absolute',
     top: 0,
     right: 0,
-    backgroundColor: '#f8f9fa',
-    borderTopRightRadius: 12,
-    borderBottomLeftRadius: 12,
+    backgroundColor: DesignTokens.colors.backgroundSecondary,
+    borderTopRightRadius: DesignTokens.borderRadius.lg,
+    borderBottomLeftRadius: DesignTokens.borderRadius.lg,
     width: 50,
     height: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
+    ...CommonStyles.centerContent,
     borderWidth: 1,
-    borderColor: '#e9ecef',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    borderColor: DesignTokens.colors.borderLight,
+    ...DesignTokens.shadows.sm,
   },
   sportEmoji: {
-    fontSize: 20,
+    fontSize: DesignTokens.iconSizes.lg,
   },
   cancelledCard: {
-    backgroundColor: '#ffebee', // Light red background for cancelled sessions
-    borderColor: '#ef9a9a',
+    backgroundColor: '#ffebee',
+    borderColor: DesignTokens.colors.error,
     borderWidth: 1,
   },
   cancelledBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F44336', // Red color for cancelled banner
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    marginTop: 12,
+    ...CommonStyles.rowCenter,
+    backgroundColor: DesignTokens.colors.error,
+    paddingVertical: DesignTokens.spacing.sm,
+    paddingHorizontal: DesignTokens.spacing.md,
+    borderRadius: DesignTokens.borderRadius.md,
+    marginTop: DesignTokens.spacing.md,
   },
   cancelledText: {
-    color: '#fff',
-    fontSize: 12,
+    ...TextStyles.small,
+    color: DesignTokens.colors.textInverse,
     fontWeight: 'bold',
-    marginLeft: 8,
+    marginLeft: DesignTokens.spacing.sm,
   },
   cardHeader: {
-    marginBottom: 12,
+    marginBottom: DesignTokens.spacing.md,
   },
   sportTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: BrandColors.primary,
-    marginBottom: 4,
+    ...TextStyles.h4,
+    color: DesignTokens.colors.primary,
+    marginBottom: DesignTokens.spacing.xs,
   },
   date: {
-    fontSize: 14,
-    color: '#666',
+    ...TextStyles.caption,
+    color: DesignTokens.colors.textSecondary,
   },
   locationContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
+    ...CommonStyles.row,
+    marginBottom: DesignTokens.spacing.md,
   },
   location: {
-    marginLeft: 4,
-    fontSize: 14,
-    color: '#666',
+    ...TextStyles.caption,
+    color: DesignTokens.colors.textSecondary,
+    marginLeft: DesignTokens.spacing.xs,
   },
   participantsContainer: {
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-    paddingTop: 12,
+    borderTopColor: DesignTokens.colors.border,
+    paddingTop: DesignTokens.spacing.md,
   },
   participantsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
+    ...TextStyles.bodyMedium,
+    marginBottom: DesignTokens.spacing.sm,
   },
   participantsList: {
-    gap: 8,
+    gap: DesignTokens.spacing.sm,
   },
   participant: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    ...CommonStyles.rowBetween,
   },
   participantName: {
-    fontSize: 14,
-    color: '#333',
+    ...TextStyles.caption,
+    color: DesignTokens.colors.text,
   },
   statusBadge: {
     width: 20,
     height: 20,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderRadius: DesignTokens.borderRadius.round,
+    ...CommonStyles.centerContent,
   },
   statusText: {
-    color: '#fff',
-    fontSize: 12,
+    ...TextStyles.small,
+    color: DesignTokens.colors.textInverse,
     fontWeight: 'bold',
   },
   noParticipantsText: {
-    fontSize: 14,
-    color: '#666',
+    ...TextStyles.caption,
+    color: DesignTokens.colors.textSecondary,
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: DesignTokens.spacing.sm,
   },
   commentsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    ...CommonStyles.row,
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-    paddingTop: 12,
-    marginTop: 12,
+    borderTopColor: DesignTokens.colors.border,
+    paddingTop: DesignTokens.spacing.md,
+    marginTop: DesignTokens.spacing.md,
   },
   commentsCount: {
-    marginLeft: 4,
-    fontSize: 14,
-    color: '#666',
-  },
-  emptyContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 100,
-    minHeight: 300,
-  },
-  emptyText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-    marginTop: 20,
-  },
-  emptySubtext: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 5,
+    ...TextStyles.caption,
+    color: DesignTokens.colors.textSecondary,
+    marginLeft: DesignTokens.spacing.xs,
   },
 });

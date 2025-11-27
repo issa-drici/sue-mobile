@@ -1,4 +1,3 @@
-import { BrandColors } from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -20,10 +19,13 @@ import {
 import ChatComments from '../../components/ChatComments';
 import InfoMessage from '../../components/InfoMessage';
 import PullToRefresh from '../../components/PullToRefresh';
+import { BackScreenLayout } from '../../components/ui/ScreenLayout';
 import UserProfileModal from '../../components/UserProfileModal';
+import { DesignTokens } from '../../constants/DesignSystem';
 import { usePullToRefresh } from '../../hooks';
 import { useComments } from '../../hooks/useComments';
 import { useCancelParticipation, useCancelSession, useGetFriends, useGetSessionById, useInviteFriends, useRespondToInvitation, useUpdateSession } from '../../services';
+import { CommonStyles } from '../../styles/CommonStyles';
 import { formatCommentDate, formatDate, formatTimeFrance } from '../../utils/dateHelpers';
 import { useAuth } from '../context/auth';
 import { height } from '../utils/dimensions';
@@ -379,35 +381,33 @@ export default function SessionDetailsScreen() {
     </TouchableOpacity>
   );
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+  // Actions du header
+  const HeaderActions = () => (
+    <View style={CommonStyles.row}>
+      {/* Bouton d'édition - Afficher seulement pour l'organisateur */}
+      {isOrganizer && (
         <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
+          style={styles.headerEditButton}
+          onPress={() => router.push(`/edit-session/${sessionId}`)}
         >
-          <Ionicons name="arrow-back" size={24} color="#000" />
+          <Ionicons name="create-outline" size={DesignTokens.iconSizes.lg} color={DesignTokens.colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Détails de la Session</Text>
-        <View style={styles.headerActions}>
-          {/* Bouton d'édition - Afficher seulement pour l'organisateur */}
-          {isOrganizer && (
-            <TouchableOpacity
-              style={styles.headerEditButton}
-              onPress={() => router.push(`/edit-session/${sessionId}`)}
-            >
-              <Ionicons name="create-outline" size={24} color="BrandColors.primary" />
-            </TouchableOpacity>
-          )}
-          {/* Bouton d'invitation - Afficher pour tous les utilisateurs */}
-          <TouchableOpacity
-            style={styles.headerInviteButton}
-            onPress={() => setIsInviteModalVisible(true)}
-          >
-            <Ionicons name="person-add-outline" size={24} color="BrandColors.primary" />
-          </TouchableOpacity>
-        </View>
-      </View>
+      )}
+      {/* Bouton d'invitation - Afficher pour tous les utilisateurs */}
+      <TouchableOpacity
+        style={styles.headerInviteButton}
+        onPress={() => setIsInviteModalVisible(true)}
+      >
+        <Ionicons name="person-add-outline" size={DesignTokens.iconSizes.lg} color={DesignTokens.colors.primary} />
+      </TouchableOpacity>
+    </View>
+  );
+
+  return (
+    <BackScreenLayout 
+      title="Détails de la Session"
+      rightAction={<HeaderActions />}
+    >
 
       <KeyboardAvoidingView
         style={styles.keyboardAvoidingView}
@@ -698,7 +698,7 @@ export default function SessionDetailsScreen() {
             onPress={handleAddComment}
             disabled={!newComment.trim()}
           >
-            <Ionicons name="send" size={24} color={newComment.trim() ? BrandColors.primary : '#ccc'} />
+            <Ionicons name="send" size={24} color={newComment.trim() ? DesignTokens.colors.primary : '#ccc'} />
           </TouchableOpacity>
         </View>
         */}
@@ -820,7 +820,7 @@ export default function SessionDetailsScreen() {
                 }, 100);
               }}
             >
-              <Ionicons name="information-circle-outline" size={24} color={BrandColors.primary} />
+              <Ionicons name="information-circle-outline" size={24} color={DesignTokens.colors.primary} />
             </TouchableOpacity>
           </View>
 
@@ -841,7 +841,7 @@ export default function SessionDetailsScreen() {
         userFirstname={selectedUserFirstname}
         userLastname={selectedUserLastname}
       />
-    </SafeAreaView>
+    </BackScreenLayout>
   );
 }
 
@@ -893,7 +893,7 @@ const styles = StyleSheet.create({
   sportTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: BrandColors.primary,
+    color: DesignTokens.colors.primary,
     marginBottom: 4,
   },
   dateTime: {
@@ -947,7 +947,7 @@ const styles = StyleSheet.create({
   },
   participantName: {
     fontSize: 16,
-    color: BrandColors.primary, // Couleur bleue pour indiquer que c'est cliquable
+    color: DesignTokens.colors.primary, // Couleur bleue pour indiquer que c'est cliquable
   },
   participantNameOwn: {
     fontSize: 16,
@@ -955,7 +955,7 @@ const styles = StyleSheet.create({
   },
   organizerBadge: {
     fontSize: 12,
-    color: BrandColors.primary,
+    color: DesignTokens.colors.primary,
     marginTop: 2,
   },
   statusBadge: {
@@ -1109,7 +1109,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   checkmark: {
-    color: BrandColors.primary,
+    color: DesignTokens.colors.primary,
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -1126,7 +1126,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 16,
     borderRadius: 12,
-    backgroundColor: BrandColors.primary,
+    backgroundColor: DesignTokens.colors.primary,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -1174,12 +1174,12 @@ const styles = StyleSheet.create({
   },
   participantsMaxText: {
     fontSize: 16,
-    color: BrandColors.primary,
+    color: DesignTokens.colors.primary,
     fontWeight: '500',
   },
   participantsLimit: {
     fontSize: 16,
-    color: BrandColors.primary,
+    color: DesignTokens.colors.primary,
     fontWeight: '600',
     backgroundColor: '#f0f8ff',
     paddingHorizontal: 8,
@@ -1188,12 +1188,12 @@ const styles = StyleSheet.create({
   },
   seeAllText: {
     fontSize: 14,
-    color: BrandColors.primary,
+    color: DesignTokens.colors.primary,
     fontWeight: '500',
   },
   seeMoreText: {
     fontSize: 14,
-    color: BrandColors.primary,
+    color: DesignTokens.colors.primary,
     fontWeight: '500',
     textAlign: 'center',
     marginTop: 8,

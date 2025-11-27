@@ -1,9 +1,9 @@
-import { BrandColors } from '@/constants/Colors';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import OnboardingProgress from '../../components/OnboardingProgress';
+import { ScreenLayout } from '../../components/ui/ScreenLayout';
+import { DesignTokens } from '../../constants/DesignSystem';
 
 export default function OrganizeScreen() {
   const router = useRouter();
@@ -14,7 +14,7 @@ export default function OrganizeScreen() {
 
 
   return (
-    <SafeAreaView style={styles.container}>
+    <ScreenLayout style={styles.container}>
       <View style={styles.content}>
         <OnboardingProgress currentStep={2} totalSteps={3} />
         
@@ -30,7 +30,7 @@ export default function OrganizeScreen() {
           <Text style={styles.buttonText}>Continuer</Text>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </ScreenLayout>
   );
 }
 
@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   button: {
-    backgroundColor: BrandColors.primary,
+    backgroundColor: DesignTokens.colors.primary,
     paddingVertical: 16,
     paddingHorizontal: 32,
     borderRadius: 12,

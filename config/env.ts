@@ -9,6 +9,7 @@ export const ENV = {
   PUSHER_HOST: process.env.EXPO_PUBLIC_PUSHER_HOST || 'websocket.sue.alliance-tech.fr',
   PUSHER_PORT: process.env.EXPO_PUBLIC_PUSHER_PORT || '443',
   PUSHER_SCHEME: process.env.EXPO_PUBLIC_PUSHER_SCHEME || (process.env.NODE_ENV === 'production' ? 'https' : 'http'),
+  NODE_ENV: process.env.NODE_ENV || 'development',
   IS_DEV: process.env.NODE_ENV === 'development',
   USE_MOCKS: false, // Forcer la désactivation des mocks
   SERVER_HOST: process.env.EXPO_PUBLIC_SERVER_HOST || 'localhost',

@@ -1,24 +1,26 @@
 import { ENV } from '@/config/env';
-import { BrandColors } from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Alert,
-    Modal,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Card } from '../components/ui/Card';
+import { BackScreenLayout } from '../components/ui/ScreenLayout';
+import { DesignTokens } from '../constants/DesignSystem';
 import { useSportsPreferences } from '../hooks/useSportsPreferences';
 import { useCreateSession, useGetFriends } from '../services';
 import { Friend } from '../services/types/users';
+import { CommonStyles, TextStyles } from '../styles/CommonStyles';
 import { Sport } from '../types/sport';
 import { getDefaultEndTime, getSportEmoji, isValidEndTime, roundToNearestHalfHour, roundToNextHalfHour, SPORTS_LIST } from '../utils';
 import { useAuth } from './context/auth';
@@ -274,22 +276,14 @@ export default function CreateSessionScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <Ionicons name="arrow-back" size={24} color="#000" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Nouvelle Session</Text>
-        <View style={styles.headerRight} />
-      </View>
-
-      <ScrollView style={styles.content}>
+    <BackScreenLayout 
+      title="Nouvelle Session"
+      scrollable
+      horizontalPadding="md"
+    >
 
         {/* Sélection du sport */}
-        <View style={styles.section}>
+        <Card style={styles.section}>
           <Text style={styles.sectionTitle}>Sport*</Text>
           <View style={styles.sportsGrid}>
             {getSportsToDisplay().map((sport) => (
@@ -331,10 +325,10 @@ export default function CreateSessionScreen() {
             </TouchableOpacity>
           </View>
           
-        </View>
+        </Card>
 
         {/* Sélection de la date */}
-        <View style={styles.section}>
+        <Card style={styles.section}>
           <Text style={styles.sectionTitle}>Date*</Text>
           <View style={{ alignItems: 'flex-start' }}>
             <DateTimePicker
@@ -346,12 +340,12 @@ export default function CreateSessionScreen() {
               locale="fr-FR"
             />
           </View>
-        </View>
+        </Card>
 
         {/* Sélection des heures */}
-        <View style={{ flexDirection: 'row' }}>
+        <View style={CommonStyles.row}>
           {/* Heure de début */}
-          <View style={[styles.section, { flex: 1 }]}>
+          <Card style={[styles.section, CommonStyles.flex1]}>
             <Text style={styles.sectionTitle}>Heure de début*</Text>
             <View style={{ marginLeft: -10, alignItems: 'flex-start' }}>
               <DateTimePicker
@@ -362,10 +356,10 @@ export default function CreateSessionScreen() {
                 locale="fr-FR"
               />
             </View>
-          </View>
+          </Card>
 
           {/* Heure de fin */}
-          <View style={[styles.section, { flex: 1 }]}>
+          <Card style={[styles.section, CommonStyles.flex1]}>
             <Text style={styles.sectionTitle}>Heure de fin*</Text>
             <View style={{ marginLeft: -10, alignItems: 'flex-start' }}>
               <DateTimePicker
@@ -376,11 +370,11 @@ export default function CreateSessionScreen() {
                 locale="fr-FR"
               />
             </View>
-          </View>
+          </Card>
         </View>
 
         {/* Lieu */}
-        <View style={styles.section}>
+        <Card style={styles.section}>
           <Text style={styles.sectionTitle}>Lieu*</Text>
           <View style={styles.inputContainer}>
             <Ionicons name="location-outline" size={20} color="#666" />
@@ -392,10 +386,10 @@ export default function CreateSessionScreen() {
               onChangeText={setLocation}
             />
           </View>
-        </View>
+        </Card>
 
         {/* Nombre maximum de participants et Prix par personne */}
-        <View style={styles.section}>
+        <Card style={styles.section}>
           <View style={styles.rowContainer}>
             <View style={styles.halfWidth}>
               <Text style={styles.sectionTitle}>Participants max</Text>
@@ -428,10 +422,10 @@ export default function CreateSessionScreen() {
               </View>
             </View>
           </View>
-        </View>
+        </Card>
 
         {/* Sélection des participants */}
-        <View style={styles.section}>
+        <Card style={styles.section}>
           <Text style={styles.sectionTitle}>Participants</Text>
           <TouchableOpacity
             style={styles.selectAllButton}
@@ -447,7 +441,7 @@ export default function CreateSessionScreen() {
           {(friends || []).map((friend) => (
             <FriendItem key={friend.id} friend={friend} />
           ))}
-        </View>
+        </Card>
 
         {/* Bouton de création */}
         <TouchableOpacity
@@ -459,7 +453,6 @@ export default function CreateSessionScreen() {
             {isCreating ? 'Création en cours...' : 'Créer la session'}
           </Text>
         </TouchableOpacity>
-      </ScrollView>
 
       {/* Modal de sélection des sports */}
       <Modal
@@ -513,7 +506,7 @@ export default function CreateSessionScreen() {
                   {sport.charAt(0).toUpperCase() + sport.slice(1)} {getSportEmoji(sport)}
                 </Text>
                 {selectedSport === sport && (
-                  <Ionicons name="checkmark" size={20} color={BrandColors.primary} />
+                  <Ionicons name="checkmark" size={20} color={DesignTokens.colors.primary} />
                 )}
               </TouchableOpacity>
             ))}
@@ -526,144 +519,98 @@ export default function CreateSessionScreen() {
           </ScrollView>
         </SafeAreaView>
       </Modal>
-    </SafeAreaView>
+    </BackScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    paddingTop: Platform.OS === 'ios' ? 47 : 0,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#fff',
-  },
-  backButton: {
-    padding: 8,
-    marginLeft: -8,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-  },
-  headerRight: {
-    width: 40, // Pour équilibrer avec le bouton retour
-  },
-  content: {
-    flex: 1,
-    padding: 16,
-  },
-  titleContainer: {
-    marginBottom: 32,
-    alignItems: 'center',
-  },
-  mainTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#000',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-  },
+  // Sections
   section: {
-    marginBottom: 24,
+    marginBottom: DesignTokens.spacing.lg,
   },
   rowContainer: {
-    flexDirection: 'row',
-    gap: 12,
+    ...CommonStyles.row,
+    gap: DesignTokens.spacing.md,
   },
   halfWidth: {
     flex: 1,
   },
+  
+  // Titres de section
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 12,
+    ...TextStyles.bodyMedium,
+    marginBottom: DesignTokens.spacing.md,
   },
+  
+  // Grille de sports
   sportsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: DesignTokens.spacing.sm,
   },
   sportButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#f5f5f5',
-    marginRight: 8,
-    marginBottom: 8,
+    paddingHorizontal: DesignTokens.spacing.md,
+    paddingVertical: DesignTokens.spacing.sm,
+    borderRadius: DesignTokens.borderRadius.xl,
+    backgroundColor: DesignTokens.colors.backgroundSecondary,
+    marginRight: DesignTokens.spacing.sm,
+    marginBottom: DesignTokens.spacing.sm,
   },
   sportButtonSelected: {
-    backgroundColor: BrandColors.primary,
+    backgroundColor: DesignTokens.colors.primary,
   },
   sportButtonText: {
-    color: '#666',
+    ...TextStyles.caption,
+    color: DesignTokens.colors.textSecondary,
   },
   sportButtonTextSelected: {
-    color: '#fff',
+    ...TextStyles.caption,
+    color: DesignTokens.colors.textInverse,
   },
   showMoreButton: {
-    marginTop: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    marginTop: DesignTokens.spacing.md,
+    paddingVertical: DesignTokens.spacing.sm,
+    paddingHorizontal: DesignTokens.spacing.md,
     alignSelf: 'center',
-    backgroundColor: '#f0f0f0',
-    borderRadius: 20,
+    backgroundColor: DesignTokens.colors.backgroundTertiary,
+    borderRadius: DesignTokens.borderRadius.xl,
   },
   showMoreText: {
-    color: '#666',
-    fontSize: 14,
-    fontWeight: '500',
+    ...TextStyles.captionMedium,
+    color: DesignTokens.colors.textSecondary,
   },
+  
   // Styles de la modal
   modalContainer: {
-    flex: 1,
-    backgroundColor: '#fff',
+    ...CommonStyles.container,
   },
   modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    ...CommonStyles.header,
   },
   modalCloseButton: {
-    padding: 8,
+    padding: DesignTokens.spacing.sm,
   },
   modalTitle: {
-    fontSize: 17,
-    fontWeight: '600',
+    ...TextStyles.h4,
   },
   modalHeaderRight: {
     width: 40,
   },
   searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    margin: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 10,
+    ...CommonStyles.row,
+    margin: DesignTokens.spacing.md,
+    paddingHorizontal: DesignTokens.spacing.md,
+    paddingVertical: DesignTokens.spacing.sm,
+    backgroundColor: DesignTokens.colors.backgroundSecondary,
+    borderRadius: DesignTokens.borderRadius.md,
   },
   searchIcon: {
-    marginRight: 8,
+    marginRight: DesignTokens.spacing.sm,
   },
   searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#000',
+    ...CommonStyles.flex1,
+    ...TextStyles.body,
+    color: DesignTokens.colors.text,
   },
   sportsList: {
     flex: 1,
@@ -686,7 +633,7 @@ const styles = StyleSheet.create({
     color: '#000',
   },
   sportListItemTextSelected: {
-    color: BrandColors.primary,
+    color: DesignTokens.colors.primary,
     fontWeight: '600',
   },
   noResultsContainer: {
@@ -714,22 +661,21 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 12,
+    ...CommonStyles.row,
+    padding: DesignTokens.spacing.md,
+    backgroundColor: DesignTokens.colors.backgroundSecondary,
+    borderRadius: DesignTokens.borderRadius.lg,
     minHeight: 50,
   },
   input: {
-    flex: 1,
-    marginLeft: 8,
-    fontSize: 17,
-    color: '#000',
+    ...CommonStyles.flex1,
+    marginLeft: DesignTokens.spacing.sm,
+    ...TextStyles.body,
+    color: DesignTokens.colors.text,
   },
   createButton: {
-    backgroundColor: BrandColors.primary,
-    padding: 16,
+    ...CommonStyles.buttonPrimary,
+    padding: DesignTokens.spacing.md,
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 16,
@@ -738,9 +684,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#ccc',
   },
   createButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    ...TextStyles.button,
+    color: DesignTokens.colors.textInverse,
   },
   selectAllButton: {
     backgroundColor: '#fff',
@@ -750,7 +695,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   selectAllText: {
-    color: BrandColors.primary,
+    color: DesignTokens.colors.primary,
     fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
@@ -793,12 +738,12 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: BrandColors.primary,
+    borderColor: DesignTokens.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   checkboxSelected: {
-    backgroundColor: BrandColors.primary,
+    backgroundColor: DesignTokens.colors.primary,
   },
   modalOverlay: {
     flex: 1,

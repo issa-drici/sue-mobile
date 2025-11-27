@@ -1,4 +1,4 @@
-import { BrandColors } from '@/constants/Colors';
+import { DesignTokens } from '../constants/DesignSystem';
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
@@ -17,7 +17,7 @@ interface OptimizedLoadingProps {
 export function OptimizedLoading({ 
   message = 'Chargement...', 
   size = 'small', 
-  color = BrandColors.primary,
+  color = DesignTokens.colors.primary,
   style,
   showText = true 
 }: OptimizedLoadingProps) {
@@ -37,7 +37,7 @@ export function OptimizedLoading({
 export function InlineLoading({ message = 'Chargement...' }: { message?: string }) {
   return (
     <View style={styles.inlineContainer}>
-      <ActivityIndicator size="small" color={BrandColors.primary} />
+      <ActivityIndicator size="small" color={DesignTokens.colors.primary} />
       <Text style={styles.inlineText}>{message}</Text>
     </View>
   );

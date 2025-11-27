@@ -1,4 +1,4 @@
-import { BrandColors } from '@/constants/Colors';
+import { DesignTokens } from '../constants/DesignSystem';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: BrandColors.primary,
+    color: DesignTokens.colors.primary,
   },
   content: {
     flex: 1,
@@ -194,8 +194,8 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   filterButtonActive: {
-    backgroundColor: BrandColors.primary,
-    borderColor: BrandColors.primary,
+    backgroundColor: DesignTokens.colors.primary,
+    borderColor: DesignTokens.colors.primary,
   },
   filterButtonText: {
     color: '#333',
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
   sportTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: BrandColors.primary,
+    color: DesignTokens.colors.primary,
     marginBottom: 4,
   },
   date: {

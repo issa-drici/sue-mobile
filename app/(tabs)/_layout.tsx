@@ -1,4 +1,4 @@
-import { BrandColors } from '@/constants/Colors';
+import { DesignTokens } from '../../constants/DesignSystem';
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs, useRouter } from 'expo-router';
 import React, { useEffect } from 'react';
@@ -26,7 +26,7 @@ function TabLayoutContent() {
   if (isLoading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color={BrandColors.primary} />
+        <ActivityIndicator size="large" color={DesignTokens.colors.primary} />
         <Text style={{ marginTop: 10, color: '#666' }}>Chargement...</Text>
       </View>
     );
@@ -48,7 +48,7 @@ function TabLayoutContent() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: BrandColors.primary,
+        tabBarActiveTintColor: DesignTokens.colors.primary,
         tabBarInactiveTintColor: 'gray',
         tabBarLabelStyle: {
           fontSize: 10.5,

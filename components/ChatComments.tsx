@@ -1,4 +1,4 @@
-import { BrandColors } from '@/constants/Colors';
+import { DesignTokens } from '../constants/DesignSystem';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import timezone from 'dayjs/plugin/timezone';
@@ -238,7 +238,7 @@ export default function ChatComments({ sessionId, onCommentsReload, onUserPress,
 
         renderSend={(props) => (
           <Send {...props} containerStyle={{ justifyContent: 'center', alignItems: 'center', paddingHorizontal: 12 }}>
-            <Text style={{ color: BrandColors.primary, fontWeight: '600' }}>Envoyer</Text>
+            <Text style={{ color: DesignTokens.colors.primary, fontWeight: '600' }}>Envoyer</Text>
           </Send>
         )}
         renderDay={renderDay}
@@ -269,14 +269,14 @@ const styles = StyleSheet.create({
   },
   usernameText: {
     fontSize: 12,
-    color: BrandColors.primary,
+    color: DesignTokens.colors.primary,
     fontWeight: '600',
   },
   bubbleLeft: {
     backgroundColor: '#f0f0f0',
   },
   bubbleRight: {
-    backgroundColor: BrandColors.primary,
+    backgroundColor: DesignTokens.colors.primary,
   },
   bubbleTextLeft: {
     color: '#000',
@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
   },
   onlineUsersText: {
     fontSize: 12,
-    color: BrandColors.primary,
+    color: DesignTokens.colors.primary,
   },
   commentsList: {
     flex: 1,
@@ -326,7 +326,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   ownComment: {
-    backgroundColor: BrandColors.primary,
+    backgroundColor: DesignTokens.colors.primary,
     alignSelf: 'flex-end',
     color: '#fff',
   },
@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
   },
   mentionsText: {
     fontSize: 11,
-    color: BrandColors.primary,
+    color: DesignTokens.colors.primary,
   },
   typingIndicator: {
     flexDirection: 'row',
@@ -410,7 +410,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: BrandColors.primary,
+    backgroundColor: DesignTokens.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },

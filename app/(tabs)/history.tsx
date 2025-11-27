@@ -1,22 +1,21 @@
-import { BrandColors } from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { FlatList, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import PullToRefresh from '../../components/PullToRefresh';
+import { MainScreenLayout } from '../../components/ui/ScreenLayout';
+import { DesignTokens } from '../../constants/DesignSystem';
 import { usePullToRefresh } from '../../hooks/usePullToRefresh';
 import { useGetHistory } from '../../services';
 import { SportSession } from '../../types/sport';
 import { formatDate, formatTimeFrance } from '../../utils/dateHelpers';
 import { getSportEmoji } from '../../utils/sportEmojis';
 
-// Sports statiques (toujours présents)
-const STATIC_SPORTS = ['Tous'];
 
 export default function HistoryScreen() {
   const router = useRouter();
   const [selectedSport, setSelectedSport] = useState('Tous');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery] = useState('');
   const { data: sessions, isLoading, error, refetch } = useGetHistory();
 
   // Configuration du pull-to-refresh
@@ -87,7 +86,7 @@ export default function HistoryScreen() {
           {item.sport.toUpperCase()}
         </Text>
         <Text style={styles.date}>
-          {formatDate(item.date)} à {formatTimeFrance(item.time)}
+          {formatDate(item.date)} à {formatTimeFrance(item.startTime)}
         </Text>
       </View>
       
@@ -149,11 +148,7 @@ export default function HistoryScreen() {
   // Les erreurs sont gérées dans le ListEmptyComponent
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-      <View style={styles.header}>
-        <Text style={styles.title}>Historique</Text>
-      </View>
+    <MainScreenLayout title="Historique">
 
       <View style={styles.filtersContainer}>
         <ScrollView 
@@ -218,7 +213,7 @@ export default function HistoryScreen() {
           }
         />
       </View>
-    </SafeAreaView>
+    </MainScreenLayout>
   );
 }
 
@@ -279,9 +274,9 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   filterButtonActive: {
-    backgroundColor: BrandColors.primary,
-    borderColor: BrandColors.primary,
-    shadowColor: BrandColors.primary,
+    backgroundColor: DesignTokens.colors.primary,
+    borderColor: DesignTokens.colors.primary,
+    shadowColor: DesignTokens.colors.primary,
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 3,
@@ -369,7 +364,7 @@ const styles = StyleSheet.create({
   sportTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: BrandColors.primary,
+    color: DesignTokens.colors.primary,
     marginBottom: 4,
   },
   date: {

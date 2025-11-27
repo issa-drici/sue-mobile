@@ -22,4 +22,5 @@ export { useApiWithRetry } from './useApiWithRetry';
 export { useAuthScreenDetection } from './useAuthScreenDetection';
 export { useOnboarding } from './useOnboarding';
 export { useRetry } from './useRetry';
+export { useDevMode } from './useDevMode';
 

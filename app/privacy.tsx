@@ -1,8 +1,9 @@
-import { BrandColors } from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, View as RNView, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, View as RNView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { BackScreenLayout } from '../components/ui/ScreenLayout';
+import { DesignTokens } from '../constants/DesignSystem';
 import { useAuth } from './context/auth';
 
 
@@ -43,8 +44,7 @@ export default function PrivacyScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+    <BackScreenLayout title="Confidentialité" scrollable horizontalPadding="md">
       {/* Header custom */}
       <RNView style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
@@ -53,7 +53,6 @@ export default function PrivacyScreen() {
         <Text style={styles.headerTitle}>Confidentialité</Text>
         <RNView style={styles.headerRight} />
       </RNView>
-      <ScrollView>
         <View style={styles.content}>
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Modifier l&apos;adresse e-mail</Text>
@@ -139,8 +138,7 @@ export default function PrivacyScreen() {
             </TouchableOpacity>
           </View>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+    </BackScreenLayout>
   );
 }
 
@@ -217,7 +215,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   updateButton: {
-    backgroundColor: BrandColors.primary,
+    backgroundColor: DesignTokens.colors.primary,
     borderRadius: 8,
     padding: 12,
     alignItems: 'center',

@@ -1,9 +1,9 @@
-import { BrandColors } from '@/constants/Colors';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import OnboardingProgress from '../../components/OnboardingProgress';
+import { ScreenLayout } from '../../components/ui/ScreenLayout';
+import { DesignTokens } from '../../constants/DesignSystem';
 
 export default function WelcomeScreen() {
     const router = useRouter();
@@ -14,7 +14,7 @@ export default function WelcomeScreen() {
 
 
     return (
-        <SafeAreaView style={styles.container}>
+        <ScreenLayout showHeader={false}>
             <View style={styles.content}>
                 <OnboardingProgress currentStep={1} totalSteps={3} />
 
@@ -57,7 +57,7 @@ export default function WelcomeScreen() {
                     <Text style={styles.buttonText}>Continuer</Text>
                 </TouchableOpacity>
             </View>
-        </SafeAreaView>
+        </ScreenLayout>
     );
 }
 
@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
         marginHorizontal: 6,
     },
       button: {
-    backgroundColor: BrandColors.primary,
+    backgroundColor: DesignTokens.colors.primary,
     paddingVertical: 16,
     paddingHorizontal: 32,
     borderRadius: 12,

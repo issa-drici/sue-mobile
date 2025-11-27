@@ -1,4 +1,3 @@
-import { BrandColors } from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -8,16 +7,19 @@ import {
   Image,
   Modal,
   SafeAreaView,
-  StatusBar,
   StyleSheet,
-  Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
+import { Button, Icon, Text } from '../../components/atoms';
 import PullToRefresh from '../../components/PullToRefresh';
+import { Card } from '../../components/ui/Card';
+import { MainScreenLayout } from '../../components/ui/ScreenLayout';
 import UserProfileModal from '../../components/UserProfileModal';
+import { DesignTokens } from '../../constants/DesignSystem';
 import { usePullToRefresh } from '../../hooks';
 import { useGetFriendRequests, useGetFriends, useRemoveFriend, useRespondToFriendRequest } from '../../services';
+import { CommonStyles, TextStyles } from '../../styles/CommonStyles';
 import { Friend } from '../../types/user';
 
 const FriendItem = ({ friend, onProfilePress, onMenuPress }: { 
@@ -31,33 +33,34 @@ const FriendItem = ({ friend, onProfilePress, onMenuPress }: {
   }
 
   return (
-    <View style={styles.friendItem}>
-      <TouchableOpacity 
-        style={styles.friendInfo}
-        onPress={onProfilePress}
-        activeOpacity={0.7}
-      >
-        <View style={styles.avatarContainer}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {friend.firstname?.[0] || ''}{friend.lastname?.[0] || ''}
+    <Card style={styles.friendItem} variant="flat">
+      <View style={CommonStyles.rowBetween}>
+        <TouchableOpacity 
+          style={CommonStyles.row}
+          onPress={onProfilePress}
+          activeOpacity={0.7}
+        >
+          <View style={styles.avatarContainer}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {friend.firstname?.[0] || ''}{friend.lastname?.[0] || ''}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.friendDetails}>
+            <Text style={styles.friendName}>
+              {friend.firstname || ''} {friend.lastname || ''}
             </Text>
           </View>
-
-        </View>
-        <View style={styles.friendDetails}>
-          <Text style={styles.friendName}>
-            {friend.firstname || ''} {friend.lastname || ''}
-          </Text>
-        </View>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.menuButton}
-        onPress={onMenuPress}
-      >
-        <Ionicons name="ellipsis-horizontal" size={24} color="#666" />
-      </TouchableOpacity>
-    </View>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.menuButton}
+          onPress={onMenuPress}
+        >
+          <Ionicons name="ellipsis-horizontal" size={DesignTokens.iconSizes.lg} color={DesignTokens.colors.textSecondary} />
+        </TouchableOpacity>
+      </View>
+    </Card>
   );
 };
 
@@ -241,24 +244,22 @@ export default function FriendsScreen() {
           </View>
         </TouchableOpacity>
         <View style={styles.requestActions}>
-          <TouchableOpacity
-            style={[styles.requestButton, styles.acceptButton]}
+          <Button
+            title={isResponding ? '...' : 'Accepter'}
+            variant="primary"
+            size="sm"
             onPress={() => handleRespondToRequest(item.id, 'accept')}
             disabled={isResponding}
-          >
-            <Text style={styles.acceptButtonText}>
-              {isResponding ? '...' : 'Accepter'}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.requestButton, styles.declineButton]}
+            style={{ flex: 1, marginRight: DesignTokens.spacing.xs }}
+          />
+          <Button
+            title={isResponding ? '...' : 'Refuser'}
+            variant="secondary"
+            size="sm"
             onPress={() => handleRespondToRequest(item.id, 'decline')}
             disabled={isResponding}
-          >
-            <Text style={styles.declineButtonText}>
-              {isResponding ? '...' : 'Refuser'}
-            </Text>
-          </TouchableOpacity>
+            style={{ flex: 1, marginLeft: DesignTokens.spacing.xs }}
+          />
         </View>
       </View>
     );
@@ -281,19 +282,22 @@ export default function FriendsScreen() {
     );
   }
 
+  // Bouton d'ajout d'ami pour le header
+  const AddFriendButton = () => (
+    <Button
+      title="Ajouter"
+      variant="primary"
+      size="sm"
+      onPress={() => router.push('/add-friend')}
+      leftIcon={<Icon name="person-add" size="sm" color="textInverse" />}
+    />
+  );
+
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-      <View style={styles.header}>
-        <Text style={styles.title}>Mes Amis</Text>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => router.push('/add-friend')}
-        >
-          <Ionicons name="person-add" size={20} color="#fff" />
-          <Text style={styles.addButtonText}>Ajouter</Text>
-        </TouchableOpacity>
-      </View>
+    <MainScreenLayout
+      title="Mes Amis"
+      rightAction={<AddFriendButton />}
+    >
 
 
 
@@ -333,9 +337,9 @@ export default function FriendsScreen() {
         keyExtractor={(item, index) => `section-${index}`}
         contentContainerStyle={styles.listContainer}
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Ionicons name="people-outline" size={48} color="#666" />
-            <Text style={styles.emptyText}>
+          <View style={CommonStyles.emptyStateContainer}>
+            <Ionicons name="people-outline" size={DesignTokens.iconSizes.xxl} color={DesignTokens.colors.textTertiary} />
+            <Text style={CommonStyles.emptyStateTitle}>
               Aucun ami trouvé
             </Text>
           </View>
@@ -368,14 +372,14 @@ export default function FriendsScreen() {
               style={styles.modalItem}
               onPress={() => handleMenuAction('message')}
             >
-              <Ionicons name="chatbubble-outline" size={24} color={BrandColors.primary} />
+              <Ionicons name="chatbubble-outline" size={24} color={DesignTokens.colors.primary} />
               <Text style={styles.modalItemText}>Message</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.modalItem}
               onPress={() => handleMenuAction('invite')}
             >
-              <Ionicons name="calendar-outline" size={24} color={BrandColors.primary} />
+              <Ionicons name="calendar-outline" size={24} color={DesignTokens.colors.primary} />
               <Text style={styles.modalItemText}>Inviter à une session</Text>
             </TouchableOpacity> */}
             <TouchableOpacity
@@ -410,218 +414,121 @@ export default function FriendsScreen() {
         userFirstname={selectedFriend?.firstname}
         userLastname={selectedFriend?.lastname}
       />
-    </SafeAreaView>
+    </MainScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  header: {
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
+  // Bouton d'ajout d'ami
   addButton: {
-    backgroundColor: BrandColors.primary,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 25,
-    flexDirection: 'row',
-    alignItems: 'center',
+    ...CommonStyles.buttonPrimary,
+    borderRadius: DesignTokens.borderRadius.xxl,
+    paddingHorizontal: DesignTokens.spacing.lg,
+    paddingVertical: DesignTokens.spacing.sm,
   },
   addButtonText: {
-    color: BrandColors.white,
-    fontSize: 17,
-    fontWeight: '600',
-    marginLeft: 8,
+    ...TextStyles.button,
+    color: DesignTokens.colors.textInverse,
+    marginLeft: DesignTokens.spacing.sm,
   },
-  tabsContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  activeTab: {
-    borderBottomWidth: 2,
-    borderBottomColor: BrandColors.primary,
-  },
-  tabText: {
-    fontSize: 16,
-    color: '#666',
-  },
-  activeTabText: {
-    color: BrandColors.primary,
-    fontWeight: '600',
-  },
-  tabTextContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  badge: {
-    backgroundColor: BrandColors.primary,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-  },
-  badgeText: {
-    color: BrandColors.white,
-    fontSize: 13,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
+  
+  // Container de la liste
   listContainer: {
-    padding: 16,
+    padding: DesignTokens.spacing.md,
   },
+  
+  // Styles pour les éléments d'amis
   friendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 12,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  friendInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    paddingVertical: 4,
+    marginBottom: DesignTokens.spacing.sm,
   },
   avatarContainer: {
-    position: 'relative',
-    marginRight: 12,
+    marginRight: DesignTokens.spacing.md,
   },
   avatar: {
     width: 48,
     height: 48,
-    borderRadius: 24,
-    backgroundColor: '#e0e0e0',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderRadius: DesignTokens.borderRadius.round,
+    backgroundColor: DesignTokens.colors.backgroundSecondary,
+    ...CommonStyles.centerContent,
   },
   avatarText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#666',
+    ...TextStyles.h4,
+    color: DesignTokens.colors.textSecondary,
   },
-
   friendDetails: {
     flex: 1,
   },
   friendName: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 2,
+    ...TextStyles.bodyMedium,
+    marginBottom: DesignTokens.spacing.xs,
   },
+  menuButton: {
+    padding: DesignTokens.spacing.sm,
+  },
+  
+  // Styles pour les demandes d'amis
   requestCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    ...CommonStyles.card,
   },
   requestInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    ...CommonStyles.row,
   },
   requestAvatar: {
     width: 48,
     height: 48,
-    borderRadius: 24,
-    marginRight: 12,
+    borderRadius: DesignTokens.borderRadius.round,
+    marginRight: DesignTokens.spacing.md,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: DesignTokens.colors.border,
   },
   requestFriendInfo: {
     flex: 1,
   },
   requestFriendName: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
+    ...TextStyles.bodyMedium,
+    marginBottom: DesignTokens.spacing.xs,
   },
   requestMutualFriends: {
-    fontSize: 14,
-    color: '#666',
+    ...TextStyles.caption,
+    color: DesignTokens.colors.textSecondary,
   },
   requestActions: {
-    flexDirection: 'row',
-    marginTop: 12,
-    gap: 8,
+    ...CommonStyles.row,
+    marginTop: DesignTokens.spacing.md,
+    gap: DesignTokens.spacing.sm,
   },
   requestButton: {
     flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    alignItems: 'center',
+    paddingVertical: DesignTokens.spacing.sm,
+    paddingHorizontal: DesignTokens.spacing.md,
+    borderRadius: DesignTokens.borderRadius.md,
+    ...CommonStyles.centerContent,
   },
   acceptButton: {
-    backgroundColor: BrandColors.primary,
+    backgroundColor: DesignTokens.colors.primary,
   },
   declineButton: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: DesignTokens.colors.backgroundSecondary,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: DesignTokens.colors.border,
   },
   acceptButtonText: {
-    color: BrandColors.white,
-    fontWeight: '600',
+    ...TextStyles.captionMedium,
+    color: DesignTokens.colors.textInverse,
   },
   declineButtonText: {
-    color: '#666',
-    fontWeight: '600',
+    ...TextStyles.captionMedium,
+    color: DesignTokens.colors.textSecondary,
   },
-  emptyContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 32,
-  },
-  emptyText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-  },
+  
+  // Sections
   sectionContainer: {
-    marginBottom: 24,
+    marginBottom: DesignTokens.spacing.lg,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 12,
+    ...TextStyles.h4,
+    color: DesignTokens.colors.text,
+    marginBottom: DesignTokens.spacing.md,
     paddingHorizontal: 16,
   },
   loadingContainer: {
@@ -651,7 +558,7 @@ const styles = StyleSheet.create({
   modalItemText: {
     fontSize: 16,
     marginLeft: 12,
-    color: BrandColors.primary,
+    color: DesignTokens.colors.primary,
   },
   menuButton: {
     padding: 8,

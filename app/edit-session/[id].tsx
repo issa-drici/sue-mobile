@@ -1,4 +1,6 @@
-import { BrandColors } from '@/constants/Colors';
+import { DesignTokens } from '../../constants/DesignSystem';
+import { CommonStyles, TextStyles } from '../../styles/CommonStyles';
+import { BackScreenLayout } from '../../components/ui/ScreenLayout';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -171,19 +173,7 @@ export default function EditSessionScreen() {
     }
 
     return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity
-                    style={styles.backButton}
-                    onPress={() => router.back()}
-                >
-                    <Ionicons name="arrow-back" size={24} color="#000" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>Modifier la Session</Text>
-                <View style={styles.headerRight} />
-            </View>
-
-            <ScrollView style={styles.content}>
+        <BackScreenLayout title="Modifier la Session" scrollable horizontalPadding="md">
                 {/* Titre */}
                 <View style={styles.titleContainer}>
                     <Text style={styles.mainTitle}>Modifier la session</Text>
@@ -294,8 +284,7 @@ export default function EditSessionScreen() {
                         {isUpdating ? 'Mise à jour en cours...' : 'Mettre à jour la session'}
                     </Text>
                 </TouchableOpacity>
-            </ScrollView>
-        </SafeAreaView>
+        </BackScreenLayout>
     );
 }
 
@@ -368,7 +357,7 @@ const styles = StyleSheet.create({
         color: '#333',
     },
     createButton: {
-        backgroundColor: BrandColors.primary,
+        backgroundColor: DesignTokens.colors.primary,
         paddingVertical: 16,
         borderRadius: 12,
         alignItems: 'center',

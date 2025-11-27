@@ -1,4 +1,4 @@
-import { BrandColors } from '@/constants/Colors';
+import { DesignTokens } from '../constants/DesignSystem';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -23,10 +23,10 @@ const InfoMessage: React.FC<InfoMessageProps> = ({
     switch (type) {
       case 'info':
         return {
-          backgroundColor: BrandColors.white,
-          borderColor: BrandColors.primary,
-          textColor: BrandColors.primary,
-          iconColor: BrandColors.primary,
+          backgroundColor: DesignTokens.colors.white,
+          borderColor: DesignTokens.colors.primary,
+          textColor: DesignTokens.colors.primary,
+          iconColor: DesignTokens.colors.primary,
           defaultIcon: 'information-circle'
         };
       case 'warning':
@@ -55,10 +55,10 @@ const InfoMessage: React.FC<InfoMessageProps> = ({
         };
       default:
         return {
-          backgroundColor: BrandColors.white,
-          borderColor: BrandColors.primary,
-          textColor: BrandColors.primary,
-          iconColor: BrandColors.primary,
+          backgroundColor: DesignTokens.colors.white,
+          borderColor: DesignTokens.colors.primary,
+          textColor: DesignTokens.colors.primary,
+          iconColor: DesignTokens.colors.primary,
           defaultIcon: 'information-circle'
         };
     }

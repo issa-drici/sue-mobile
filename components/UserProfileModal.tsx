@@ -1,4 +1,5 @@
-import { BrandColors } from '@/constants/Colors';
+import { DesignTokens } from '../constants/DesignSystem';
+import { CommonStyles, TextStyles } from '../styles/CommonStyles';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect } from 'react';
 import {
@@ -327,7 +328,7 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: BrandColors.primary,
+    color: DesignTokens.colors.primary,
     marginBottom: 4,
   },
   statLabel: {
@@ -431,7 +432,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: BrandColors.primary,
+        backgroundColor: DesignTokens.colors.primary,
     padding: 16,
     borderRadius: 12,
     marginTop: 16,

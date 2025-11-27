@@ -1,19 +1,19 @@
-import { BrandColors } from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Alert,
-  FlatList,
-  Platform,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Alert,
+    FlatList,
+    Platform,
+    StyleSheet,
+    TouchableOpacity,
+    View
 } from 'react-native';
+import { Text } from '../components/atoms';
+import { SearchBar } from '../components/molecules';
+import { BackScreenLayout } from '../components/ui/ScreenLayout';
 import UserProfileModal from '../components/UserProfileModal';
+import { DesignTokens } from '../constants/DesignSystem';
 import { useCancelFriendRequest, useSearchUsers, useSendFriendRequest } from '../services';
 
 export default function AddFriendScreen() {
@@ -147,9 +147,9 @@ export default function AddFriendScreen() {
       if (item.isFriend) {
         return { icon: 'checkmark-circle', color: '#34C759', text: 'Ami', action: null };
       } else if (item.hasPendingRequest && item.relationshipStatus !== 'cancelled') {
-        return { icon: 'close-circle', color: BrandColors.primary, text: 'Annuler', action: 'cancel' };
+        return { icon: 'close-circle', color: DesignTokens.colors.primary, text: 'Annuler', action: 'cancel' };
       } else {
-        return { icon: 'person-add', color: BrandColors.primary, text: 'Ajouter', action: 'add' };
+        return { icon: 'person-add', color: DesignTokens.colors.primary, text: 'Ajouter', action: 'add' };
       }
     };
 
@@ -202,49 +202,29 @@ export default function AddFriendScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <Ionicons name="arrow-back" size={24} color="#000" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Ajouter un ami</Text>
-        <View style={styles.headerRight} />
-      </View>
-
-      <View style={styles.content}>
+    <BackScreenLayout title="Ajouter un ami" scrollable horizontalPadding="md">
         {/* Titre */}
         <View style={styles.titleContainer}>
-          <Text style={styles.mainTitle}>Trouver des amis</Text>
-          <Text style={styles.subtitle}>
+          <Text variant="h2" style={{ marginBottom: DesignTokens.spacing.xs }}>
+            Trouver des amis
+          </Text>
+          <Text variant="body" color="secondary">
             Recherchez vos amis pour les inviter à rejoindre vos sessions sportives
           </Text>
         </View>
 
         {/* Recherche */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Rechercher</Text>
-          <View style={styles.searchContainer}>
-            <View style={styles.inputContainer}>
-              <Ionicons name="search" size={20} color="#666" />
-              <TextInput
-                style={styles.input}
-                placeholder="Nom ou adresse email..."
-                placeholderTextColor="#999"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                autoCapitalize="none"
-                keyboardType="email-address"
-              />
-              {searchQuery ? (
-                <TouchableOpacity onPress={() => setSearchQuery('')}>
-                  <Ionicons name="close-circle" size={20} color="#666" />
-                </TouchableOpacity>
-              ) : null}
-            </View>
-          </View>
+          <Text variant="h4" style={{ marginBottom: DesignTokens.spacing.sm }}>
+            Rechercher
+          </Text>
+          <SearchBar
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Nom ou adresse email..."
+            onClear={() => setSearchQuery('')}
+            style={{ marginBottom: DesignTokens.spacing.sm }}
+          />
         </View>
 
         {/* Résultats de recherche */}
@@ -279,7 +259,7 @@ export default function AddFriendScreen() {
             <View style={styles.instructionsContainer}>
               <View style={styles.instructionItem}>
                 <View style={styles.instructionIcon}>
-                  <Ionicons name="search" size={24} color={BrandColors.primary} />
+                  <Ionicons name="search" size={24} color={DesignTokens.colors.primary} />
                 </View>
                 <View style={styles.instructionContent}>
                   <Text style={styles.instructionTitle}>1. Recherchez</Text>
@@ -291,7 +271,7 @@ export default function AddFriendScreen() {
 
               <View style={styles.instructionItem}>
                 <View style={styles.instructionIcon}>
-                  <Ionicons name="mail" size={24} color={BrandColors.primary} />
+                  <Ionicons name="mail" size={24} color={DesignTokens.colors.primary} />
                 </View>
                 <View style={styles.instructionContent}>
                   <Text style={styles.instructionTitle}>2. Invitez</Text>
@@ -303,7 +283,7 @@ export default function AddFriendScreen() {
 
               <View style={styles.instructionItem}>
                 <View style={styles.instructionIcon}>
-                  <Ionicons name="people" size={24} color={BrandColors.primary} />
+                  <Ionicons name="people" size={24} color={DesignTokens.colors.primary} />
                 </View>
                 <View style={styles.instructionContent}>
                   <Text style={styles.instructionTitle}>3. Connectez-vous</Text>
@@ -316,9 +296,6 @@ export default function AddFriendScreen() {
           </View>
         )}
 
-
-      </View>
-
       {/* Modal de profil utilisateur */}
       <UserProfileModal
         visible={isProfileModalVisible}
@@ -327,7 +304,7 @@ export default function AddFriendScreen() {
         userFirstname={selectedUser?.firstname}
         userLastname={selectedUser?.lastname}
       />
-    </SafeAreaView>
+    </BackScreenLayout>
   );
 }
 
@@ -492,7 +469,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   searchButton: {
-    backgroundColor: BrandColors.primary,
+    backgroundColor: DesignTokens.colors.primary,
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 8,
@@ -503,7 +480,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ccc',
   },
   searchButtonText: {
-    color: BrandColors.white,
+    color: DesignTokens.colors.white,
     fontSize: 16,
     fontWeight: '600',
   },

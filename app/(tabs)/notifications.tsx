@@ -1,10 +1,7 @@
-import { BrandColors } from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import {
-    SafeAreaView,
-    StatusBar,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -13,10 +10,13 @@ import {
 import { SwipeListView } from 'react-native-swipe-list-view';
 import { InlineLoading } from '../../components/OptimizedLoading';
 import PullToRefresh from '../../components/PullToRefresh';
+import { MainScreenLayout } from '../../components/ui/ScreenLayout';
+import { DesignTokens } from '../../constants/DesignSystem';
 import { useGlobalNotifications } from '../../context/globalNotifications';
 import { useNotificationsContext } from '../../context/notifications';
 import { usePullToRefresh } from '../../hooks';
 import { useDeleteNotification, useMarkAllNotificationsAsRead, useMarkNotificationAsRead } from '../../services';
+import { CommonStyles, TextStyles } from '../../styles/CommonStyles';
 
 export default function NotificationsScreen() {
   const router = useRouter();
@@ -183,7 +183,7 @@ export default function NotificationsScreen() {
     const getNotificationColor = (type: string) => {
       switch (type) {
         case 'invitation':
-          return BrandColors.primary;
+          return DesignTokens.colors.primary;
         case 'reminder':
           return '#FF9500';
         case 'update':
@@ -195,7 +195,7 @@ export default function NotificationsScreen() {
         case 'session_cancelled':
           return '#FF3B30';
         case 'friend_request':
-          return BrandColors.primary;
+          return DesignTokens.colors.primary;
         case 'friend_accepted':
           return '#34C759';
         default:
@@ -287,33 +287,40 @@ export default function NotificationsScreen() {
     </View>
   );
 
+  // Bouton "Tout marquer" pour le header
+  const MarkAllButton = () => {
+    if (!allNotifications || allNotifications.length === 0 || !allNotifications.some(notification => !notification.read)) {
+      return null;
+    }
+
+    return (
+      <TouchableOpacity
+        style={styles.markAllButton}
+        onPress={async () => {
+          console.log('📝 [NotificationsScreen] Marquer toutes comme lues');
+          try {
+            await markAllAsRead();
+            // Refetch après marquage - synchroniser les deux
+            await Promise.all([refetch(), refetchGlobalUnreadCount()]);
+            console.log('✅ [NotificationsScreen] Synchronisation après marquage terminée');
+          } catch (error) {
+            console.error('❌ Erreur lors du marquage:', error);
+          }
+        }}
+        disabled={isMarkingAllAsRead}
+      >
+        <Text style={styles.markAllButtonText}>
+          {isMarkingAllAsRead ? '...' : 'Tout marquer'}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-      <View style={styles.header}>
-        <Text style={styles.title}>Notifications</Text>
-        {allNotifications && allNotifications.length > 0 && allNotifications.some(notification => !notification.read) && (
-          <TouchableOpacity
-            style={styles.markAllButton}
-            onPress={async () => {
-              console.log('📝 [NotificationsScreen] Marquer toutes comme lues');
-              try {
-                await markAllAsRead();
-                // Refetch après marquage - synchroniser les deux
-                await Promise.all([refetch(), refetchGlobalUnreadCount()]);
-                console.log('✅ [NotificationsScreen] Synchronisation après marquage terminée');
-              } catch (error) {
-                console.error('❌ Erreur lors du marquage:', error);
-              }
-            }}
-            disabled={isMarkingAllAsRead}
-          >
-            <Text style={styles.markAllButtonText}>
-              {isMarkingAllAsRead ? '...' : 'Tout marquer'}
-            </Text>
-          </TouchableOpacity>
-        )}
-      </View>
+    <MainScreenLayout
+      title="Notifications"
+      rightAction={<MarkAllButton />}
+    >
 
       {allNotifications && allNotifications.length > 0 ? (
         <SwipeListView
@@ -340,10 +347,10 @@ export default function NotificationsScreen() {
           }
         />
       ) : (
-        <View style={styles.emptyState}>
-          <Ionicons name="notifications-off" size={64} color="#ccc" />
-          <Text style={styles.emptyStateTitle}>Aucune notification</Text>
-          <Text style={styles.emptyStateMessage}>
+        <View style={CommonStyles.emptyStateContainer}>
+          <Ionicons name="notifications-off" size={DesignTokens.iconSizes.xxl} color={DesignTokens.colors.textTertiary} />
+          <Text style={CommonStyles.emptyStateTitle}>Aucune notification</Text>
+          <Text style={CommonStyles.emptyStateSubtitle}>
             Vous n&apos;avez pas encore reçu de notifications.
           </Text>
           <TouchableOpacity style={styles.debugButton} onPress={() => {
@@ -358,143 +365,103 @@ export default function NotificationsScreen() {
           </TouchableOpacity>
         </View>
       )}
-    </SafeAreaView>
+    </MainScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
-  },
+  // Bouton "Tout marquer"
   markAllButton: {
-    backgroundColor: BrandColors.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    backgroundColor: DesignTokens.colors.primary,
+    paddingHorizontal: DesignTokens.spacing.md,
+    paddingVertical: DesignTokens.spacing.sm,
+    borderRadius: DesignTokens.borderRadius.xl,
   },
   markAllButtonText: {
-    color: BrandColors.white,
-    fontSize: 14,
-    fontWeight: '600',
+    ...TextStyles.captionMedium,
+    color: DesignTokens.colors.textInverse,
   },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-  },
-  emptyStateTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#333',
-    marginTop: 16,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  emptyStateMessage: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 24,
-  },
+  
+  // Debug button
   debugButton: {
-    backgroundColor: '#FF9500',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    backgroundColor: DesignTokens.colors.warning,
+    paddingHorizontal: DesignTokens.spacing.md,
+    paddingVertical: DesignTokens.spacing.sm,
+    borderRadius: DesignTokens.borderRadius.md,
   },
   debugButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
+    ...TextStyles.captionMedium,
+    color: DesignTokens.colors.textInverse,
   },
+  
+  // Liste des notifications
   notificationsList: {
     padding: 0,
   },
   notificationItem: {
     height: 100,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: DesignTokens.spacing.lg,
+    paddingVertical: DesignTokens.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-    backgroundColor: '#fff',
+    borderBottomColor: DesignTokens.colors.borderLight,
+    backgroundColor: DesignTokens.colors.background,
   },
   notificationTouchable: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    ...CommonStyles.row,
     flex: 1,
   },
   notificationContent: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: DesignTokens.spacing.md,
   },
   notificationIcon: {
     width: 44,
     height: 44,
-    borderRadius: 22,
-    backgroundColor: '#f8f9fa',
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderRadius: DesignTokens.borderRadius.round,
+    backgroundColor: DesignTokens.colors.backgroundSecondary,
+    ...CommonStyles.centerContent,
   },
   notificationTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 3,
+    ...TextStyles.bodyMedium,
+    color: DesignTokens.colors.text,
+    marginBottom: DesignTokens.spacing.xs,
   },
   notificationMessage: {
-    fontSize: 13,
-    color: '#666',
+    ...TextStyles.caption,
+    color: DesignTokens.colors.textSecondary,
     lineHeight: 17,
-    marginBottom: 3,
+    marginBottom: DesignTokens.spacing.xs,
   },
   notificationTime: {
-    fontSize: 12,
-    color: '#999',
+    ...TextStyles.small,
+    color: DesignTokens.colors.textTertiary,
   },
   unreadNotification: {
     backgroundColor: '#f8f9ff',
   },
   unreadTitle: {
-    fontWeight: '600',
-    color: '#333',
+    ...TextStyles.bodySemiBold,
+    color: DesignTokens.colors.text,
   },
   notificationHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
+    ...CommonStyles.rowBetween,
+    marginBottom: DesignTokens.spacing.xs,
   },
   unreadDot: {
     width: 8,
     height: 8,
-    borderRadius: 4,
-    backgroundColor: BrandColors.primary,
-    marginLeft: 8,
+    borderRadius: DesignTokens.borderRadius.round,
+    backgroundColor: DesignTokens.colors.primary,
+    marginLeft: DesignTokens.spacing.sm,
   },
   chevronContainer: {
-    marginLeft: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
+    marginLeft: DesignTokens.spacing.sm,
+    ...CommonStyles.centerContent,
   },
+  
+  // Actions de swipe
   swipeActions: {
-    flexDirection: 'row',
+    ...CommonStyles.row,
     alignItems: 'flex-start',
     justifyContent: 'flex-end',
     height: '100%',
@@ -503,19 +470,10 @@ const styles = StyleSheet.create({
   swipeAction: {
     width: 80,
     height: 100,
-    justifyContent: 'center',
-    alignItems: 'center',
+    ...CommonStyles.centerContent,
     marginRight: 0,
   },
   deleteAction: {
-    backgroundColor: '#FF3B30',
-  },
-  loadingMore: {
-    paddingVertical: 20,
-    alignItems: 'center',
-  },
-  loadingMoreText: {
-    fontSize: 14,
-    color: '#666',
+    backgroundColor: DesignTokens.colors.error,
   },
 });
