@@ -34,6 +34,7 @@ export interface UserStats {
 
 export interface UserProfile extends User {
   stats: UserStats;
+  sports_preferences?: string[];
   isAlreadyFriend?: boolean;
   hasPendingRequest?: boolean;
   relationshipStatus?: 'none' | 'pending' | 'accepted' | 'declined' | 'cancelled';

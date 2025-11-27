@@ -6,7 +6,7 @@ export interface UserProfile {
   email: string;
   avatar?: string;
   bio?: string;
-  sports: string[];
+  sports_preferences?: string[];
   createdAt: string;
 }
 
@@ -15,7 +15,7 @@ export interface UpdateProfileData {
   lastname?: string;
   avatar?: string;
   bio?: string;
-  sports?: string[];
+  sports_preferences?: string[];
 }
 
 export interface Friend {

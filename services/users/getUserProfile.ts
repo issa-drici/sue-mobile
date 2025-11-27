@@ -32,6 +32,7 @@ export const useGetUserProfile = () => {
           lastname: userData.lastname || '',
           email: userData.email || '',
           avatar: userData.avatar || undefined,
+          sports_preferences: userData.sports_preferences || [],
           // Stats adaptées à la structure de l'API
           stats: {
             sessionsCreated: userData.stats?.sessionsCreated || 0,

@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
     Alert,
+    Modal,
     Platform,
     SafeAreaView,
     ScrollView,
@@ -15,24 +16,23 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { useSportsPreferences } from '../hooks/useSportsPreferences';
 import { useCreateSession, useGetFriends } from '../services';
 import { Friend } from '../services/types/users';
 import { Sport } from '../types/sport';
-import { getDefaultEndTime, isValidEndTime, roundToNearestHalfHour, roundToNextHalfHour } from '../utils';
+import { getDefaultEndTime, getSportEmoji, isValidEndTime, roundToNearestHalfHour, roundToNextHalfHour, SPORTS_LIST } from '../utils';
 import { useAuth } from './context/auth';
-
-const SPORTS: Sport[] = ['tennis', 'golf', 'musculation', 'football', 'basketball'];
 
 export default function CreateSessionScreen() {
   const router = useRouter();
   const { getAuthToken } = useAuth();
   const { data: friends, error } = useGetFriends();
   const { createSession, isLoading: isCreating } = useCreateSession();
+  const { sportsPreferences } = useSportsPreferences();
   const [selectedSport, setSelectedSport] = useState<Sport | null>(null);
+  const [showSportsModal, setShowSportsModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [date, setDate] = useState(new Date());
-  
-  // Debug: Afficher la date par défaut
-  console.log('Date par défaut du formulaire:', date.toISOString().split('T')[0]);
   
   // Initialiser avec l'heure arrondie à la demi-heure suivante pour les valeurs par défaut
   const initialStartTime = roundToNextHalfHour(new Date());
@@ -42,6 +42,40 @@ export default function CreateSessionScreen() {
   const [maxParticipants, setMaxParticipants] = useState('');
   const [pricePerPerson, setPricePerPerson] = useState('');
   const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
+
+  // Logique pour les sports à afficher
+  const getSportsToDisplay = () => {
+    // Afficher seulement les sports préférés du backend
+    return sportsPreferences || [];
+  };
+
+  // Obtenir le sport sélectionné s'il n'est pas dans les préférences
+  const getSelectedNonPreferredSport = () => {
+    console.log('Debug - selectedSport:', selectedSport);
+    console.log('Debug - sportsPreferences:', sportsPreferences);
+    console.log('Debug - includes check:', selectedSport && !sportsPreferences.includes(selectedSport));
+    
+    if (selectedSport && !sportsPreferences.includes(selectedSport)) {
+      return selectedSport;
+    }
+    return null;
+  };
+
+  const handleSportSelection = (sport: Sport) => {
+    setSelectedSport(sport);
+    setShowSportsModal(false);
+    setSearchQuery('');
+  };
+
+  // Filtrer les sports selon la recherche
+  const getFilteredSports = () => {
+    if (!searchQuery.trim()) {
+      return SPORTS_LIST;
+    }
+    return SPORTS_LIST.filter((sport: Sport) => 
+      sport.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  };
 
   const onChangeDatePicker = (event: any, selectedDate?: Date) => {
     if (selectedDate) {
@@ -253,34 +287,50 @@ export default function CreateSessionScreen() {
       </View>
 
       <ScrollView style={styles.content}>
-        {/* Titre */}
-        <View style={styles.titleContainer}>
-          <Text style={styles.mainTitle}>Créer une nouvelle session</Text>
-          <Text style={styles.subtitle}>Remplissez les informations ci-dessous</Text>
-        </View>
 
         {/* Sélection du sport */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Sport*</Text>
           <View style={styles.sportsGrid}>
-            {SPORTS.map((sport) => (
+            {getSportsToDisplay().map((sport) => (
               <TouchableOpacity
                 key={sport}
                 style={[
                   styles.sportButton,
                   selectedSport === sport && styles.sportButtonSelected
                 ]}
-                onPress={() => setSelectedSport(sport)}
+                onPress={() => handleSportSelection(sport)}
               >
                 <Text style={[
                   styles.sportButtonText,
                   selectedSport === sport && styles.sportButtonTextSelected
                 ]}>
-                  {sport.charAt(0).toUpperCase() + sport.slice(1)}
+                  {sport.charAt(0).toUpperCase() + sport.slice(1)} {getSportEmoji(sport)}
                 </Text>
               </TouchableOpacity>
             ))}
+            
+            {/* Sport sélectionné non préféré */}
+            {getSelectedNonPreferredSport() && (
+              <TouchableOpacity
+                style={[styles.sportButton, styles.sportButtonSelected]}
+                onPress={() => setShowSportsModal(true)}
+              >
+                <Text style={[styles.sportButtonText, styles.sportButtonTextSelected]}>
+                  {getSelectedNonPreferredSport()!.charAt(0).toUpperCase() + getSelectedNonPreferredSport()!.slice(1)} {getSportEmoji(getSelectedNonPreferredSport()!)}
+                </Text>
+              </TouchableOpacity>
+            )}
+            
+            {/* Bouton "Voir tous les sports" à la suite */}
+            <TouchableOpacity
+              style={styles.sportButton}
+              onPress={() => setShowSportsModal(true)}
+            >
+              <Text style={styles.sportButtonText}>Voir tous les sports</Text>
+            </TouchableOpacity>
           </View>
+          
         </View>
 
         {/* Sélection de la date */}
@@ -344,36 +394,39 @@ export default function CreateSessionScreen() {
           </View>
         </View>
 
-        {/* Nombre maximum de participants */}
+        {/* Nombre maximum de participants et Prix par personne */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Nombre maximum de participants</Text>
-          <View style={styles.inputContainer}>
-            <Ionicons name="people-outline" size={20} color="#666" />
-            <TextInput
-              style={styles.input}
-              placeholder="Entrez le nombre maximum de participants"
-              placeholderTextColor="#999"
-              value={maxParticipants}
-              onChangeText={setMaxParticipants}
-              keyboardType="numeric"
-              maxLength={2}
-            />
-          </View>
-        </View>
-
-        {/* Prix par personne */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Prix par personne (€)</Text>
-          <View style={styles.inputContainer}>
-            <Ionicons name="card-outline" size={20} color="#666" />
-            <TextInput
-              style={styles.input}
-              placeholder="Entrez le prix par personne (optionnel)"
-              placeholderTextColor="#999"
-              value={pricePerPerson}
-              onChangeText={setPricePerPerson}
-              keyboardType="decimal-pad"
-            />
+          <View style={styles.rowContainer}>
+            <View style={styles.halfWidth}>
+              <Text style={styles.sectionTitle}>Participants max</Text>
+              <View style={styles.inputContainer}>
+                <Ionicons name="people-outline" size={20} color="#666" />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Max participants"
+                  placeholderTextColor="#999"
+                  value={maxParticipants}
+                  onChangeText={setMaxParticipants}
+                  keyboardType="numeric"
+                  maxLength={2}
+                />
+              </View>
+            </View>
+            
+            <View style={styles.halfWidth}>
+              <Text style={styles.sectionTitle}>Prix par personne (€)</Text>
+              <View style={styles.inputContainer}>
+                <Ionicons name="card-outline" size={20} color="#666" />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Prix (optionnel)"
+                  placeholderTextColor="#999"
+                  value={pricePerPerson}
+                  onChangeText={setPricePerPerson}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+            </View>
           </View>
         </View>
 
@@ -407,6 +460,72 @@ export default function CreateSessionScreen() {
           </Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Modal de sélection des sports */}
+      <Modal
+        visible={showSportsModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={() => {
+                setShowSportsModal(false);
+                setSearchQuery('');
+              }}
+            >
+              <Ionicons name="close" size={24} color="#000" />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Choisir un sport</Text>
+            <View style={styles.modalHeaderRight} />
+          </View>
+
+          {/* Barre de recherche */}
+          <View style={styles.searchContainer}>
+            <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Rechercher un sport..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+
+          {/* Liste des sports */}
+          <ScrollView style={styles.sportsList}>
+            {getFilteredSports().map((sport: Sport) => (
+              <TouchableOpacity
+                key={sport}
+                style={[
+                  styles.sportListItem,
+                  selectedSport === sport && styles.sportListItemSelected
+                ]}
+                onPress={() => handleSportSelection(sport)}
+              >
+                <Text style={[
+                  styles.sportListItemText,
+                  selectedSport === sport && styles.sportListItemTextSelected
+                ]}>
+                  {sport.charAt(0).toUpperCase() + sport.slice(1)} {getSportEmoji(sport)}
+                </Text>
+                {selectedSport === sport && (
+                  <Ionicons name="checkmark" size={20} color={BrandColors.primary} />
+                )}
+              </TouchableOpacity>
+            ))}
+            
+            {getFilteredSports().length === 0 && (
+              <View style={styles.noResultsContainer}>
+                <Text style={styles.noResultsText}>Aucun sport trouvé</Text>
+              </View>
+            )}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -430,7 +549,7 @@ const styles = StyleSheet.create({
     marginLeft: -8,
   },
   headerTitle: {
-    fontSize: 17,
+    fontSize: 20,
     fontWeight: '600',
   },
   headerRight: {
@@ -458,6 +577,13 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 24,
   },
+  rowContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  halfWidth: {
+    flex: 1,
+  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
@@ -484,6 +610,94 @@ const styles = StyleSheet.create({
   },
   sportButtonTextSelected: {
     color: '#fff',
+  },
+  showMoreButton: {
+    marginTop: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    alignSelf: 'center',
+    backgroundColor: '#f0f0f0',
+    borderRadius: 20,
+  },
+  showMoreText: {
+    color: '#666',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  // Styles de la modal
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  modalCloseButton: {
+    padding: 8,
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  modalHeaderRight: {
+    width: 40,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    margin: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 10,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#000',
+  },
+  sportsList: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+  sportListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  sportListItemSelected: {
+    backgroundColor: '#f8f9fa',
+  },
+  sportListItemText: {
+    fontSize: 16,
+    color: '#000',
+  },
+  sportListItemTextSelected: {
+    color: BrandColors.primary,
+    fontWeight: '600',
+  },
+  noResultsContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  noResultsText: {
+    fontSize: 16,
+    color: '#666',
   },
   dateTimeButton: {
     flexDirection: 'row',
@@ -596,23 +810,6 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingBottom: 20,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  modalCancelButton: {
-    color: '#666',
-    fontSize: 16,
-  },
-  modalDoneButton: {
-    color: BrandColors.primary,
-    fontSize: 16,
-    fontWeight: '600',
   },
   datePickerIOS: {
     height: 200,

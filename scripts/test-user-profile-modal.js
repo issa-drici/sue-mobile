@@ -113,6 +113,17 @@ async function testUserProfile(token, userId) {
         console.log('❌ Champ isAlreadyFriend manquant');
       }
       
+      // Vérification du champ sports_preferences
+      if (userData.hasOwnProperty('sports_preferences')) {
+        console.log('✅ Champ sports_preferences présent:', userData.sports_preferences);
+        console.log('- Nombre de sports:', userData.sports_preferences.length);
+        if (userData.sports_preferences.length > 0) {
+          console.log('- Sports:', userData.sports_preferences.join(', '));
+        }
+      } else {
+        console.log('❌ Champ sports_preferences manquant');
+      }
+      
       return true;
     } else {
       console.error('❌ Erreur HTTP:', response.status);

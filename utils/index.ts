@@ -46,3 +46,5 @@ export { addOneHour, formatTimeString, getDefaultEndTime, isValidEndTime, roundT
 
 export { getSportEmoji, SPORT_EMOJIS } from './sportEmojis';
 
+export { SPORTS_LIST } from './sportsList';
+

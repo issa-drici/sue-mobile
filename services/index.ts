@@ -34,6 +34,7 @@ export * from './users/getUsers';
 export * from './users/searchUsers';
 export * from './users/updateEmail';
 export * from './users/updatePassword';
+export * from './users/updateSportsPreferences';
 export * from './users/updateUser';
 
 // Hooks des amis

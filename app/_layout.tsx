@@ -45,6 +45,8 @@ function RootLayoutNav() {
     const hideSplashScreen = async () => {
       if (!authLoading && !isOnboardingLoading) {
         try {
+          // Attendre un petit délai pour une transition plus fluide
+          await new Promise(resolve => setTimeout(resolve, 100));
           await SplashScreen.hideAsync();
           console.log('✅ SplashScreen caché');
         } catch (error) {

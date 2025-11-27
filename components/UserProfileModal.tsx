@@ -14,6 +14,8 @@ import {
 } from 'react-native';
 import { useAuth } from '../app/context/auth';
 import { useCancelFriendRequest, useGetUserById, useSendFriendRequest } from '../services';
+import { Sport } from '../types/sport';
+import { formatSportName, getSportEmoji } from '../utils/sportEmojis';
 
 interface UserProfileModalProps {
   visible: boolean;
@@ -191,6 +193,21 @@ export default function UserProfileModal({
                  </View>
                </View>
 
+               {/* Sports déjà joués */}
+               {userProfile.sports_preferences && userProfile.sports_preferences.length > 0 && (
+                 <View style={styles.sportsSection}>
+                   <Text style={styles.sectionTitle}>Sports déjà joués</Text>
+                   <View style={styles.sportsBadgesContainer}>
+                     {userProfile.sports_preferences.map((sport, index) => (
+                       <View key={index} style={styles.sportBadge}>
+                         <Text style={styles.sportEmoji}>{getSportEmoji(sport as Sport)}</Text>
+                         <Text style={styles.sportName}>{formatSportName(sport)}</Text>
+                       </View>
+                     ))}
+                   </View>
+                 </View>
+               )}
+
               {/* Bouton Ajouter/Annuler ami */}
               {userProfile.isAlreadyFriend ? (
                 <View style={styles.alreadyFriendContainer}>
@@ -326,6 +343,33 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 12,
   },
+  sportsSection: {
+    marginBottom: 24,
+  },
+  sportsBadgesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  sportBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
+  sportEmoji: {
+    fontSize: 16,
+    marginRight: 6,
+  },
+  sportName: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+  },
   sportsList: {
     gap: 8,
   },
@@ -337,7 +381,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
   },
-  sportName: {
+  sportNameOld: {
     fontSize: 16,
     fontWeight: '500',
     color: '#333',

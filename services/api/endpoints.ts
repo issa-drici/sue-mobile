@@ -41,6 +41,7 @@ export const USERS_ENDPOINTS = {
   UPDATE_PASSWORD: '/users/update-password',
   DELETE_ACCOUNT: '/users',
   REMOVE_FRIEND: (friendId: string) => `/users/friends/${friendId}`,
+  SPORTS_PREFERENCES: '/users/sports-preferences',
 } as const;
 
 // Endpoints des demandes d'amis
