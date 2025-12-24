@@ -1,16 +1,28 @@
+import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
-import { Alert, Animated, Easing, Image, StyleSheet, View } from 'react-native';
-import { Button, Icon, Text } from '../../components/atoms';
-import { Card } from '../../components/ui/Card';
+import {
+  Alert,
+  Animated,
+  Easing,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
+
+import { InlineLoading } from '../../components/OptimizedLoading';
 import { MainScreenLayout } from '../../components/ui/ScreenLayout';
 import { ENV } from '../../config/env';
-import { DesignTokens } from '../../constants/DesignSystem';
 import { useDevMode } from '../../hooks/useDevMode';
 import { useGetUserProfile, useUpdateUser } from '../../services';
-import { CommonStyles, TextStyles } from '../../styles/CommonStyles';
 import { useAuth } from '../context/auth';
+
+const ACCENT_COLOR = '#D4FC79'; // Electric Volt
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -48,24 +60,35 @@ export default function ProfileScreen() {
   });
 
   const handleSignOut = async () => {
-    try {
-      await signOut();
-      router.replace('/login');
-    } catch (error) {
-      Alert.alert('Erreur', 'Une erreur est survenue lors de la déconnexion');
-    }
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    Alert.alert(
+      'Déconnexion',
+      'Voulez-vous vraiment quitter le terrain ?',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Se déconnecter',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await signOut();
+              router.replace('/login');
+            } catch (error) {
+              Alert.alert('Erreur', 'Une erreur est survenue lors de la déconnexion');
+            }
+          }
+        }
+      ]
+    );
   };
 
-
   const pickImage = async () => {
+    Haptics.selectionAsync();
     Alert.alert(
-      "Changer la photo de profil",
-      "Choisir la source",
+      "Photo de profil",
+      "Mettez votre visage de guerrier",
       [
-        {
-          text: "Annuler",
-          style: "cancel"
-        },
+        { text: "Annuler", style: "cancel" },
         {
           text: "Prendre une photo",
           onPress: async () => {
@@ -102,7 +125,6 @@ export default function ProfileScreen() {
       });
       handleImageResult(result);
     } catch (error) {
-      // Gestion silencieuse des erreurs
       Alert.alert('Erreur', 'Une erreur est survenue lors de la prise de photo');
     }
   };
@@ -125,63 +147,43 @@ export default function ProfileScreen() {
     if (!result.canceled && result.assets[0]) {
       try {
         setIsUploading(true);
-
         if (ENV.USE_MOCKS) {
-          // En mode mock, on simule juste la mise à jour
           await new Promise(resolve => setTimeout(resolve, 1000));
           await updateUser({ avatar: result.assets[0].uri });
-          refetch(); // Recharger le profil
-          Alert.alert('Succès', 'Photo de profil mise à jour !');
+          refetch();
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         } else {
-          // En mode API réel, on upload vers le serveur
-          const formData = new FormData();
-          formData.append('avatar', {
-            uri: result.assets[0].uri,
-            type: 'image/jpeg',
-            name: 'avatar.jpg'
-          } as any);
-
-          // TODO: Implémenter l'upload vers ton API
-          // const response = await axios.post('/api/profile/avatar', formData, {
-          //   headers: { 'Content-Type': 'multipart/form-data' }
-          // });
-
-          Alert.alert('Succès', 'Photo de profil mise à jour !');
+          // Implement real upload here
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
       } catch (error) {
         Alert.alert('Erreur', 'Une erreur est survenue lors de l\'upload de l\'image');
       } finally {
-        setTimeout(() => {
-          setIsUploading(false);
-        }, 500);
+        setIsUploading(false);
       }
     }
   };
 
-  // Ne plus afficher d'écran de chargement bloquant
-  // L'interface s'affiche directement, les données se chargent en arrière-plan
-
-  if (error) {
-    return (
-      <MainScreenLayout title="Profil">
-        <View style={CommonStyles.centerContent}>
-          <Text style={[TextStyles.body, { color: DesignTokens.colors.error }]}>Erreur: {error}</Text>
-        </View>
-      </MainScreenLayout>
-    );
+  if (isLoading && !userProfile) {
+    return <InlineLoading message="Chargement du profil..." />;
   }
 
   return (
-    <MainScreenLayout 
-      title="Profil"
-      scrollable
-      horizontalPadding="md"
-    >
-        <View style={styles.userInfo}>
+    <MainScreenLayout title="Profile" showHeader={false} containerStyle={{ backgroundColor: '#FFF' }}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>ATHLÈTE</Text>
+          <Text style={styles.headerSubtitle}>VOTRE LÉGENDE</Text>
+        </View>
+
+        {/* Profile Info */}
+        <View style={styles.profileSection}>
           <View style={styles.avatarContainer}>
             <Image
               source={(userProfile?.avatar || user?.avatar) ? { uri: userProfile?.avatar || user?.avatar } : require('../../assets/images/icon-avatar.png')}
-              style={[styles.avatar, { borderWidth: 1, borderColor: '#e0e0e0' }]}
+              style={styles.avatar}
             />
             {/* <TouchableOpacity
               style={styles.editAvatarButton}
@@ -190,243 +192,243 @@ export default function ProfileScreen() {
             >
               {isUploading ? (
                 <Animated.View style={{ transform: [{ rotate: spin }] }}>
-                  <Ionicons name="refresh" size={16} color="#fff" />
+                  <Ionicons name="refresh" size={20} color="#000" />
                 </Animated.View>
               ) : (
-                <Ionicons name="pencil" size={16} color="#fff" />
+                <Ionicons name="camera" size={20} color="#000" />
               )}
             </TouchableOpacity> */}
           </View>
-          <Text variant="h3" style={{ textAlign: 'center', marginBottom: DesignTokens.spacing.xs }}>
-            {userProfile?.firstname || user?.firstname || 'Utilisateur'} {userProfile?.lastname || user?.lastname || 'Test'}
+
+          <Text style={styles.userName}>
+            {(userProfile?.firstname || user?.firstname || 'UTILISATEUR').toUpperCase()}
           </Text>
-          <Text variant="body" color="secondary" style={{ textAlign: 'center' }}>
+          <Text style={styles.userLastName}>
+            {(userProfile?.lastname || user?.lastname || '').toUpperCase()}
+          </Text>
+          <Text style={styles.userEmail}>
             {userProfile?.email || user?.email || 'email@example.com'}
           </Text>
         </View>
 
+        {/* Stats */}
         <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Text variant="h2" color="primary" style={{ textAlign: 'center' }}>
-              {userProfile?.stats?.sessionsCreated || 0}
-            </Text>
-            <Text variant="caption" color="secondary" style={{ textAlign: 'center' }}>
-              Sessions créées
-            </Text>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{userProfile?.stats?.sessionsCreated || 0}</Text>
+            <Text style={styles.statLabel}>SESSIONS</Text>
           </View>
-          <View style={styles.statCard}>
-            <Text variant="h2" color="primary" style={{ textAlign: 'center' }}>
-              {userProfile?.stats?.sessionsParticipated || 0}
-            </Text>
-            <Text variant="caption" color="secondary" style={{ textAlign: 'center' }}>
-              Participations
-            </Text>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{userProfile?.stats?.sessionsParticipated || 0}</Text>
+            <Text style={styles.statLabel}>MATCHS</Text>
           </View>
-          {/* <View style={styles.statCard}>
-            <Text style={styles.statValue}>{userProfile?.stats?.favoriteSport || 'Aucun'}</Text>
-            <Text style={styles.statLabel}>Sport favori</Text>
-          </View> */}
         </View>
 
-        <View style={styles.section}>
-          <Text variant="h4" style={{ marginBottom: DesignTokens.spacing.md }}>
-            Paramètres
-          </Text>
+        {/* Menu */}
+        <View style={styles.menuSection}>
+          <Text style={styles.sectionTitle}>PARAMÈTRES</Text>
 
-          {/* <TouchableOpacity style={styles.menuItem}>
-            <Ionicons name="person-outline" size={24} color="#666" />
-            <Text style={styles.menuItemText}>Modifier le profil</Text>
-            <Ionicons name="chevron-forward" size={24} color="#666" />
-          </TouchableOpacity> */}
-
-          {/* <TouchableOpacity style={styles.menuItem}>
-            <Ionicons name="notifications-outline" size={24} color="#666" />
-            <Text style={styles.menuItemText}>Notifications</Text>
-            <Ionicons name="chevron-forward" size={24} color="#666" />
-          </TouchableOpacity> */}
-
-          <Button
-            title="Confidentialité"
-            variant="ghost"
+          <TouchableOpacity
+            style={styles.menuItem}
             onPress={() => router.push('/privacy')}
-            leftIcon={<Icon name="shield-outline" size="md" color="secondary" />}
-            rightIcon={<Icon name="chevron-forward" size="md" color="secondary" />}
-            style={{ justifyContent: 'space-between', paddingHorizontal: 0 }}
-          />
+          >
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="shield-checkmark-outline" size={24} color="#000" />
+              <Text style={styles.menuItemText}>CONFIDENTIALITÉ</Text>
+            </View>
+            <Ionicons name="arrow-forward" size={20} color="#CCC" />
+          </TouchableOpacity>
 
-          {/* <TouchableOpacity style={styles.menuItem}>
-            <Ionicons name="help-circle-outline" size={24} color="#666" />
-            <Text style={styles.menuItemText}>Aide</Text>
-            <Ionicons name="chevron-forward" size={24} color="#666" />
-          </TouchableOpacity> */}
+          {/* Dev Menu */}
+          {isDev && (
+            <>
+              <Text style={[styles.sectionTitle, { marginTop: 32 }]}>ZONE DÉVELOPPEUR</Text>
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => router.push('/dev-menu')}
+              >
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="code-slash-outline" size={24} color="#000" />
+                  <Text style={styles.menuItemText}>MENU DEV</Text>
+                </View>
+                <Ionicons name="arrow-forward" size={20} color="#CCC" />
+              </TouchableOpacity>
+            </>
+          )}
+
+          <TouchableOpacity
+            style={[styles.menuItem, styles.logoutButton]}
+            onPress={handleSignOut}
+          >
+            <Text style={styles.logoutText}>SE DÉCONNECTER</Text>
+            <Ionicons name="log-out-outline" size={24} color="#FF3B30" />
+          </TouchableOpacity>
         </View>
 
-        {isDev && (
-          <Card padding="md" style={{ marginBottom: DesignTokens.spacing.lg }}>
-            <Text variant="h4" style={{ marginBottom: DesignTokens.spacing.md }}>
-              🚀 Développement
-            </Text>
-            
-            <View style={{ gap: DesignTokens.spacing.sm }}>
-              <Button
-                title="Atoms Demo"
-                variant="outline"
-                onPress={() => router.push('/atoms-demo')}
-                style={{ justifyContent: 'flex-start' }}
-                leftIcon={<Icon name="code-outline" size="md" color="primary" />}
-              />
-              
-              <Button
-                title="Menu Développeur"
-                variant="outline"
-                onPress={() => router.push('/dev-menu')}
-                style={{ justifyContent: 'flex-start' }}
-                leftIcon={<Icon name="construct-outline" size="md" color="primary" />}
-              />
-            </View>
-          </Card>
-        )}
+        <View style={styles.footer}>
+          <Text style={styles.versionText}>VERSION 1.0.0 • SUE APP</Text>
+        </View>
 
-        <Button
-          title="Se déconnecter"
-          variant="danger"
-          onPress={handleSignOut}
-          leftIcon={<Icon name="log-out-outline" size="md" color="textInverse" />}
-          style={{ marginTop: DesignTokens.spacing.lg }}
-        />
+      </ScrollView>
     </MainScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
+  scrollContent: {
+    paddingBottom: 100,
   },
   header: {
-    padding: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 20,
+    backgroundColor: '#FFF',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 16,
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '900',
+    fontStyle: 'italic',
+    color: '#000',
+    letterSpacing: -1,
   },
-  loadingContainer: {
-    flex: 1,
+  headerSubtitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#666',
+    letterSpacing: 1,
+    marginTop: 4,
+  },
+
+  profileSection: {
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: 32,
-  },
-  userInfo: {
-    alignItems: 'center',
-    padding: 32,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    paddingVertical: 32,
+    backgroundColor: '#FFF',
   },
   avatarContainer: {
     position: 'relative',
-    marginBottom: 16,
+    marginBottom: 24,
   },
   avatar: {
     width: 120,
     height: 120,
     borderRadius: 60,
+    backgroundColor: '#F5F5F5',
   },
   editAvatarButton: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: DesignTokens.colors.primary,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: ACCENT_COLOR,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    borderWidth: 4,
+    borderColor: '#FFF',
   },
-  name: {
+  userName: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: '900',
+    fontStyle: 'italic',
+    color: '#000',
     marginBottom: 4,
   },
-  email: {
-    fontSize: 16,
-    color: '#666',
+  userLastName: {
+    fontSize: 24,
+    fontWeight: '900',
+    fontStyle: 'italic',
+    color: '#CCC', // Ghost effect
+    marginBottom: 8,
+    marginTop: -8,
   },
-  statsContainer: {
-    flexDirection: 'row',
-    padding: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  statCard: {
-    flex: 1,
-    alignItems: 'center',
-    padding: 16,
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: DesignTokens.colors.primary,
-    marginBottom: 4,
-  },
-  statLabel: {
+  userEmail: {
     fontSize: 14,
     color: '#666',
+    fontWeight: '500',
   },
-  section: {
-    backgroundColor: '#fff',
-    marginTop: 16,
-    padding: 16,
+
+  statsContainer: {
+    flexDirection: 'row',
+    marginHorizontal: 24,
+    backgroundColor: '#F9F9F9',
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 32,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 32,
+    fontWeight: '900',
+    fontStyle: 'italic',
+    color: '#000',
+  },
+  statLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#666',
+    marginTop: 4,
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: '#E0E0E0',
+    marginHorizontal: 16,
+  },
+
+  menuSection: {
+    paddingHorizontal: 24,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#999',
     marginBottom: 16,
+    letterSpacing: 0.5,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    justifyContent: 'space-between',
+    paddingVertical: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: '#F5F5F5',
   },
-  menuItemText: {
-    flex: 1,
-    fontSize: 16,
-    marginLeft: 12,
-  },
-  logoutButton: {
+  menuItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 16,
+  },
+  menuItemText: {
+    fontSize: 16,
+    fontWeight: '800',
+    fontStyle: 'italic',
+    color: '#000',
+  },
+
+  logoutButton: {
+    marginTop: 32,
+    borderBottomWidth: 0,
     justifyContent: 'center',
-    backgroundColor: '#fff',
-    marginTop: 16,
-    marginHorizontal: 16,
-    marginBottom: 32,
-    padding: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#FF3B30',
+    gap: 8,
   },
   logoutText: {
-    color: '#FF3B30',
     fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
+    fontWeight: '800',
+    fontStyle: 'italic',
+    color: '#FF3B30',
   },
-}); 
+
+  footer: {
+    alignItems: 'center',
+    marginTop: 40,
+    marginBottom: 20,
+  },
+  versionText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#CCC',
+  },
+});

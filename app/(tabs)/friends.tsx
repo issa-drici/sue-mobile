@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -6,356 +7,196 @@ import {
   FlatList,
   Image,
   Modal,
-  SafeAreaView,
   StyleSheet,
+  Text,
   TouchableOpacity,
   View
 } from 'react-native';
-import { Button, Icon, Text } from '../../components/atoms';
-import PullToRefresh from '../../components/PullToRefresh';
-import { Card } from '../../components/ui/Card';
+import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
+
+import { InlineLoading } from '../../components/OptimizedLoading';
 import { MainScreenLayout } from '../../components/ui/ScreenLayout';
 import UserProfileModal from '../../components/UserProfileModal';
-import { DesignTokens } from '../../constants/DesignSystem';
-import { usePullToRefresh } from '../../hooks';
 import { useGetFriendRequests, useGetFriends, useRemoveFriend, useRespondToFriendRequest } from '../../services';
-import { CommonStyles, TextStyles } from '../../styles/CommonStyles';
 import { Friend } from '../../types/user';
 
-const FriendItem = ({ friend, onProfilePress, onMenuPress }: { 
-  friend: Friend; 
-  onProfilePress: () => void;
-  onMenuPress: () => void;
-}) => {
-  // Vérification de sécurité
-  if (!friend) {
-    return null;
-  }
-
-  return (
-    <Card style={styles.friendItem} variant="flat">
-      <View style={CommonStyles.rowBetween}>
-        <TouchableOpacity 
-          style={CommonStyles.row}
-          onPress={onProfilePress}
-          activeOpacity={0.7}
-        >
-          <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {friend.firstname?.[0] || ''}{friend.lastname?.[0] || ''}
-              </Text>
-            </View>
-          </View>
-          <View style={styles.friendDetails}>
-            <Text style={styles.friendName}>
-              {friend.firstname || ''} {friend.lastname || ''}
-            </Text>
-          </View>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.menuButton}
-          onPress={onMenuPress}
-        >
-          <Ionicons name="ellipsis-horizontal" size={DesignTokens.iconSizes.lg} color={DesignTokens.colors.textSecondary} />
-        </TouchableOpacity>
-      </View>
-    </Card>
-  );
-};
+const ACCENT_COLOR = '#D4FC79'; // Electric Volt
 
 export default function FriendsScreen() {
-  console.log(`🎬 [FriendsScreen] Composant rendu/re-rendu`);
-  
   const router = useRouter();
+  const { data: friends, isLoading: friendsLoading, refetch: refetchFriends } = useGetFriends();
+  const { data: friendRequests, isLoading: requestsLoading, refetch: refetchRequests } = useGetFriendRequests();
+  const { respondToFriendRequest, isLoading: isResponding } = useRespondToFriendRequest();
+  const { removeFriend, isLoading: isRemoving } = useRemoveFriend();
 
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [isProfileModalVisible, setIsProfileModalVisible] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  console.log(`🎣 [FriendsScreen] Appel de useGetFriends`);
-  const { data: friends, isLoading: friendsLoading, error: friendsError, refetch: refetchFriends } = useGetFriends();
-  console.log(`📊 [FriendsScreen] Données reçues de useGetFriends:`, {
-    friends: friends?.length || 0,
-    isLoading: friendsLoading,
-    error: friendsError
-  });
-  const { data: friendRequests, isLoading: requestsLoading, error: requestsError, refetch } = useGetFriendRequests();
-  const { respondToFriendRequest, isLoading: isResponding } = useRespondToFriendRequest();
-  const { removeFriend, isLoading: isRemoving } = useRemoveFriend();
+  const onRefresh = async () => {
+    setRefreshing(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    await Promise.all([refetchFriends(), refetchRequests()]);
+    setRefreshing(false);
+  };
 
-  // Hooks pour le pull-to-refresh avec délai minimum
-  const { refreshing: friendsRefreshing, onRefresh: onFriendsRefresh } = usePullToRefresh({
-    onRefresh: refetchFriends,
-    minDelay: 1000,
-    onError: (error) => {
-      console.error('❌ Erreur lors du rafraîchissement des amis:', error);
-    }
-  });
-
-  const { refreshing: requestsRefreshing, onRefresh: onRequestsRefresh } = usePullToRefresh({
-    onRefresh: refetch,
-    minDelay: 1000,
-    onError: (error) => {
-      console.error('❌ Erreur lors du rafraîchissement des demandes:', error);
-    }
-  });
-
-  const handleFriendProfilePress = (friend: Friend) => {
+  const handleFriendPress = (friend: Friend) => {
+    Haptics.selectionAsync();
     setSelectedFriend(friend);
     setIsProfileModalVisible(true);
   };
 
-  const handleFriendMenuPress = (friend: Friend) => {
+  const handleFriendLongPress = (friend: Friend) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSelectedFriend(friend);
     setIsMenuVisible(true);
   };
 
-  const handleMenuAction = async (action: 'message' | 'invite' | 'remove') => {
-    if (!selectedFriend) return;
-
-    switch (action) {
-      case 'message':
-        // Navigation vers la conversation
-        break;
-      case 'invite':
-        // Ouvrir modal d'invitation à une session
-        break;
-      case 'remove':
-        Alert.alert(
-          'Supprimer l\'ami',
-          `Êtes-vous sûr de vouloir supprimer ${selectedFriend.firstname} ${selectedFriend.lastname} de vos amis ?`,
-          [
-            {
-              text: 'Annuler',
-              style: 'cancel',
-            },
-            {
-              text: 'Supprimer',
-              style: 'destructive',
-              onPress: async () => {
-                try {
-                  await removeFriend(selectedFriend.id);
-
-                  // Recharger la liste des amis
-                  refetchFriends();
-
-                } catch (error: any) {
-                  Alert.alert(
-                    'Erreur',
-                    error.message || 'Impossible de supprimer l\'ami'
-                  );
-                }
-              },
-            },
-          ]
-        );
-        break;
-    }
-    setIsMenuVisible(false);
-  };
-
   const handleRespondToRequest = async (requestId: string, response: 'accept' | 'decline') => {
+    Haptics.selectionAsync();
     try {
       await respondToFriendRequest(requestId, response);
-      refetch(); // Recharger les demandes
-      // Si on accepte, recharger aussi la liste des amis avec un petit délai
-      if (response === 'accept') {
-        setTimeout(() => {
-          refetchFriends();
-          console.log('✅ [FriendsScreen] Liste des amis rechargée après acceptation');
-        }, 500); // Délai de 500ms pour laisser le temps au backend de se mettre à jour
-      }
-      // Pas d'alerte de succès - l'interface se met à jour automatiquement
+      await Promise.all([refetchRequests(), refetchFriends()]);
     } catch (error) {
       Alert.alert('Erreur', 'Impossible de traiter la demande');
     }
   };
 
-  const renderFriendItem = ({ item }: { item: any }) => {
-    // Vérification de sécurité
-    if (!item) {
-      return null;
-    }
+  const handleRemoveFriend = async () => {
+    if (!selectedFriend) return;
 
-    return (
-      <FriendItem
-        friend={item}
-        onProfilePress={() => handleFriendProfilePress(item)}
-        onMenuPress={() => handleFriendMenuPress(item)}
-      />
+    Alert.alert(
+      'Supprimer l\'athlète',
+      `Retirer ${selectedFriend.firstname} de votre squad ?`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Retirer',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await removeFriend(selectedFriend.id);
+              refetchFriends();
+              setIsMenuVisible(false);
+            } catch (error) {
+              Alert.alert('Erreur', 'Impossible de supprimer l\'ami');
+            }
+          }
+        }
+      ]
     );
   };
 
-  const renderRequestItem = ({ item }: { item: any }) => {
-    // Gestion des données selon la structure réelle de l'API
-    const hasSenderData = item.sender && (item.sender.firstname || item.sender.lastname);
-    const hasFromUserData = item.fromUser && (item.fromUser.firstname || item.fromUser.lastname);
-    const hasDirectData = item.firstname || item.lastname;
-
-    if (!hasSenderData && !hasFromUserData && !hasDirectData) {
-      return null;
-    }
-
-    const displayName = hasSenderData
-      ? `${item.sender.firstname || ''} ${item.sender.lastname || ''}`.trim()
-      : hasFromUserData
-        ? `${item.fromUser.firstname || ''} ${item.fromUser.lastname || ''}`.trim()
-        : hasDirectData
-          ? `${item.firstname || ''} ${item.lastname || ''}`.trim()
-          : 'Utilisateur inconnu';
-
-    const avatarUrl = item.sender?.avatar || item.fromUser?.avatar || item.avatar;
-    const mutualFriends = item.mutualFriends || 0;
-    
-    // Déterminer l'ID de l'utilisateur pour la modal
-    const userId = item.sender?.id || item.fromUser?.id || item.id;
-
+  const renderRequestItem = ({ item, index }: { item: any; index: number }) => {
+    const user = item.sender || item.fromUser || item;
     return (
-      <View style={styles.requestCard}>
-        <TouchableOpacity 
-          style={styles.requestInfo}
-          onPress={() => {
-            // Créer un objet Friend temporaire pour la modal
-            const tempFriend = {
-              id: userId,
-              firstname: hasSenderData ? item.sender.firstname : hasFromUserData ? item.fromUser.firstname : item.firstname,
-              lastname: hasSenderData ? item.sender.lastname : hasFromUserData ? item.fromUser.lastname : item.lastname,
-              avatar: avatarUrl,
-              status: 'offline' as const
-            };
-            handleFriendProfilePress(tempFriend);
-          }}
-          activeOpacity={0.7}
-        >
+      <Animated.View
+        entering={FadeInRight.delay(index * 100).springify()}
+        style={styles.requestCard}
+      >
+        <View style={styles.requestInfo}>
           <Image
-            source={avatarUrl ? { uri: avatarUrl } : require('../../assets/images/icon-avatar.png')}
-            style={[styles.requestAvatar, { borderWidth: 1, borderColor: '#e0e0e0' }]}
+            source={user.avatar ? { uri: user.avatar } : require('../../assets/images/icon-avatar.png')}
+            style={styles.requestAvatar}
           />
-          <View style={styles.requestFriendInfo}>
-            <Text style={styles.requestFriendName}>
-              {displayName}
-            </Text>
-            {mutualFriends > 0 && (
-              <Text style={styles.requestMutualFriends}>
-                {mutualFriends} ami{mutualFriends > 1 ? 's' : ''} en commun
-              </Text>
-            )}
+          <View>
+            <Text style={styles.requestName}>{user.firstname} {user.lastname}</Text>
+            <Text style={styles.requestSubtitle}>Veut rejoindre ton squad</Text>
           </View>
-        </TouchableOpacity>
+        </View>
         <View style={styles.requestActions}>
-          <Button
-            title={isResponding ? '...' : 'Accepter'}
-            variant="primary"
-            size="sm"
+          <TouchableOpacity
+            style={[styles.actionButton, styles.acceptButton]}
             onPress={() => handleRespondToRequest(item.id, 'accept')}
             disabled={isResponding}
-            style={{ flex: 1, marginRight: DesignTokens.spacing.xs }}
-          />
-          <Button
-            title={isResponding ? '...' : 'Refuser'}
-            variant="secondary"
-            size="sm"
+          >
+            <Ionicons name="checkmark" size={20} color="#000" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.declineButton]}
             onPress={() => handleRespondToRequest(item.id, 'decline')}
             disabled={isResponding}
-            style={{ flex: 1, marginLeft: DesignTokens.spacing.xs }}
-          />
+          >
+            <Ionicons name="close" size={20} color="#000" />
+          </TouchableOpacity>
         </View>
-      </View>
+      </Animated.View>
     );
   };
 
-
-
-  if (friendsError || requestsError) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Mes Amis</Text>
+  const renderFriendItem = ({ item, index }: { item: Friend; index: number }) => (
+    <Animated.View
+      entering={FadeInDown.delay(index * 50).springify()}
+    >
+      <TouchableOpacity
+        style={styles.friendItem}
+        onPress={() => handleFriendPress(item)}
+        onLongPress={() => handleFriendLongPress(item)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.friendAvatarContainer}>
+          <Image
+            source={item.avatar ? { uri: item.avatar } : require('../../assets/images/icon-avatar.png')}
+            style={styles.friendAvatar}
+          />
+          <View style={styles.statusDot} />
         </View>
-        <View style={styles.loadingContainer}>
-          <Text style={{ color: 'red' }}>
-            Erreur: {friendsError || requestsError}
-          </Text>
+        <View style={styles.friendInfo}>
+          <Text style={styles.friendName}>{item.firstname.toUpperCase()}</Text>
+          <Text style={styles.friendLastName}>{item.lastname.toUpperCase()}</Text>
         </View>
-      </SafeAreaView>
-    );
-  }
-
-  // Bouton d'ajout d'ami pour le header
-  const AddFriendButton = () => (
-    <Button
-      title="Ajouter"
-      variant="primary"
-      size="sm"
-      onPress={() => router.push('/add-friend')}
-      leftIcon={<Icon name="person-add" size="sm" color="textInverse" />}
-    />
+        <Ionicons name="chevron-forward" size={20} color="#CCC" />
+      </TouchableOpacity>
+    </Animated.View>
   );
 
   return (
-    <MainScreenLayout
-      title="Mes Amis"
-      rightAction={<AddFriendButton />}
-    >
-
-
+    <MainScreenLayout title="Friends" showHeader={false} containerStyle={{ backgroundColor: '#FFF' }}>
+      {/* Custom Header */}
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.headerTitle}>ATHLÈTES</Text>
+          <Text style={styles.headerSubtitle}>TON SQUAD ({friends?.length || 0})</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => router.push('/add-friend')}
+        >
+          <Ionicons name="person-add" size={24} color="#000" />
+        </TouchableOpacity>
+      </View>
 
       <FlatList
-        data={[
-          // Section des demandes d'amis
-          ...(friendRequests.length > 0 ? [{
-            type: 'section',
-            title: 'Demandes d\'amis',
-            data: friendRequests
-          }] : []),
-          // Section des amis
-          {
-            type: 'section',
-            title: 'Mes amis',
-            data: friends
-          }
-        ]}
-        renderItem={({ item }) => {
-          if (item.type === 'section') {
-            return (
-              <View style={styles.sectionContainer}>
-                <Text style={styles.sectionTitle}>{item.title}</Text>
-                {item.data.map((friendOrRequest: any, index: number) => (
-                  <View key={friendOrRequest.id || index}>
-                    {item.title === 'Demandes d\'amis' ? 
-                      renderRequestItem({ item: friendOrRequest }) : 
-                      renderFriendItem({ item: friendOrRequest })
-                    }
-                  </View>
-                ))}
-              </View>
-            );
-          }
-          return null;
-        }}
-        keyExtractor={(item, index) => `section-${index}`}
-        contentContainerStyle={styles.listContainer}
-        ListEmptyComponent={
-          <View style={CommonStyles.emptyStateContainer}>
-            <Ionicons name="people-outline" size={DesignTokens.iconSizes.xxl} color={DesignTokens.colors.textTertiary} />
-            <Text style={CommonStyles.emptyStateTitle}>
-              Aucun ami trouvé
-            </Text>
-          </View>
+        data={friends}
+        renderItem={renderFriendItem}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContent}
+        ListHeaderComponent={
+          friendRequests && friendRequests.length > 0 ? (
+            <View style={styles.requestsSection}>
+              <Text style={styles.sectionTitle}>DEMANDES ({friendRequests.length})</Text>
+              {friendRequests.map((req, index) => (
+                <View key={req.id}>{renderRequestItem({ item: req, index })}</View>
+              ))}
+            </View>
+          ) : null
         }
-        refreshControl={
-          <PullToRefresh
-            refreshing={friendsRefreshing || requestsRefreshing}
-            onRefresh={() => {
-              onFriendsRefresh();
-              onRequestsRefresh();
-            }}
-          />
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+        ListEmptyComponent={
+          !friendsLoading ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyTitle}>SQUAD VIDE</Text>
+              <Text style={styles.emptySubtitle}>INVITE TES POTES POUR COMMENCER</Text>
+            </View>
+          ) : (
+            <InlineLoading message="Chargement..." />
+          )
         }
       />
 
-      {/* Modal pour les actions sur les amis */}
+      {/* Menu Modal */}
       <Modal
         visible={isMenuVisible}
         transparent={true}
@@ -367,46 +208,21 @@ export default function FriendsScreen() {
           activeOpacity={1}
           onPress={() => setIsMenuVisible(false)}
         >
-          <View style={styles.modalContent}>
-            {/* <TouchableOpacity
-              style={styles.modalItem}
-              onPress={() => handleMenuAction('message')}
-            >
-              <Ionicons name="chatbubble-outline" size={24} color={DesignTokens.colors.primary} />
-              <Text style={styles.modalItemText}>Message</Text>
-            </TouchableOpacity>
+          <View style={styles.menuContent}>
+            <Text style={styles.menuTitle}>
+              {selectedFriend?.firstname} {selectedFriend?.lastname}
+            </Text>
             <TouchableOpacity
-              style={styles.modalItem}
-              onPress={() => handleMenuAction('invite')}
+              style={styles.menuItem}
+              onPress={handleRemoveFriend}
             >
-              <Ionicons name="calendar-outline" size={24} color={DesignTokens.colors.primary} />
-              <Text style={styles.modalItemText}>Inviter à une session</Text>
-            </TouchableOpacity> */}
-            <TouchableOpacity
-              style={[
-                styles.modalItem,
-                isRemoving && styles.modalItemDisabled
-              ]}
-              onPress={() => handleMenuAction('remove')}
-              disabled={isRemoving}
-            >
-              {isRemoving ? (
-                <>
-                  <Ionicons name="refresh" size={24} color="#FF3B30" style={{ transform: [{ rotate: '360deg' }] }} />
-                  <Text style={[styles.modalItemText, { color: '#FF3B30' }]}>Suppression...</Text>
-                </>
-              ) : (
-                <>
-                  <Ionicons name="person-remove-outline" size={24} color="#FF3B30" />
-                  <Text style={[styles.modalItemText, { color: '#FF3B30' }]}>Supprimer</Text>
-                </>
-              )}
+              <Text style={styles.menuItemTextDestructive}>Retirer du squad</Text>
+              <Ionicons name="trash-outline" size={20} color="#FF3B30" />
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
       </Modal>
 
-      {/* Modal de profil utilisateur */}
       <UserProfileModal
         visible={isProfileModalVisible}
         onClose={() => setIsProfileModalVisible(false)}
@@ -419,152 +235,202 @@ export default function FriendsScreen() {
 }
 
 const styles = StyleSheet.create({
-  // Bouton d'ajout d'ami
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 20,
+    backgroundColor: '#FFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '900',
+    fontStyle: 'italic',
+    color: '#000',
+    letterSpacing: -1,
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#666',
+    letterSpacing: 1,
+    marginTop: 4,
+  },
   addButton: {
-    ...CommonStyles.buttonPrimary,
-    borderRadius: DesignTokens.borderRadius.xxl,
-    paddingHorizontal: DesignTokens.spacing.lg,
-    paddingVertical: DesignTokens.spacing.sm,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: ACCENT_COLOR,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  addButtonText: {
-    ...TextStyles.button,
-    color: DesignTokens.colors.textInverse,
-    marginLeft: DesignTokens.spacing.sm,
+
+  listContent: {
+    padding: 24,
+    paddingBottom: 100,
   },
-  
-  // Container de la liste
-  listContainer: {
-    padding: DesignTokens.spacing.md,
+
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#666',
+    marginBottom: 16,
+    letterSpacing: 0.5,
   },
-  
-  // Styles pour les éléments d'amis
+
+  // Requests
+  requestsSection: {
+    marginBottom: 32,
+  },
+  requestCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#F9F9F9',
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  requestInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  requestAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+    backgroundColor: '#EEE',
+  },
+  requestName: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#000',
+  },
+  requestSubtitle: {
+    fontSize: 12,
+    color: '#666',
+  },
+  requestActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  acceptButton: {
+    backgroundColor: ACCENT_COLOR,
+  },
+  declineButton: {
+    backgroundColor: '#EEE',
+  },
+
+  // Friends List
   friendItem: {
-    marginBottom: DesignTokens.spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5F5',
   },
-  avatarContainer: {
-    marginRight: DesignTokens.spacing.md,
+  friendAvatarContainer: {
+    position: 'relative',
+    marginRight: 16,
   },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: DesignTokens.borderRadius.round,
-    backgroundColor: DesignTokens.colors.backgroundSecondary,
-    ...CommonStyles.centerContent,
+  friendAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#F5F5F5',
   },
-  avatarText: {
-    ...TextStyles.h4,
-    color: DesignTokens.colors.textSecondary,
+  statusDot: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: ACCENT_COLOR,
+    borderWidth: 2,
+    borderColor: '#FFF',
   },
-  friendDetails: {
+  friendInfo: {
     flex: 1,
   },
   friendName: {
-    ...TextStyles.bodyMedium,
-    marginBottom: DesignTokens.spacing.xs,
+    fontSize: 18,
+    fontWeight: '900',
+    fontStyle: 'italic',
+    color: '#000',
+    lineHeight: 20,
   },
-  menuButton: {
-    padding: DesignTokens.spacing.sm,
+  friendLastName: {
+    fontSize: 18,
+    fontWeight: '900',
+    fontStyle: 'italic',
+    color: '#CCC', // Ghost effect for last name
+    lineHeight: 20,
   },
-  
-  // Styles pour les demandes d'amis
-  requestCard: {
-    ...CommonStyles.card,
-  },
-  requestInfo: {
-    ...CommonStyles.row,
-  },
-  requestAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: DesignTokens.borderRadius.round,
-    marginRight: DesignTokens.spacing.md,
-    borderWidth: 1,
-    borderColor: DesignTokens.colors.border,
-  },
-  requestFriendInfo: {
-    flex: 1,
-  },
-  requestFriendName: {
-    ...TextStyles.bodyMedium,
-    marginBottom: DesignTokens.spacing.xs,
-  },
-  requestMutualFriends: {
-    ...TextStyles.caption,
-    color: DesignTokens.colors.textSecondary,
-  },
-  requestActions: {
-    ...CommonStyles.row,
-    marginTop: DesignTokens.spacing.md,
-    gap: DesignTokens.spacing.sm,
-  },
-  requestButton: {
-    flex: 1,
-    paddingVertical: DesignTokens.spacing.sm,
-    paddingHorizontal: DesignTokens.spacing.md,
-    borderRadius: DesignTokens.borderRadius.md,
-    ...CommonStyles.centerContent,
-  },
-  acceptButton: {
-    backgroundColor: DesignTokens.colors.primary,
-  },
-  declineButton: {
-    backgroundColor: DesignTokens.colors.backgroundSecondary,
-    borderWidth: 1,
-    borderColor: DesignTokens.colors.border,
-  },
-  acceptButtonText: {
-    ...TextStyles.captionMedium,
-    color: DesignTokens.colors.textInverse,
-  },
-  declineButtonText: {
-    ...TextStyles.captionMedium,
-    color: DesignTokens.colors.textSecondary,
-  },
-  
-  // Sections
-  sectionContainer: {
-    marginBottom: DesignTokens.spacing.lg,
-  },
-  sectionTitle: {
-    ...TextStyles.h4,
-    color: DesignTokens.colors.text,
-    marginBottom: DesignTokens.spacing.md,
-    paddingHorizontal: 16,
-  },
-  loadingContainer: {
-    flex: 1,
+
+  emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 32,
+    paddingVertical: 60,
   },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    fontStyle: 'italic',
+    color: '#CCC',
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+  },
+
+  // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+  menuContent: {
     width: '80%',
-    maxWidth: 320,
-    overflow: 'hidden',
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
   },
-  modalItem: {
+  menuTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 24,
+  },
+  menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    gap: 8,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#FFF0F0',
+    width: '100%',
+    justifyContent: 'center',
   },
-  modalItemText: {
-    fontSize: 16,
-    marginLeft: 12,
-    color: DesignTokens.colors.primary,
+  menuItemTextDestructive: {
+    color: '#FF3B30',
+    fontWeight: '700',
+    fontSize: 14,
   },
-  menuButton: {
-    padding: 8,
-    marginLeft: 8,
-  },
-  modalItemDisabled: {
-    opacity: 0.7,
-  },
-}); 
+});

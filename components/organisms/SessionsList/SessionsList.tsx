@@ -9,6 +9,8 @@ interface Session {
   sport: string;
   location: string;
   startTime: string;
+  date?: string;
+  endTime?: string;
   maxParticipants?: number;
   participants?: any[];
   status?: 'active' | 'cancelled' | 'completed';
@@ -46,6 +48,8 @@ export const SessionsList: React.FC<SessionsListProps> = ({
         sport: item.sport,
         location: item.location,
         startTime: item.startTime,
+        date: item.date,
+        endTime: item.endTime,
         maxParticipants: item.maxParticipants,
         participants: item.participants,
         status: item.status,

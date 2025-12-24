@@ -1,20 +1,24 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    Platform,
-    StyleSheet,
-    TouchableOpacity,
-    View
+  Alert,
+  FlatList,
+  Image,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Text } from '../components/atoms';
-import { SearchBar } from '../components/molecules';
+import { InlineLoading } from '../components/OptimizedLoading';
 import { BackScreenLayout } from '../components/ui/ScreenLayout';
 import UserProfileModal from '../components/UserProfileModal';
-import { DesignTokens } from '../constants/DesignSystem';
 import { useCancelFriendRequest, useSearchUsers, useSendFriendRequest } from '../services';
+
+const ACCENT_COLOR = '#D4FC79'; // Electric Volt
 
 export default function AddFriendScreen() {
   const router = useRouter();
@@ -55,7 +59,7 @@ export default function AddFriendScreen() {
     try {
       await searchUsers(query);
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible de rechercher des utilisateurs');
+      // Silent error
     } finally {
       setIsSearching(false);
     }
@@ -63,23 +67,19 @@ export default function AddFriendScreen() {
 
   // Recherche automatique avec debounce
   useEffect(() => {
-    // Annuler la recherche précédente si elle existe
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
 
-    // Si la requête est vide ou moins de 2 caractères, vider les résultats immédiatement
     if (!searchQuery.trim() || searchQuery.trim().length < 2) {
       setLocalSearchResults([]);
       return;
     }
 
-    // Programmer une nouvelle recherche avec un délai de 300ms
     searchTimeoutRef.current = setTimeout(() => {
       handleSearch(searchQuery);
     }, 300);
 
-    // Cleanup function
     return () => {
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
@@ -88,100 +88,94 @@ export default function AddFriendScreen() {
   }, [searchQuery]);
 
   const handleAddFriend = async (userId: string, userName: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       await sendFriendRequest(userId);
-
-      // Mettre à jour localement le statut de l'utilisateur
       updateLocalUser(userId, {
         hasPendingRequest: true,
         relationshipStatus: 'pending'
       });
-
-      // Pas de rechargement de la liste - mise à jour locale uniquement
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error: any) {
-
-      // Gestion spécifique de l'erreur 409 (demande déjà existante)
       if (error.message && error.message.includes('existe déjà')) {
         Alert.alert(
-          'Demande existante',
-          'Une demande d\'ami existe déjà pour cet utilisateur. Veuillez attendre une réponse ou annuler la demande existante.',
+          'Déjà demandé',
+          'Patience, l\'athlète n\'a pas encore répondu.',
           [
             { text: 'OK', style: 'default' },
             {
-              text: 'Annuler la demande existante',
+              text: 'Annuler la demande',
               style: 'destructive',
               onPress: () => handleCancelFriend(userId, userName)
             }
           ]
         );
       } else {
-        Alert.alert('Erreur', error.message || 'Impossible d\'envoyer la demande d\'ami');
+        Alert.alert('Erreur', 'Impossible d\'envoyer la demande');
       }
     }
   };
 
   const handleCancelFriend = async (userId: string, userName: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       await cancelFriendRequest(userId);
-
-      // Mettre à jour localement le statut de l'utilisateur
       updateLocalUser(userId, {
         hasPendingRequest: false,
         relationshipStatus: 'cancelled'
       });
-
-      // Pas de rechargement de la liste - mise à jour locale uniquement
     } catch (error: any) {
-      Alert.alert('Erreur', error.message || 'Impossible d\'annuler la demande d\'ami');
+      Alert.alert('Erreur', 'Impossible d\'annuler la demande');
     }
   };
 
-  const renderSearchResult = ({ item }: { item: any }) => {
-    const displayName = `${item.firstname || ''} ${item.lastname || ''}`.trim() || item.email || 'Utilisateur';
-    const mutualFriendsText = item.mutualFriends > 0
-      ? `${item.mutualFriends} ami${item.mutualFriends > 1 ? 's' : ''} en commun`
-      : '';
+  const renderSearchResult = ({ item, index }: { item: any; index: number }) => {
+    const displayName = `${item.firstname || ''} ${item.lastname || ''}`.trim() || item.email || 'Athlète';
 
     // Déterminer le bouton à afficher selon le statut de la relation
     const getButtonContent = () => {
       if (item.isFriend) {
-        return { icon: 'checkmark-circle', color: '#34C759', text: 'Ami', action: null };
+        return { icon: 'checkmark', color: '#000', bgColor: ACCENT_COLOR, disabled: true };
       } else if (item.hasPendingRequest && item.relationshipStatus !== 'cancelled') {
-        return { icon: 'close-circle', color: DesignTokens.colors.primary, text: 'Annuler', action: 'cancel' };
+        return { icon: 'close', color: '#FF3B30', bgColor: '#FFF0F0', action: 'cancel', disabled: false };
       } else {
-        return { icon: 'person-add', color: DesignTokens.colors.primary, text: 'Ajouter', action: 'add' };
+        return { icon: 'add', color: '#FFF', bgColor: '#000', action: 'add', disabled: false };
       }
     };
 
     const buttonContent = getButtonContent();
-    const isButtonDisabled = item.isFriend || isSendingRequest || isCancellingRequest;
+    const isButtonDisabled = buttonContent.disabled || isSendingRequest || isCancellingRequest;
 
     return (
-      <View style={styles.searchResultItem}>
+      <Animated.View
+        entering={FadeInDown.delay(index * 50).springify()}
+        style={styles.resultCard}
+      >
         <TouchableOpacity
-          style={styles.searchResultInfo}
+          style={styles.resultInfo}
           onPress={() => {
+            Haptics.selectionAsync();
             setSelectedUser(item);
             setIsProfileModalVisible(true);
           }}
           activeOpacity={0.7}
         >
-          <View style={styles.nameContainer}>
-            <Text style={styles.searchResultName}>
-              {displayName}
-            </Text>
-            {mutualFriendsText ? (
-              <Text style={styles.mutualFriendsInline}>
-                • {mutualFriendsText}
-              </Text>
-            ) : null}
+          <View style={styles.avatarContainer}>
+            <Image
+              source={item.avatar ? { uri: item.avatar } : require('../assets/images/icon-avatar.png')}
+              style={styles.avatar}
+            />
           </View>
-          <Text style={styles.searchResultEmail}>{item.email}</Text>
+          <View>
+            <Text style={styles.resultName}>{displayName.toUpperCase()}</Text>
+            <Text style={styles.resultEmail}>{item.email}</Text>
+          </View>
         </TouchableOpacity>
+
         <TouchableOpacity
-          style={styles.addFriendButton}
+          style={[styles.actionButton, { backgroundColor: buttonContent.bgColor }]}
           onPress={() => {
-            if (!isButtonDisabled) {
+            if (!isButtonDisabled && buttonContent.action) {
               if (buttonContent.action === 'add') {
                 handleAddFriend(item.id, displayName);
               } else if (buttonContent.action === 'cancel') {
@@ -189,112 +183,72 @@ export default function AddFriendScreen() {
               }
             }
           }}
-          disabled={isButtonDisabled}
+          disabled={isButtonDisabled && !buttonContent.action}
         >
           <Ionicons
             name={buttonContent.icon as any}
-            size={20}
-            color={isButtonDisabled ? "#ccc" : buttonContent.color}
+            size={24}
+            color={buttonContent.color}
           />
         </TouchableOpacity>
-      </View>
+      </Animated.View>
     );
   };
 
   return (
-    <BackScreenLayout title="Ajouter un ami" scrollable horizontalPadding="md">
-        {/* Titre */}
-        <View style={styles.titleContainer}>
-          <Text variant="h2" style={{ marginBottom: DesignTokens.spacing.xs }}>
-            Trouver des amis
-          </Text>
-          <Text variant="body" color="secondary">
-            Recherchez vos amis pour les inviter à rejoindre vos sessions sportives
-          </Text>
-        </View>
+    <BackScreenLayout title="RECRUTER" scrollable={false} horizontalPadding="md" containerStyle={{ backgroundColor: '#FFF' }}>
 
-        {/* Recherche */}
-        <View style={styles.section}>
-          <Text variant="h4" style={{ marginBottom: DesignTokens.spacing.sm }}>
-            Rechercher
-          </Text>
-          <SearchBar
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholder="Nom ou adresse email..."
-            onClear={() => setSearchQuery('')}
-            style={{ marginBottom: DesignTokens.spacing.sm }}
+      {/* Header */}
+      <View style={styles.headerContainer}>
+        <Text style={styles.mainTitle}>RECRUTER</Text>
+        <Text style={styles.subtitle}>AGRANDISSEZ VOTRE SQUAD</Text>
+      </View>
+
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={20} color="#000" style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="NOM OU EMAIL..."
+          placeholderTextColor="#999"
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <Ionicons name="close-circle" size={20} color="#CCC" />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Results */}
+      <View style={styles.resultsContainer}>
+        {isSearching ? (
+          <InlineLoading message="RECHERCHE..." />
+        ) : searchQuery && searchQuery.trim().length >= 2 ? (
+          <FlatList
+            data={localSearchResults}
+            renderItem={renderSearchResult}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyTitle}>AUCUN RÉSULTAT</Text>
+                <Text style={styles.emptySubtitle}>ESSAYEZ UN AUTRE NOM</Text>
+              </View>
+            }
           />
-        </View>
-
-        {/* Résultats de recherche */}
-        {searchQuery && searchQuery.trim().length >= 2 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Résultats</Text>
-            {error ? (
-              <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>Erreur: {error}</Text>
-              </View>
-            ) : searchResults && searchResults.length > 0 ? (
-              <FlatList
-                data={localSearchResults}
-                renderItem={renderSearchResult}
-                keyExtractor={(item) => item.id}
-                style={styles.searchResultsList}
-              />
-            ) : searchQuery && !isLoading ? (
-              <View style={styles.emptyResultsContainer}>
-                <Text style={styles.emptyResultsText}>
-                  Aucun utilisateur trouvé
-                </Text>
-              </View>
-            ) : null}
+        ) : (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="people-outline" size={48} color="#EEE" style={{ marginBottom: 16 }} />
+            <Text style={styles.emptyTitle}>CONSTRUISEZ VOTRE ÉQUIPE</Text>
+            <Text style={styles.emptySubtitle}>CHERCHEZ VOS FUTURS COÉQUIPIERS</Text>
           </View>
         )}
-
-        {/* Instructions */}
-        {(!searchQuery || searchQuery.trim().length < 2) && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Comment ça marche ?</Text>
-            <View style={styles.instructionsContainer}>
-              <View style={styles.instructionItem}>
-                <View style={styles.instructionIcon}>
-                  <Ionicons name="search" size={24} color={DesignTokens.colors.primary} />
-                </View>
-                <View style={styles.instructionContent}>
-                  <Text style={styles.instructionTitle}>1. Recherchez</Text>
-                  <Text style={styles.instructionText}>
-                    Entrez le nom complet ou l&apos;email de votre ami
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.instructionItem}>
-                <View style={styles.instructionIcon}>
-                  <Ionicons name="mail" size={24} color={DesignTokens.colors.primary} />
-                </View>
-                <View style={styles.instructionContent}>
-                  <Text style={styles.instructionTitle}>2. Invitez</Text>
-                  <Text style={styles.instructionText}>
-                    Une invitation sera envoyée à votre ami
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.instructionItem}>
-                <View style={styles.instructionIcon}>
-                  <Ionicons name="people" size={24} color={DesignTokens.colors.primary} />
-                </View>
-                <View style={styles.instructionContent}>
-                  <Text style={styles.instructionTitle}>3. Connectez-vous</Text>
-                  <Text style={styles.instructionText}>
-                    Une fois acceptée, vous pourrez l&apos;inviter à vos sessions
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </View>
-        )}
+      </View>
 
       {/* Modal de profil utilisateur */}
       <UserProfileModal
@@ -309,179 +263,114 @@ export default function AddFriendScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    paddingTop: Platform.OS === 'ios' ? 47 : 0,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#fff',
-  },
-  backButton: {
-    padding: 8,
-    marginLeft: -8,
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-  },
-  headerRight: {
-    width: 40, // Pour équilibrer avec le bouton retour
-  },
-  content: {
-    flex: 1,
-    padding: 16,
-  },
-  titleContainer: {
-    marginBottom: 32,
-  },
-  mainTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#000',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    lineHeight: 22,
-  },
-  section: {
+  headerContainer: {
     marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  searchContainer: {
-    marginBottom: 8,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  input: {
-    flex: 1,
-    marginLeft: 8,
-    fontSize: 16,
-  },
-  loadingContainer: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  errorContainer: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  errorText: {
-    color: 'red',
-  },
-  searchResultsList: {
-    maxHeight: 300,
-  },
-  searchResultItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  searchResultInfo: {
-    flex: 1,
-    paddingVertical: 4,
-  },
-  nameContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  searchResultName: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  mutualFriendsInline: {
-    fontSize: 12,
-    color: '#666',
-    marginLeft: 4,
-  },
-  searchResultEmail: {
-    fontSize: 14,
-    color: '#666',
-  },
-  mutualFriendsText: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 4,
-  },
-  addFriendButton: {
-    padding: 8,
-  },
-  emptyResultsContainer: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  emptyResultsText: {
-    color: '#666',
-    fontSize: 16,
-  },
-  instructionsContainer: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    padding: 16,
-  },
-  instructionItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 16,
-  },
-  instructionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#e3f2fd',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  instructionContent: {
-    flex: 1,
-  },
-  instructionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  instructionText: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 20,
-  },
-  searchButton: {
-    backgroundColor: DesignTokens.colors.primary,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    alignItems: 'center',
     marginTop: 16,
   },
-  searchButtonDisabled: {
-    backgroundColor: '#ccc',
+  mainTitle: {
+    fontSize: 32,
+    fontWeight: '900',
+    fontStyle: 'italic',
+    color: '#000',
+    letterSpacing: -1,
+    lineHeight: 32,
   },
-  searchButtonText: {
-    color: DesignTokens.colors.white,
+  subtitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#666',
+    marginTop: 8,
+    letterSpacing: 0.5,
+  },
+
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    height: 56,
+    marginBottom: 24,
+  },
+  searchIcon: {
+    marginRight: 12,
+  },
+  searchInput: {
+    flex: 1,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: '#000',
+    height: '100%',
   },
-}); 
+
+  resultsContainer: {
+    flex: 1,
+  },
+  listContent: {
+    paddingBottom: 40,
+  },
+
+  resultCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    backgroundColor: '#FFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5F5',
+  },
+  resultInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatarContainer: {
+    marginRight: 16,
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F5F5F5',
+  },
+  resultName: {
+    fontSize: 16,
+    fontWeight: '900',
+    fontStyle: 'italic',
+    color: '#000',
+  },
+  resultEmail: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+
+  actionButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 12,
+  },
+
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 60,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    fontStyle: 'italic',
+    color: '#CCC',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+  },
+});

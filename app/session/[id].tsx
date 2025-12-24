@@ -1,1207 +1,732 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
 import {
   Alert,
+  Dimensions,
   FlatList,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
+import Animated, {
+  FadeInDown,
+  FadeInUp
+} from 'react-native-reanimated';
+
 import ChatComments from '../../components/ChatComments';
-import InfoMessage from '../../components/InfoMessage';
 import PullToRefresh from '../../components/PullToRefresh';
-import { BackScreenLayout } from '../../components/ui/ScreenLayout';
+import { MainScreenLayout } from '../../components/ui/ScreenLayout';
 import UserProfileModal from '../../components/UserProfileModal';
-import { DesignTokens } from '../../constants/DesignSystem';
 import { usePullToRefresh } from '../../hooks';
 import { useComments } from '../../hooks/useComments';
-import { useCancelParticipation, useCancelSession, useGetFriends, useGetSessionById, useInviteFriends, useRespondToInvitation, useUpdateSession } from '../../services';
-import { CommonStyles } from '../../styles/CommonStyles';
-import { formatCommentDate, formatDate, formatTimeFrance } from '../../utils/dateHelpers';
+import {
+  useCancelParticipation,
+  useCancelSession,
+  useGetFriends,
+  useGetSessionById,
+  useInviteFriends,
+  useRespondToInvitation
+} from '../../services';
+import { formatDate, formatTimeFrance } from '../../utils/dateHelpers';
+import { isSessionFinished } from '../../utils/timeHelpers';
 import { useAuth } from '../context/auth';
-import { height } from '../utils/dimensions';
+
+const { width } = Dimensions.get('window');
+const ACCENT_COLOR = '#D4FC79'; // Electric Volt
 
 export default function SessionDetailsScreen() {
   const { id, source, openComments } = useLocalSearchParams();
   const router = useRouter();
-  const { user } = useAuth(); // Récupérer l'utilisateur actuel
-  // COMMENTÉ - Variable newComment retirée (maintenant gérée dans la modal)
-  // const [newComment, setNewComment] = useState('');
-  const [invitationStatus, setInvitationStatus] = useState<'pending' | 'accepted' | 'declined'>('pending');
-  const [isInviteModalVisible, setIsInviteModalVisible] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
+  const { user } = useAuth();
+  const sessionId = typeof id === 'string' ? id : '';
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  // State
   const [showComments, setShowComments] = useState(false);
   const [showUserProfile, setShowUserProfile] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [selectedUserFirstname, setSelectedUserFirstname] = useState<string>('');
   const [selectedUserLastname, setSelectedUserLastname] = useState<string>('');
+  const [selectedUserStatus, setSelectedUserStatus] = useState<string>('');
+  const [isInviteModalVisible, setIsInviteModalVisible] = useState(false);
+  const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
 
-  const sessionId = typeof id === 'string' ? id : '';
-  const scrollViewRef = useRef<ScrollView>(null);
-
-  const { data: session, isLoading, error, getSessionById } = useGetSessionById();
-
-  // Ouvrir automatiquement la modal de commentaires si on vient d'une notification
-  React.useEffect(() => {
-    if (openComments === 'true') {
-      console.log('🔔 Ouverture automatique de la modal de commentaires depuis notification');
-      setShowComments(true);
-    }
-  }, [openComments]);
-  const { data: friends, isLoading: friendsLoading } = useGetFriends();
-  const { inviteFriends, isLoading: isInviting } = useInviteFriends();
+  // Hooks
+  const { data: session, error, getSessionById } = useGetSessionById();
+  const { data: friends } = useGetFriends();
+  const { inviteFriends } = useInviteFriends();
   const { respondToInvitation, isLoading: isResponding } = useRespondToInvitation();
   const { cancelParticipation, isLoading: isCancelling } = useCancelParticipation();
-  const { cancelSession, isLoading: isCancellingSession } = useCancelSession();
-  const { updateSession, isLoading: isUpdating } = useUpdateSession();
+  const { cancelSession } = useCancelSession();
 
-  // Hook pour le pull-to-refresh
+  // Comments
+  const {
+    comments,
+    reloadComments
+  } = useComments(sessionId);
+
+  // Effects
+  useFocusEffect(
+    React.useCallback(() => {
+      if (sessionId) getSessionById(sessionId);
+    }, [sessionId, getSessionById])
+  );
+
+  React.useEffect(() => {
+    if (openComments === 'true') setShowComments(true);
+  }, [openComments]);
+
+  // Pull to Refresh
   const { refreshing, onRefresh } = usePullToRefresh({
     onRefresh: async () => {
       await getSessionById(sessionId);
       await reloadComments();
     },
-    onError: (error: any) => {
-    },
-    minDelay: 1000
+    minDelay: 800
   });
 
-  // Nouveau système de commentaires
-  const {
-    comments,
-    isConnected,
-    isLoadingComments,
-    isCreatingComment,
-    sendComment,
-    getOnlineUsersCount,
-    reloadComments
-  } = useComments(sessionId);
-
-  // Fonction pour ouvrir la modal de profil utilisateur
-  const handleUserPress = (userId: string, firstname?: string, lastname?: string) => {
+  // Logic
+  const handleUserPress = (userId: string, firstname?: string, lastname?: string, status?: string) => {
     setSelectedUserId(userId);
     setSelectedUserFirstname(firstname || '');
     setSelectedUserLastname(lastname || '');
+    setSelectedUserStatus(status || '');
     setShowUserProfile(true);
   };
 
-  // Déterminer le statut de l'utilisateur dans cette session
   const getUserStatus = () => {
     if (!session || !user) return null;
-
-    // Vérifier si l'utilisateur est l'organisateur
-    if (session.organizer.id === user.id) {
-      return 'organizer';
-    }
-
-    // Vérifier si l'utilisateur est un participant
+    if (session.organizer.id === user.id) return 'organizer';
     const participant = session.participants.find(p => p.id === user.id);
-    if (participant) {
-      return participant.status; // 'accepted', 'declined', 'pending'
-    }
-
-    // L'utilisateur n'est ni organisateur ni participant
-    return 'not_invited';
+    return participant ? participant.status : 'not_invited';
   };
 
   const userStatus = getUserStatus();
   const isOrganizer = userStatus === 'organizer';
-  const isParticipant = userStatus === 'accepted' || userStatus === 'declined' || userStatus === 'pending';
-  const canRespondToInvitation = userStatus === 'pending';
-  const canCancelParticipation = userStatus === 'accepted'; // Peut annuler sa participation si acceptée
-
-  // Détecter si l'utilisateur vient de l'historique
+  const isParticipant = ['accepted', 'declined', 'pending'].includes(userStatus || '');
+  const canRespond = userStatus === 'pending';
+  const canCancel = userStatus === 'accepted';
   const isFromHistory = source === 'history';
 
-  // Vérifier si la limite de participants est atteinte
-  const acceptedParticipantsCount = session?.participants?.filter(p => p.status === 'accepted').length || 0;
+  const acceptedCount = session?.participants?.filter(p => p.status === 'accepted').length || 0;
   const maxParticipants = session?.maxParticipants || 0;
-  const isLimitReached = maxParticipants > 0 && acceptedParticipantsCount >= maxParticipants;
+  const isLimitReached = maxParticipants > 0 && acceptedCount >= maxParticipants;
+  const canActuallyRespond = canRespond && !isLimitReached;
 
-  // Ne peut répondre à l'invitation que si la limite n'est pas atteinte
-  const canActuallyRespondToInvitation = canRespondToInvitation && !isLimitReached;
-
-  // Charger la session quand l'écran devient actif
-  useFocusEffect(
-    React.useCallback(() => {
-      if (sessionId) {
-        getSessionById(sessionId);
-      }
-    }, [sessionId, getSessionById])
-  );
-
-  // Fonction pour forcer le rechargement des commentaires
-  const handleCommentsReload = () => {
-    // Utiliser la fonction de rechargement du hook useComments
-    reloadComments();
+  // Handlers
+  const handleAccept = async () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    try {
+      await respondToInvitation(sessionId, 'accept');
+      getSessionById(sessionId);
+      router.back();
+    } catch { Alert.alert('Erreur', "Impossible d'accepter"); }
   };
 
-  // Ne plus afficher d'écran de chargement bloquant
-  // L'interface s'affiche directement, les données se chargent en arrière-plan
+  const handleDecline = async () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    Alert.alert('Refuser', 'Sûr de vouloir refuser ?', [
+      { text: 'Annuler', style: 'cancel' },
+      {
+        text: 'Refuser', style: 'destructive', onPress: async () => {
+          try {
+            await respondToInvitation(sessionId, 'decline');
+            getSessionById(sessionId);
+            router.back();
+          } catch { Alert.alert('Erreur', "Impossible de refuser"); }
+        }
+      }
+    ]);
+  };
+
+  const handleCancelPart = async () => {
+    Alert.alert('Annuler', 'Annuler votre participation ?', [
+      { text: 'Non', style: 'cancel' },
+      {
+        text: 'Oui, annuler', style: 'destructive', onPress: async () => {
+          try {
+            await cancelParticipation(sessionId);
+            getSessionById(sessionId);
+            router.back();
+          } catch { Alert.alert('Erreur', "Impossible d'annuler"); }
+        }
+      }
+    ]);
+  };
+
+  const handleCancelSess = async () => {
+    Alert.alert('Annuler Session', 'Action irréversible. Annuler la session ?', [
+      { text: 'Non', style: 'cancel' },
+      {
+        text: 'Oui, supprimer', style: 'destructive', onPress: async () => {
+          try {
+            await cancelSession(sessionId);
+            router.back();
+          } catch { Alert.alert('Erreur', "Impossible d'annuler la session"); }
+        }
+      }
+    ]);
+  };
+
+  const handleInvite = async () => {
+    if (selectedFriends.length === 0) return;
+    try {
+      await inviteFriends(sessionId, selectedFriends);
+      setIsInviteModalVisible(false);
+      setSelectedFriends([]);
+      getSessionById(sessionId);
+      Alert.alert('Succès', 'Invitations envoyées');
+    } catch { Alert.alert('Erreur', "Echec de l'envoi"); }
+  };
+
+  const toggleFriend = (id: string) => {
+    Haptics.selectionAsync();
+    setSelectedFriends(prev => prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id]);
+  };
 
   if (error || !session) {
     return (
-      <SafeAreaView style={styles.container}>
-        <Text style={{ color: 'red' }}>Erreur: {error || 'Session non trouvée'}</Text>
+      <SafeAreaView style={styles.loadingContainer}>
+        <Text style={styles.errorText}>{error || 'Session introuvable'}</Text>
       </SafeAreaView>
     );
   }
 
-  // COMMENTÉ - Fonction d'ajout de commentaire retirée (maintenant gérée dans la modal)
-  /*
-  const handleAddComment = () => {
-    if (newComment.trim()) {
-      // Ici, vous ajouterez la logique pour ajouter un commentaire
-      setNewComment('');
-    }
-  };
-  */
+  const filteredFriends = friends?.filter(f => !session.participants.some(p => p.id === f.id && p.status !== 'declined')) || [];
 
-  const handleAcceptInvitation = async () => {
-    // Ici, vous ajouterez la logique pour accepter l'invitation
-
-    // Mettre à jour l'état local
-    setInvitationStatus('accepted');
-
-    try {
-      const result = await respondToInvitation(sessionId, 'accept');
-
-      // Recharger les données de la session pour voir le nouveau statut
-      getSessionById(sessionId);
-      router.back();
-    } catch (error: any) {
-      Alert.alert(
-        'Erreur',
-        error.message || 'Impossible d\'envoyer la réponse d\'acceptation'
-      );
-    }
-  };
-
-  const handleDeclineInvitation = async () => {
-    Alert.alert(
-      'Refuser l\'invitation',
-      'Êtes-vous sûr de vouloir refuser cette invitation ?',
-      [
-        {
-          text: 'Annuler',
-          style: 'cancel'
-        },
-        {
-          text: 'Refuser',
-          style: 'destructive',
-          onPress: async () => {
-            // Ici, vous ajouterez la logique pour refuser l'invitation
-
-            // Mettre à jour l'état local
-            setInvitationStatus('declined');
-
-            try {
-              const result = await respondToInvitation(sessionId, 'decline');
-
-              // Recharger les données de la session pour voir le nouveau statut
-              getSessionById(sessionId);
-              router.back();
-            } catch (error: any) {
-              Alert.alert(
-                'Erreur',
-                error.message || 'Impossible d\'envoyer la réponse de refus'
-              );
-            }
-          }
-        }
-      ]
-    );
-  };
-
-  const handleCancelParticipation = async () => {
-    Alert.alert(
-      'Annuler ma participation',
-      'Êtes-vous sûr de vouloir annuler votre participation à cette session ?',
-      [
-        {
-          text: 'Annuler',
-          style: 'cancel'
-        },
-        {
-          text: 'Confirmer',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const result = await cancelParticipation(sessionId);
-              getSessionById(sessionId);
-              Alert.alert(
-                'Participation annulée',
-                'Votre participation à cette session a été annulée avec succès.',
-                [
-                  {
-                    text: 'OK',
-                    onPress: () => router.back()
-                  }
-                ]
-              );
-            } catch (error: any) {
-              Alert.alert(
-                'Erreur',
-                error.message || 'Impossible d\'annuler votre participation'
-              );
-            }
-          }
-        }
-      ]
-    );
-  };
-
-  const handleCancelSession = async () => {
-    Alert.alert(
-      'Annuler la session',
-      'Êtes-vous sûr de vouloir annuler complètement cette session ? Cette action est irréversible et tous les participants seront notifiés.',
-      [
-        {
-          text: 'Annuler',
-          style: 'cancel'
-        },
-        {
-          text: 'Confirmer',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const result = await cancelSession(sessionId);
-              Alert.alert(
-                'Session annulée',
-                'La session a été annulée avec succès. Tous les participants ont été notifiés.',
-                [
-                  {
-                    text: 'OK',
-                    onPress: () => router.back()
-                  }
-                ]
-              );
-            } catch (error: any) {
-              Alert.alert(
-                'Erreur',
-                error.message || 'Impossible d\'annuler la session'
-              );
-            }
-          }
-        }
-      ]
-    );
-  };
-
-  const handleInviteFriends = () => {
-    // Ici, vous ajouterez la logique pour envoyer les invitations
-
-    Alert.alert(
-      'Invitations envoyées',
-      `${selectedFriends.length} invitation${selectedFriends.length > 1 ? 's' : ''} envoyée${selectedFriends.length > 1 ? 's' : ''}`,
-      [
-        {
-          text: 'OK',
-          onPress: () => {
-            setIsInviteModalVisible(false);
-            setSelectedFriends([]);
-            setSearchQuery('');
-          }
-        }
-      ]
-    );
-  };
-
-  const handleInviteFriend = (friendId: string) => {
-    if (selectedFriends.includes(friendId)) {
-      setSelectedFriends(selectedFriends.filter(id => id !== friendId));
-    } else {
-      setSelectedFriends([...selectedFriends, friendId]);
-    }
-  };
-
-  const handleSendInvitations = async () => {
-    if (selectedFriends.length === 0) {
-      Alert.alert('Erreur', 'Veuillez sélectionner au moins un ami');
-      return;
-    }
-
-    try {
-
-      const result = await inviteFriends(sessionId, selectedFriends);
-
-
-      Alert.alert(
-        'Succès',
-        `Invitations envoyées à ${selectedFriends.length} ami(s)`,
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              setIsInviteModalVisible(false);
-              setSelectedFriends([]);
-              setSearchQuery('');
-              // Recharger les données de la session pour voir les nouveaux participants
-              getSessionById(sessionId);
-            }
-          }
-        ]
-      );
-    } catch (error: any) {
-      Alert.alert(
-        'Erreur',
-        error.message || 'Impossible d\'envoyer les invitations'
-      );
-    }
-  };
-
-  const filteredFriends = friends.filter(friend =>
-    !session.participants.some(p => p.id === friend.id && p.status !== 'declined')
-  );
-
-  const renderFriendItem = ({ item }: { item: any }) => (
-    <TouchableOpacity
-      style={[
-        styles.friendItem,
-        selectedFriends.includes(item.id) && styles.selectedFriend
-      ]}
-      onPress={() => handleInviteFriend(item.id)}
-    >
-      <Text style={styles.friendName}>
-        {item.firstname} {item.lastname}
-      </Text>
-      {selectedFriends.includes(item.id) && (
-        <Text style={styles.checkmark}>✓</Text>
-      )}
-    </TouchableOpacity>
-  );
-
-  // Actions du header
-  const HeaderActions = () => (
-    <View style={CommonStyles.row}>
-      {/* Bouton d'édition - Afficher seulement pour l'organisateur */}
-      {isOrganizer && (
-        <TouchableOpacity
-          style={styles.headerEditButton}
-          onPress={() => router.push(`/edit-session/${sessionId}`)}
-        >
-          <Ionicons name="create-outline" size={DesignTokens.iconSizes.lg} color={DesignTokens.colors.primary} />
-        </TouchableOpacity>
-      )}
-      {/* Bouton d'invitation - Afficher pour tous les utilisateurs */}
-      <TouchableOpacity
-        style={styles.headerInviteButton}
-        onPress={() => setIsInviteModalVisible(true)}
-      >
-        <Ionicons name="person-add-outline" size={DesignTokens.iconSizes.lg} color={DesignTokens.colors.primary} />
-      </TouchableOpacity>
-    </View>
-  );
+  // Vérifier si la session est terminée
+  const isFinished = session?.date && session?.endTime
+    ? isSessionFinished(session.date, session.endTime)
+    : false;
+  const canEdit = isOrganizer && !isFinished;
 
   return (
-    <BackScreenLayout 
-      title="Détails de la Session"
-      rightAction={<HeaderActions />}
-    >
+    <MainScreenLayout title="Détails" showHeader={false} containerStyle={{ backgroundColor: '#FFF' }}>
 
-      <KeyboardAvoidingView
-        style={styles.keyboardAvoidingView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? height.tabBar + height.safeAreaBottom : 0}
+      {/* Custom Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={28} color="#000" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>SESSION</Text>
+        <View style={styles.headerRight}>
+          {canEdit && (
+            <TouchableOpacity onPress={() => router.push(`/edit-session/${sessionId}`)}>
+              <Ionicons name="settings-outline" size={24} color="#000" />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      <ScrollView
+        ref={scrollViewRef}
+        refreshControl={<PullToRefresh refreshing={refreshing} onRefresh={onRefresh} color="#000" />}
+        contentContainerStyle={styles.scrollContent}
       >
-        <ScrollView
-          ref={scrollViewRef}
-          style={styles.scrollView}
-          refreshControl={
-            <PullToRefresh
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-            />
-          }
-        >
-          {/* En-tête de la session */}
-          <View style={styles.sessionHeader}>
-            <View style={styles.sessionHeaderLeft}>
-              <Text style={styles.sportTitle}>{session.sport.toUpperCase()}</Text>
-              <Text style={styles.dateTime}>
-                {formatDate(session.date)} de {formatTimeFrance(session.startTime)} à {formatTimeFrance(session.endTime)}
-              </Text>
-              <View style={styles.locationContainer}>
-                <Ionicons name="location-outline" size={16} color="#666" />
-                <Text style={styles.location}>{session.location}</Text>
-              </View>
-              {session.pricePerPerson && (
-                <View style={styles.priceContainer}>
-                  <Ionicons name="card-outline" size={16} color="#666" />
-                  <Text style={styles.price}>{session.pricePerPerson}€ par personne</Text>
-                </View>
-              )}
-            </View>
+        {/* Hero Section */}
+        <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.heroSection}>
+          <View style={styles.sportBadge}>
+            <Text style={styles.sportText}>{session.sport.toUpperCase()}</Text>
           </View>
 
-          {/* Boutons d'action pour les invitations - Afficher seulement si l'utilisateur peut répondre ET que la limite n'est pas atteinte ET qu'il ne vient pas de l'historique */}
-          {canActuallyRespondToInvitation && session.status !== 'cancelled' && !isFromHistory && (
-            <View style={styles.invitationActions}>
-              <TouchableOpacity
-                style={[
-                  styles.actionButton,
-                  styles.acceptButton,
-                  isResponding && styles.actionButtonDisabled
-                ]}
-                onPress={handleAcceptInvitation}
-                disabled={isResponding}
-              >
-                {isResponding ? (
-                  <>
-                    <Ionicons name="refresh" size={20} color="#fff" style={{ transform: [{ rotate: '360deg' }] }} />
-                    <Text style={styles.actionButtonText}>Envoi en cours...</Text>
-                  </>
-                ) : (
-                  <>
-                    <Ionicons name="checkmark" size={20} color="#fff" />
-                    <Text style={styles.actionButtonText}>Accepter l&apos;invitation</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.actionButton,
-                  styles.declineButton,
-                  isResponding && styles.actionButtonDisabled
-                ]}
-                onPress={handleDeclineInvitation}
-                disabled={isResponding}
-              >
-                {isResponding ? (
-                  <>
-                    <Ionicons name="refresh" size={20} color="#fff" style={{ transform: [{ rotate: '360deg' }] }} />
-                    <Text style={styles.actionButtonText}>Envoi en cours...</Text>
-                  </>
-                ) : (
-                  <>
-                    <Ionicons name="close" size={20} color="#fff" />
-                    <Text style={styles.actionButtonText}>Refuser l&apos;invitation</Text>
-                  </>
-                )}
-              </TouchableOpacity>
+          <Text style={styles.dateText}>
+            {formatDate(session.date).toUpperCase()}
+          </Text>
+          <Text style={styles.timeText}>
+            {formatTimeFrance(session.startTime)} - {formatTimeFrance(session.endTime)}
+          </Text>
+
+          <View style={styles.locationRow}>
+            <Ionicons name="location-sharp" size={16} color={ACCENT_COLOR} />
+            <Text style={styles.locationText}>{session.location.toUpperCase()}</Text>
+          </View>
+
+          {session.status === 'cancelled' && (
+            <View style={styles.cancelledBadge}>
+              <Text style={styles.cancelledText}>SESSION ANNULÉE</Text>
             </View>
           )}
+        </Animated.View>
 
-          {/* Bouton d'annulation de participation - Afficher seulement si l'utilisateur a accepté l'invitation ET qu'il ne vient pas de l'historique */}
-          {canCancelParticipation && session.status !== 'cancelled' && !isFromHistory && (
-            <View style={styles.invitationActions}>
+        {/* Actions Section */}
+        {!isFromHistory && session.status !== 'cancelled' && (
+          <Animated.View entering={FadeInUp.delay(200).springify()} style={styles.actionsSection}>
+            {canActuallyRespond && (
+              <View style={styles.buttonRow}>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.acceptButton]}
+                  onPress={handleAccept}
+                  disabled={isResponding}
+                >
+                  <Text style={styles.acceptButtonText}>REJOINDRE LE SQUAD</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.declineButton]}
+                  onPress={handleDecline}
+                  disabled={isResponding}
+                >
+                  <Ionicons name="close" size={24} color="#000" />
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {canCancel && (
               <TouchableOpacity
-                style={[
-                  styles.actionButton,
-                  styles.cancelButton,
-                  isCancelling && styles.actionButtonDisabled
-                ]}
-                onPress={handleCancelParticipation}
+                style={[styles.actionButton, styles.cancelButton]}
+                onPress={handleCancelPart}
                 disabled={isCancelling}
               >
-                {isCancelling ? (
-                  <>
-                    <Ionicons name="refresh" size={20} color="#fff" style={{ transform: [{ rotate: '360deg' }] }} />
-                    <Text style={styles.actionButtonText}>Annulation en cours...</Text>
-                  </>
-                ) : (
-                  <>
-                    <Ionicons name="person-remove" size={20} color="#fff" />
-                    <Text style={styles.actionButtonText}>Annuler ma participation</Text>
-                  </>
-                )}
+                <Text style={styles.cancelButtonText}>QUITTER LE SQUAD</Text>
               </TouchableOpacity>
-            </View>
-          )}
+            )}
 
-          {/* Bouton d'annulation de session - Afficher seulement pour l'organisateur ET qu'il ne vient pas de l'historique */}
-          {isOrganizer && session.status !== 'cancelled' && !isFromHistory && (
-            <View style={styles.invitationActions}>
+            {isOrganizer && (
+              <View style={styles.organizerActions}>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.inviteButton]}
+                  onPress={() => setIsInviteModalVisible(true)}
+                >
+                  <Text style={styles.inviteButtonText}>INVITER DES ATHLÈTES</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.textButton]}
+                  onPress={handleCancelSess}
+                >
+                  <Text style={styles.textButtonLabel}>ANNULER LA SESSION</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Invite button for non-organizers too if allowed? Usually organizers invite. 
+                Original code allowed everyone to invite. Let's keep it. */}
+            {!isOrganizer && isParticipant && (
               <TouchableOpacity
-                style={[
-                  styles.actionButton,
-                  styles.cancelSessionButton,
-                  isCancellingSession && styles.actionButtonDisabled
-                ]}
-                onPress={handleCancelSession}
-                disabled={isCancellingSession}
+                style={[styles.actionButton, styles.inviteButton]}
+                onPress={() => setIsInviteModalVisible(true)}
               >
-                {isCancellingSession ? (
-                  <>
-                    <Ionicons name="refresh" size={20} color="#fff" style={{ transform: [{ rotate: '360deg' }] }} />
-                    <Text style={styles.actionButtonText}>Annulation en cours...</Text>
-                  </>
-                ) : (
-                  <>
-                    <Ionicons name="close-circle" size={20} color="#fff" />
-                    <Text style={styles.actionButtonText}>Annuler la session</Text>
-                  </>
-                )}
+                <Text style={styles.inviteButtonText}>INVITER DES AMIS</Text>
               </TouchableOpacity>
-            </View>
-          )}
+            )}
+          </Animated.View>
+        )}
 
-          {/* Message quand la limite est atteinte */}
-          {canRespondToInvitation && isLimitReached && (
-            <InfoMessage
-              message="La limite de participants a été atteinte. Vous ne pouvez plus accepter cette invitation."
-              type="warning"
-              icon="warning"
-            />
-          )}
+        {/* Squad Section */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>SQUAD</Text>
+            <Text style={styles.sectionCount}>
+              {acceptedCount} / {session.maxParticipants || '∞'}
+            </Text>
+          </View>
 
-          {/* Message pour session annulée */}
-          {session.status === 'cancelled' && (
-            <InfoMessage
-              message="Cette session a été annulée par l'organisateur. Aucune action n'est possible."
-              type="error"
-              icon="close-circle"
-            />
-          )}
-
-          {/* Statut de l'utilisateur dans cette session */}
-          {!canRespondToInvitation && userStatus && session.status !== 'cancelled' && (
-            <InfoMessage
-              type={
-                userStatus === 'accepted' ? 'success' :
-                  userStatus === 'declined' ? 'error' :
-                    userStatus === 'organizer' ? 'info' : 'warning'
-              }
-              message={
-                userStatus === 'accepted' ? 'Vous participez à cette session' :
-                  userStatus === 'declined' ? 'Vous avez refusé cette invitation' :
-                    userStatus === 'organizer' ? "Vous êtes l'organisateur de cette session" :
-                      "Vous n'êtes pas invité à cette session"
-              }
-              icon={
-                userStatus === 'accepted' ? 'checkmark-circle' :
-                  userStatus === 'declined' ? 'close-circle' :
-                    userStatus === 'organizer' ? 'person-circle' : 'information-circle'
-              }
-            />
-          )}
-
-          {/* Section Participants */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>
-                Participants
-                {session.maxParticipants && (
-                  <Text style={styles.participantsMaxText}>
-                    {' '}({session.participants?.filter(p => p.status === 'accepted').length || 0}/{session.maxParticipants} max)
+          <View style={styles.squadGrid}>
+            {session.participants.map((p, i) => (
+              <TouchableOpacity
+                key={p.id}
+                style={styles.squadMember}
+                onPress={() => handleUserPress(p.id, p.firstname, p.lastname, p.status)}
+              >
+                <View style={[
+                  styles.avatar,
+                  p.status === 'accepted' ? styles.avatarAccepted :
+                    p.status === 'declined' ? styles.avatarDeclined : styles.avatarPending
+                ]}>
+                  <Text style={styles.avatarText}>
+                    {p.firstname?.[0]}{p.lastname?.[0]}
                   </Text>
-                )}
+                  {p.id === session.organizer.id && (
+                    <View style={styles.crownBadge}>
+                      <Ionicons name="star" size={8} color="#000" />
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.memberName} numberOfLines={1}>
+                  {p.firstname}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Comments Section */}
+        <TouchableOpacity
+          style={styles.commentsSection}
+          onPress={() => setShowComments(true)}
+          activeOpacity={0.8}
+        >
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>VESTIAIRE</Text>
+            <View style={styles.commentCountBadge}>
+              <Text style={styles.commentCountText}>{comments.length}</Text>
+            </View>
+          </View>
+
+          {comments.length > 0 ? (
+            <View style={styles.lastComment}>
+              <Text style={styles.lastCommentUser}>
+                {comments[0].user?.firstname}:
+              </Text>
+              <Text style={styles.lastCommentText} numberOfLines={1}>
+                {comments[0].content}
               </Text>
             </View>
-            <View style={styles.participantsList}>
-              {session.participants.map((participant) => (
-                <View key={participant.id} style={styles.participant}>
-                  <View style={styles.participantInfo}>
-                    {participant.id === user?.id ? (
-                      <Text style={styles.participantNameOwn}>
-                        {`${participant.firstname || ''} ${participant.lastname || ''}`.trim()}
-                      </Text>
-                    ) : (
-                      <TouchableOpacity
-                        onPress={() => handleUserPress(participant.id, participant.firstname, participant.lastname)}
-                        style={styles.participantNameContainer}
-                      >
-                        <Text style={styles.participantName}>
-                          {`${participant.firstname || ''} ${participant.lastname || ''}`.trim()}
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-                    {participant.id === session.organizer.id && (
-                      <Text style={styles.organizerBadge}>Organisateur</Text>
-                    )}
-                  </View>
-                  <View style={[
-                    styles.statusBadge,
-                    {
-                      backgroundColor: participant.status === 'accepted' ? '#4CAF50' :
-                        participant.status === 'declined' ? '#F44336' : '#FFC107'
-                    }
-                  ]}>
-                    <Text style={styles.statusText}>
-                      {participant.status === 'accepted' ? '✓' :
-                        participant.status === 'declined' ? '✕' : '?'}
-                    </Text>
-                  </View>
-                </View>
-              ))}
-            </View>
+          ) : (
+            <Text style={styles.noCommentsText}>Aucun message pour le moment.</Text>
+          )}
+
+          <View style={styles.openCommentsButton}>
+            <Text style={styles.openCommentsText}>OUVRIR LE CHAT</Text>
+            <Ionicons name="arrow-forward" size={16} color="#000" />
           </View>
+        </TouchableOpacity>
 
-          {/* Section Commentaires */}
-          <TouchableOpacity 
-            style={styles.section}
-            onPress={() => setShowComments(true)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Commentaires</Text>
-              <Ionicons name="chevron-forward" size={20} color="#666" />
-            </View>
-            <View style={styles.commentsList}>
-              {comments.length > 0 ? (
-                comments.slice(0, 3).map((comment, index) => {
-                  return (
-                    <View key={`${comment.id}-${index}`} style={styles.comment}>
-                      <View style={styles.commentHeader}>
-                        <Text style={styles.commentAuthor}>
-                          {comment.fullName || `${comment.user?.firstname || ''} ${comment.user?.lastname || ''}`}
-                        </Text>
-                        <Text style={styles.commentDate}>
-                          {formatCommentDate(comment.createdAt || comment.created_at || '')}
-                        </Text>
-                      </View>
-                      <Text style={styles.commentContent}>{comment.content}</Text>
-                    </View>
-                  );
-                })
-              ) : (
-                <View style={styles.emptyComment}>
-                  <Text style={styles.emptyCommentText}>
-                    Aucun commentaire
-                  </Text>
-                </View>
-              )}
-              {comments.length > 3 && (
-                <Text style={styles.seeMoreText}>
-                  Voir {comments.length - 3} commentaire(s) de plus
-                </Text>
-              )}
-            </View>
-          </TouchableOpacity>
-        </ScrollView>
+      </ScrollView>
 
-        {/* COMMENTÉ - Zone de saisie des commentaires retirée */}
-        {/*
-        <View style={styles.commentInputContainer}>
-          <TextInput
-            style={styles.commentInput}
-            placeholder="Ajouter un commentaire..."
-            value={newComment}
-            onChangeText={setNewComment}
-            multiline
-          />
-          <TouchableOpacity
-            style={[
-              styles.sendButton,
-              !newComment.trim() && styles.sendButtonDisabled
-            ]}
-            onPress={handleAddComment}
-            disabled={!newComment.trim()}
-          >
-            <Ionicons name="send" size={24} color={newComment.trim() ? DesignTokens.colors.primary : '#ccc'} />
-          </TouchableOpacity>
-        </View>
-        */}
-      </KeyboardAvoidingView>
-
-      {/* Modal d'invitation */}
-      <Modal
-        visible={isInviteModalVisible}
-        animationType="slide"
-        presentationStyle="fullScreen"
-        onRequestClose={() => setIsInviteModalVisible(false)}
-      >
-        <SafeAreaView style={styles.modalContainer}>
+      {/* Modals */}
+      <Modal visible={isInviteModalVisible} animationType="slide" presentationStyle="pageSheet">
+        <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
-            <TouchableOpacity
-              style={styles.modalCloseButton}
-              onPress={() => setIsInviteModalVisible(false)}
-            >
-              <Ionicons name="close" size={24} color="#000" />
+            <Text style={styles.modalTitle}>INVITER</Text>
+            <TouchableOpacity onPress={() => setIsInviteModalVisible(false)}>
+              <Ionicons name="close" size={28} color="#000" />
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Inviter des amis</Text>
-            <View style={styles.modalHeaderRight} />
           </View>
-
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Rechercher des amis..."
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-          </View>
-
           <FlatList
             data={filteredFriends}
-            renderItem={renderFriendItem}
             keyExtractor={item => item.id}
-            contentContainerStyle={styles.friendsList}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[styles.friendItem, selectedFriends.includes(item.id) && styles.friendItemSelected]}
+                onPress={() => toggleFriend(item.id)}
+              >
+                <Text style={[styles.friendName, selectedFriends.includes(item.id) && styles.friendNameSelected]}>
+                  {item.firstname} {item.lastname}
+                </Text>
+                {selectedFriends.includes(item.id) && <Ionicons name="checkmark" size={20} color="#000" />}
+              </TouchableOpacity>
+            )}
+            ListEmptyComponent={<Text style={styles.emptyText}>Aucun ami à inviter.</Text>}
           />
-
           <View style={styles.modalFooter}>
             <TouchableOpacity
-              style={[
-                styles.inviteButton,
-                (selectedFriends.length === 0 || isInviting) && styles.inviteButtonDisabled
-              ]}
-              onPress={handleSendInvitations}
-              disabled={selectedFriends.length === 0 || isInviting}
+              style={[styles.modalButton, selectedFriends.length === 0 && styles.modalButtonDisabled]}
+              onPress={handleInvite}
+              disabled={selectedFriends.length === 0}
             >
-              {isInviting ? (
-                <>
-                  <Ionicons
-                    name="refresh"
-                    size={20}
-                    color="#fff"
-                    style={[styles.inviteButtonIcon, { transform: [{ rotate: '360deg' }] }]}
-                  />
-                  <Text style={styles.inviteButtonText}>
-                    Envoi en cours...
-                  </Text>
-                </>
-              ) : selectedFriends.length > 0 ? (
-                <>
-                  <Ionicons
-                    name="paper-plane"
-                    size={20}
-                    color="#fff"
-                    style={styles.inviteButtonIcon}
-                  />
-                  <Text style={styles.inviteButtonText}>
-                    Inviter {selectedFriends.length} ami{selectedFriends.length > 1 ? 's' : ''}
-                  </Text>
-                </>
-              ) : (
-                <>
-                  <Ionicons
-                    name="person-add-outline"
-                    size={20}
-                    color="#8E8E93"
-                    style={styles.inviteButtonIcon}
-                  />
-                  <Text style={[styles.inviteButtonText, styles.inviteButtonTextDisabled]}>
-                    Sélectionner des amis
-                  </Text>
-                </>
-              )}
+              <Text style={styles.modalButtonText}>ENVOYER ({selectedFriends.length})</Text>
             </TouchableOpacity>
           </View>
-        </SafeAreaView>
+        </View>
       </Modal>
 
-      {/* Modal des commentaires complets */}
-      <Modal
-        visible={showComments}
-        animationType="slide"
-        presentationStyle="fullScreen"
-        onRequestClose={() => setShowComments(false)}
-        statusBarTranslucent
-      >
-        <SafeAreaView style={styles.modalContainer}>
+      <Modal visible={showComments} animationType="slide" presentationStyle="fullScreen">
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
           <View style={styles.modalHeader}>
-            <TouchableOpacity
-              style={styles.modalCloseButton}
-              onPress={() => setShowComments(false)}
-            >
-              <Ionicons name="close" size={24} color="#000" />
+            <TouchableOpacity onPress={() => setShowComments(false)}>
+              <Ionicons name="close" size={28} color="#000" />
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>
-              {session?.sport?.toUpperCase()} - {session?.date ? formatDate(session.date) : 'Session'}
-            </Text>
-            <TouchableOpacity
-              style={styles.modalDetailsButton}
-              onPress={() => {
-                setShowComments(false);
-                // Scroll vers le haut de la page pour voir les détails
-                setTimeout(() => {
-                  scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-                }, 100);
-              }}
-            >
-              <Ionicons name="information-circle-outline" size={24} color={DesignTokens.colors.primary} />
-            </TouchableOpacity>
+            <Text style={styles.modalTitle}>VESTIAIRE</Text>
+            <View style={{ width: 28 }} />
           </View>
-
           <ChatComments
             sessionId={sessionId}
-            onCommentsReload={handleCommentsReload}
+            onCommentsReload={reloadComments}
             onUserPress={handleUserPress}
             onCloseComments={() => setShowComments(false)}
           />
         </SafeAreaView>
       </Modal>
 
-      {/* Modal de profil utilisateur */}
       <UserProfileModal
         visible={showUserProfile}
         onClose={() => setShowUserProfile(false)}
         userId={selectedUserId}
         userFirstname={selectedUserFirstname}
         userLastname={selectedUserLastname}
+        userStatus={selectedUserStatus}
+        sessionId={sessionId}
+        isSessionOrganizer={isOrganizer}
+        isSessionFinished={isFinished}
+        onOrganizerChanged={() => {
+          getSessionById(sessionId);
+          router.back();
+        }}
       />
-    </BackScreenLayout>
+
+    </MainScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    paddingTop: Platform.OS === 'ios' ? 47 : 0,
-  },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  errorText: { color: 'red', fontWeight: 'bold' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#fff',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    backgroundColor: '#FFF',
   },
-  backButton: {
-    padding: 8,
-    marginLeft: -8,
-  },
+  backButton: { padding: 4 },
   headerTitle: {
-    fontSize: 17,
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  headerRight: { width: 32, alignItems: 'flex-end' },
+  scrollContent: { paddingBottom: 100 },
+
+  heroSection: {
+    paddingHorizontal: 24,
+    paddingVertical: 24,
+    alignItems: 'flex-start',
+  },
+  sportBadge: {
+    backgroundColor: '#000',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 4,
+    marginBottom: 16,
+  },
+  sportText: {
+    color: '#FFF',
+    fontWeight: '900',
+    fontSize: 32,
+    letterSpacing: -1,
+    fontStyle: 'italic',
+  },
+  dateText: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#000',
+    marginBottom: 4,
+  },
+  timeText: {
+    fontSize: 16,
     fontWeight: '600',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  headerEditButton: {
-    padding: 8,
-  },
-  headerInviteButton: {
-    padding: 8,
-  },
-  keyboardAvoidingView: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  sessionHeader: {
-    backgroundColor: '#fff',
-    padding: 16,
-  },
-  sessionHeaderLeft: {
-    flex: 1,
-  },
-  sportTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: DesignTokens.colors.primary,
-    marginBottom: 4,
-  },
-  dateTime: {
-    fontSize: 14,
     color: '#666',
-    marginBottom: 4,
+    marginBottom: 16,
+    fontVariant: ['tabular-nums'],
   },
-  locationContainer: {
+  locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
   },
-  location: {
-    marginLeft: 4,
+  locationText: {
     fontSize: 14,
-    color: '#666',
+    fontWeight: '700',
+    color: '#000',
   },
-  priceContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  price: {
-    marginLeft: 4,
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
-  },
-  section: {
-    backgroundColor: '#fff',
+  cancelledBadge: {
     marginTop: 16,
-    padding: 16,
+    backgroundColor: '#FFEBEE',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 4,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 12,
+  cancelledText: {
+    color: '#D32F2F',
+    fontWeight: '800',
+    fontSize: 12,
   },
-  participantsList: {
+
+  actionsSection: {
+    paddingHorizontal: 24,
+    marginBottom: 32,
     gap: 12,
   },
-  participant: {
+  buttonRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  participantInfo: {
-    flex: 1,
-  },
-  participantNameContainer: {
-    // Pas de style particulier pour l'instant, le TouchableOpacity gérera le press
-  },
-  participantName: {
-    fontSize: 16,
-    color: DesignTokens.colors.primary, // Couleur bleue pour indiquer que c'est cliquable
-  },
-  participantNameOwn: {
-    fontSize: 16,
-    color: '#000', // Couleur normale pour son propre nom
-  },
-  organizerBadge: {
-    fontSize: 12,
-    color: DesignTokens.colors.primary,
-    marginTop: 2,
-  },
-  statusBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  statusText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  commentsList: {
-    gap: 16,
-  },
-  comment: {
-    backgroundColor: '#f8f8f8',
-    padding: 12,
-    borderRadius: 8,
-  },
-  commentHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  commentAuthor: {
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  commentDate: {
-    fontSize: 12,
-    color: '#666',
-  },
-  commentContent: {
-    fontSize: 14,
-    color: '#333',
-  },
-  commentInputContainer: {
-    flexDirection: 'row',
-    padding: 12,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-    alignItems: 'flex-end',
-    paddingBottom: Platform.OS === 'ios' ? height.safeAreaBottom + 12 : 12,
-  },
-  commentInput: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    maxHeight: 100,
-    marginRight: 8,
-  },
-  sendButton: {
-    padding: 8,
-  },
-  sendButtonDisabled: {
-    opacity: 0.5,
-  },
-  invitationActions: {
-    padding: 16,
     gap: 12,
-    backgroundColor: '#fff',
   },
   actionButton: {
-    flexDirection: 'row',
+    height: 56,
+    borderRadius: 4,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 16,
-    borderRadius: 12,
-    gap: 8,
+    flexDirection: 'row',
   },
   acceptButton: {
-    backgroundColor: '#34C759',
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  acceptButtonText: {
+    color: '#FFF',
+    fontWeight: '900',
+    fontSize: 16,
+    fontStyle: 'italic',
   },
   declineButton: {
-    backgroundColor: '#FF3B30',
+    width: 56,
+    backgroundColor: '#F5F5F5',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
   },
-  actionButtonDisabled: {
-    opacity: 0.6,
+  cancelButton: {
+    backgroundColor: '#FFF',
+    borderWidth: 2,
+    borderColor: '#000',
   },
-  actionButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: '#fff',
-    paddingTop: Platform.OS === 'ios' ? 0 : 0,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  modalCloseButton: {
-    padding: 8,
-    marginLeft: -8,
-  },
-  modalTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-  },
-  modalHeaderRight: {
-    width: 40,
-  },
-  modalDetailsButton: {
-    padding: 8,
-    marginRight: -8,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    padding: 8,
-  },
-  friendsList: {
-    padding: 16,
-  },
-  friendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  selectedFriend: {
-    backgroundColor: '#f0f8ff',
-  },
-  friendName: {
-    fontSize: 16,
-  },
-  checkmark: {
-    color: DesignTokens.colors.primary,
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  modalFooter: {
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-    backgroundColor: '#fff',
-    paddingBottom: Platform.OS === 'ios' ? height.safeAreaBottom + 16 : 16,
+  cancelButtonText: {
+    color: '#000',
+    fontWeight: '900',
+    fontSize: 14,
   },
   inviteButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: DesignTokens.colors.primary,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  inviteButtonDisabled: {
-    backgroundColor: '#E5E5EA',
-    shadowOpacity: 0,
-    elevation: 0,
+    backgroundColor: ACCENT_COLOR,
+    marginTop: 12,
   },
   inviteButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  inviteButtonTextDisabled: {
-    color: '#8E8E93',
-  },
-  inviteButtonIcon: {
-    marginRight: 4,
-  },
-  emptyComment: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-    backgroundColor: '#f8f8f8',
-    borderRadius: 8,
-    gap: 8,
-  },
-  emptyCommentText: {
+    color: '#000',
+    fontWeight: '800',
     fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
+  },
+  organizerActions: {
+    gap: 12,
+  },
+  textButton: {
+    alignItems: 'center',
+    padding: 12,
+  },
+  textButtonLabel: {
+    color: '#FF3B30',
+    fontWeight: '700',
+    fontSize: 12,
+  },
+
+  sectionContainer: {
+    paddingHorizontal: 24,
+    marginBottom: 32,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+    paddingBottom: 8,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    fontStyle: 'italic',
+  },
+  sectionCount: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#666',
+  },
+  squadGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+  },
+  squadMember: {
+    alignItems: 'center',
+    width: (width - 48 - 48) / 4, // 4 columns roughly
+  },
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#F5F5F5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  avatarAccepted: { borderColor: ACCENT_COLOR, backgroundColor: '#FFF' },
+  avatarDeclined: { opacity: 0.5 },
+  avatarPending: { borderStyle: 'dashed', borderColor: '#CCC' },
+  avatarText: {
+    fontWeight: '700',
+    fontSize: 18,
+  },
+  crownBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: ACCENT_COLOR,
+    borderRadius: 8,
+    padding: 4,
+  },
+  memberName: {
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+
+  commentsSection: {
+    marginHorizontal: 24,
+    backgroundColor: '#F9F9F9',
+    padding: 16,
+    borderRadius: 8,
+  },
+  commentCountBadge: {
+    backgroundColor: '#000',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  commentCountText: { color: '#FFF', fontSize: 10, fontWeight: 'bold' },
+  lastComment: {
+    flexDirection: 'row',
     marginBottom: 12,
   },
-  participantsMaxText: {
-    fontSize: 16,
-    color: DesignTokens.colors.primary,
-    fontWeight: '500',
+  lastCommentUser: { fontWeight: '700', marginRight: 4 },
+  lastCommentText: { flex: 1, color: '#666' },
+  noCommentsText: { color: '#999', fontStyle: 'italic', marginBottom: 12 },
+  openCommentsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 4,
   },
-  participantsLimit: {
-    fontSize: 16,
-    color: DesignTokens.colors.primary,
-    fontWeight: '600',
-    backgroundColor: '#f0f8ff',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+  openCommentsText: { fontSize: 12, fontWeight: '800' },
+
+  // Modal Styles
+  modalContent: { flex: 1, backgroundColor: '#FFF', paddingTop: 20 },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
   },
-  seeAllText: {
-    fontSize: 14,
-    color: DesignTokens.colors.primary,
-    fontWeight: '500',
+  modalTitle: { fontSize: 20, fontWeight: '900', fontStyle: 'italic' },
+  friendItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5F5',
   },
-  seeMoreText: {
-    fontSize: 14,
-    color: DesignTokens.colors.primary,
-    fontWeight: '500',
-    textAlign: 'center',
-    marginTop: 8,
+  friendItemSelected: { backgroundColor: '#F0FFF0' },
+  friendName: { fontSize: 16, fontWeight: '600' },
+  friendNameSelected: { fontWeight: '800' },
+  emptyText: { textAlign: 'center', marginTop: 40, color: '#999' },
+  modalFooter: { padding: 24, borderTopWidth: 1, borderTopColor: '#F0F0F0' },
+  modalButton: {
+    backgroundColor: '#000',
+    padding: 16,
+    borderRadius: 4,
+    alignItems: 'center',
   },
-  cancelButton: {
-    backgroundColor: '#FF3B30', // Couleur rouge pour l'annulation
-  },
-  cancelSessionButton: {
-    backgroundColor: '#FF3B30', // Couleur rouge pour l'annulation de session
-  },
-}); 
+  modalButtonDisabled: { opacity: 0.5 },
+  modalButtonText: { color: '#FFF', fontWeight: '900' },
+});

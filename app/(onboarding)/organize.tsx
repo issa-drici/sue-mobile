@@ -14,7 +14,7 @@ export default function OrganizeScreen() {
 
 
   return (
-    <ScreenLayout style={styles.container}>
+    <ScreenLayout containerStyle={styles.container} showHeader={false}>
       <View style={styles.content}>
         <OnboardingProgress currentStep={2} totalSteps={3} />
         

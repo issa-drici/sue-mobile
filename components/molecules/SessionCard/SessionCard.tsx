@@ -5,6 +5,7 @@ import { Text, Icon, Button } from '../../atoms';
 import { Card } from '../../ui/Card';
 import { DesignTokens } from '../../../constants/DesignSystem';
 import { formatDate, formatTimeFrance } from '../../../utils/dateHelpers';
+import { isSessionFinished } from '../../../utils/timeHelpers';
 
 interface SessionCardProps {
   session: {
@@ -13,6 +14,8 @@ interface SessionCardProps {
     sport: string;
     location: string;
     startTime: string;
+    date?: string;
+    endTime?: string;
     maxParticipants?: number;
     participants?: any[];
     status?: 'active' | 'cancelled' | 'completed';
@@ -52,6 +55,16 @@ export const SessionCard: React.FC<SessionCardProps> = ({
       default: return 'Active';
     }
   };
+
+  // Vérifier si la session est terminée
+  const isFinished = session.date && session.endTime 
+    ? isSessionFinished(session.date, session.endTime) 
+    : false;
+  const canEdit = session.isCreator && !isFinished;
+
+  // Compter uniquement les participants qui ont accepté l'invitation
+  const acceptedParticipants = session.participants?.filter((p: any) => p.status === 'accepted') || [];
+  const participantsCount = acceptedParticipants.length;
 
   return (
     <Card padding="md" style={{ marginBottom: DesignTokens.spacing.sm }}>
@@ -116,7 +129,7 @@ export const SessionCard: React.FC<SessionCardProps> = ({
           }}>
             <Icon name="people-outline" size="sm" color="secondary" />
             <Text variant="caption" color="secondary" style={{ marginLeft: DesignTokens.spacing.xs }}>
-              {session.participants?.length || 0} / {session.maxParticipants} participants
+              {participantsCount} / {session.maxParticipants} participants
             </Text>
           </View>
         )}
@@ -134,7 +147,7 @@ export const SessionCard: React.FC<SessionCardProps> = ({
               onPress={handlePress}
               style={{ flex: 1 }}
             />
-            {session.isCreator && (
+            {canEdit && (
               <Button
                 title="Modifier"
                 variant="secondary"

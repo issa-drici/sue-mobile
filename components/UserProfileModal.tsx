@@ -1,22 +1,25 @@
-import { DesignTokens } from '../constants/DesignSystem';
-import { CommonStyles, TextStyles } from '../styles/CommonStyles';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import React, { useEffect } from 'react';
 import {
   Alert,
   Image,
   Modal,
-  SafeAreaView,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import Animated, { FadeInUp } from 'react-native-reanimated';
+
 import { useAuth } from '../app/context/auth';
 import { useCancelFriendRequest, useGetUserById, useSendFriendRequest } from '../services';
+import { SessionsApi } from '../services/api/sessionsApi';
 import { Sport } from '../types/sport';
 import { formatSportName, getSportEmoji } from '../utils/sportEmojis';
+import { InlineLoading } from './OptimizedLoading';
+
+const ACCENT_COLOR = '#D4FC79'; // Electric Volt
 
 interface UserProfileModalProps {
   visible: boolean;
@@ -24,6 +27,11 @@ interface UserProfileModalProps {
   userId?: string;
   userFirstname?: string;
   userLastname?: string;
+  userStatus?: string;
+  sessionId?: string;
+  isSessionOrganizer?: boolean;
+  isSessionFinished?: boolean;
+  onOrganizerChanged?: () => void;
 }
 
 export default function UserProfileModal({
@@ -32,123 +40,196 @@ export default function UserProfileModal({
   userId,
   userFirstname,
   userLastname,
+  userStatus,
+  sessionId,
+  isSessionOrganizer,
+  isSessionFinished,
+  onOrganizerChanged,
 }: UserProfileModalProps) {
-  const { data: userProfile, fetchUserById } = useGetUserById();
+  const { data: userProfile, fetchUserById, isLoading } = useGetUserById();
   const { sendFriendRequest, isLoading: isSendingRequest } = useSendFriendRequest();
   const { cancelFriendRequest, isLoading: isCancellingRequest } = useCancelFriendRequest();
-  const { user: currentUser } = useAuth(); // Récupérer l'utilisateur connecté
-  const [isInitialLoad, setIsInitialLoad] = React.useState(true);
+  const { user: currentUser } = useAuth();
 
-  // Charger les données de l'utilisateur quand le modal devient visible
   useEffect(() => {
-    console.log('🔍 [UserProfileModal] useEffect - visible:', visible, 'userId:', userId);
     if (visible && userId) {
-      console.log('📡 [UserProfileModal] Appel fetchUserById avec userId:', userId);
-      setIsInitialLoad(true);
       fetchUserById(userId);
     }
   }, [visible, userId, fetchUserById]);
 
-  // Log pour debug
-  useEffect(() => {
-    console.log('🔍 [UserProfileModal] userProfile changé:', userProfile);
-    // Marquer que le chargement initial est terminé
-    if (userProfile && isInitialLoad) {
-      setIsInitialLoad(false);
-    }
-  }, [userProfile, isInitialLoad]);
-
   const handleAddFriend = async () => {
-    if (!userId) {
-      console.error('❌ [UserProfileModal] userId manquant pour l\'envoi de demande d\'ami');
-      Alert.alert('Erreur', 'ID utilisateur manquant');
-      return;
-    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (!userId) return;
 
-    // Vérifier que l'utilisateur ne s'ajoute pas lui-même
     if (currentUser && currentUser.id === userId) {
-      console.error('❌ [UserProfileModal] Tentative d\'ajout de soi-même comme ami');
-      Alert.alert('Erreur', 'Vous ne pouvez pas vous ajouter vous-même comme ami');
+      Alert.alert('Erreur', 'Vous ne pouvez pas vous ajouter vous-même');
       return;
     }
-
-    console.log('📡 [UserProfileModal] Tentative d\'envoi de demande d\'ami pour userId:', userId);
 
     try {
       await sendFriendRequest(userId);
-      // Rafraîchir les données du profil pour mettre à jour le bouton
-      console.log('🔄 [UserProfileModal] Rafraîchissement du profil après ajout d\'ami');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       await fetchUserById(userId);
     } catch (error: any) {
-      console.error('❌ [UserProfileModal] Erreur lors de l\'envoi de demande d\'ami:', error);
-      
-      // Gestion spécifique de l'erreur 409 (demande déjà existante)
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       if (error.message && error.message.includes('existe déjà')) {
         Alert.alert(
-          'Demande existante',
-          'Une demande d\'ami existe déjà pour cet utilisateur. Veuillez attendre une réponse ou annuler la demande existante.',
+          'Déjà demandé',
+          'Patience, l\'athlète n\'a pas encore répondu.',
           [
             { text: 'OK', style: 'default' },
             {
-              text: 'Annuler la demande existante',
+              text: 'Annuler la demande',
               style: 'destructive',
               onPress: () => handleCancelFriend()
             }
           ]
         );
       } else {
-        // Extraire le message d'erreur de manière plus robuste
-        let errorMessage = 'Impossible d\'envoyer la demande d\'ami';
-        
-        if (error.message) {
-          errorMessage = error.message;
-        } else if (error.error?.message) {
-          errorMessage = error.error.message;
-        } else if (error.response?.data?.message) {
-          errorMessage = error.response.data.message;
-        } else if (error.response?.data?.error?.message) {
-          errorMessage = error.response.data.error.message;
-        }
-        
-        Alert.alert('Erreur', errorMessage);
+        Alert.alert('Erreur', 'Impossible d\'envoyer la demande');
       }
     }
   };
 
   const handleCancelFriend = async () => {
-    if (!userId) {
-      console.error('❌ [UserProfileModal] userId manquant pour l\'annulation de demande d\'ami');
-      Alert.alert('Erreur', 'ID utilisateur manquant');
-      return;
-    }
-
-    console.log('📡 [UserProfileModal] Tentative d\'annulation de demande d\'ami pour userId:', userId);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (!userId) return;
 
     try {
       await cancelFriendRequest(userId);
-      // Rafraîchir les données du profil pour mettre à jour le bouton
-      console.log('🔄 [UserProfileModal] Rafraîchissement du profil après annulation d\'ami');
       await fetchUserById(userId);
     } catch (error: any) {
-      console.error('❌ [UserProfileModal] Erreur lors de l\'annulation de demande d\'ami:', error);
-      
-      // Extraire le message d'erreur de manière plus robuste
-      let errorMessage = 'Impossible d\'annuler la demande d\'ami';
-      
-      if (error.message) {
-        errorMessage = error.message;
-      } else if (error.error?.message) {
-        errorMessage = error.error.message;
-      } else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.response?.data?.error?.message) {
-        errorMessage = error.response.data.error.message;
-      }
-      
-      Alert.alert('Erreur', errorMessage);
+      Alert.alert('Erreur', 'Impossible d\'annuler la demande');
     }
   };
 
+  const handleMakeAdmin = () => {
+    if (!sessionId || !userId) return;
+
+    Alert.alert(
+      'Nommer administrateur',
+      `Voulez-vous vraiment nommer ${userProfile?.firstname} administrateur de la session ? Vous perdrez vos droits d'organisateur.`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Confirmer',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await SessionsApi.changeOrganizer(sessionId, userId);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              onClose();
+              if (onOrganizerChanged) onOrganizerChanged();
+            } catch (error) {
+              Alert.alert('Erreur', "Impossible de changer l'organisateur");
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const renderContent = () => {
+    if (isLoading || !userProfile) {
+      return <InlineLoading message="Chargement du profil..." />;
+    }
+
+    const isMe = currentUser?.id === userId;
+
+    return (
+      <Animated.View entering={FadeInUp.springify()} style={styles.content}>
+        {/* Avatar & Name */}
+        <View style={styles.headerSection}>
+          <Image
+            source={require('../assets/images/icon-avatar.png')}
+            style={styles.avatar}
+          />
+          <Text style={styles.userName}>
+            {userProfile.firstname.toUpperCase()}
+          </Text>
+          <Text style={styles.userLastName}>
+            {userProfile.lastname.toUpperCase()}
+          </Text>
+        </View>
+
+        {/* Stats */}
+        <View style={styles.statsRow}>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{userProfile.stats?.sessionsCreated || 0}</Text>
+            <Text style={styles.statLabel}>CRÉÉES</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{userProfile.stats?.sessionsParticipated || 0}</Text>
+            <Text style={styles.statLabel}>JOUÉES</Text>
+          </View>
+        </View>
+
+        {/* Sports */}
+        {userProfile.sports_preferences && userProfile.sports_preferences.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>TERRAIN DE JEU</Text>
+            <View style={styles.sportsContainer}>
+              {userProfile.sports_preferences.map((sport, index) => (
+                <View key={index} style={styles.sportBadge}>
+                  <Text style={styles.sportEmoji}>{getSportEmoji(sport as Sport)}</Text>
+                  <Text style={styles.sportName}>{formatSportName(sport).toUpperCase()}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Action Button */}
+        {!isMe && (
+          <View style={styles.actionContainer}>
+            {userProfile.isAlreadyFriend ? (
+              <View style={styles.friendStatus}>
+                <Ionicons name="checkmark-circle" size={24} color={ACCENT_COLOR} />
+                <Text style={styles.friendStatusText}>DANS LE SQUAD</Text>
+              </View>
+            ) : userProfile.hasPendingRequest ? (
+              <TouchableOpacity
+                style={[styles.actionButton, styles.cancelButton]}
+                onPress={handleCancelFriend}
+                disabled={isCancellingRequest}
+              >
+                <Text style={[styles.actionButtonText, { color: '#FF3B30' }]}>
+                  ANNULER LA DEMANDE
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={handleAddFriend}
+                disabled={isSendingRequest}
+              >
+                <Text style={styles.actionButtonText}>
+                  RECRUTER DANS LE SQUAD
+                </Text>
+                <Ionicons name="add" size={24} color="#000" />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {/* Admin Action Button */}
+        {isSessionOrganizer && !isMe && sessionId && userStatus !== 'declined' && !isSessionFinished && (
+          <View style={[styles.actionContainer, { marginTop: 12 }]}>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.adminButton]}
+              onPress={handleMakeAdmin}
+            >
+              <Text style={styles.adminButtonText}>
+                NOMMER ADMIN
+              </Text>
+              <Ionicons name="key" size={24} color="#000" />
+            </TouchableOpacity>
+          </View>
+        )}
+      </Animated.View>
+    );
+  };
 
   return (
     <Modal
@@ -157,99 +238,14 @@ export default function UserProfileModal({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <SafeAreaView style={styles.container}>
+      <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Ionicons name="close" size={24} color="#333" />
+            <Ionicons name="close" size={28} color="#000" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Profil utilisateur</Text>
-          <View style={styles.placeholder} />
         </View>
-
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {userProfile ? (
-            <>
-                             {/* Avatar et informations principales */}
-               <View style={styles.profileHeader}>
-                 <Image
-                   source={require('../assets/images/icon-avatar.png')}
-                   style={styles.avatar}
-                 />
-                                   <View style={styles.profileInfo}>
-                    <Text style={styles.userName}>
-                      {userProfile.firstname} {userProfile.lastname}
-                    </Text>
-                  </View>
-               </View>
-
-               {/* Statistiques */}
-               <View style={styles.statsContainer}>
-                 <View style={styles.statItem}>
-                   <Text style={styles.statNumber}>{userProfile.stats?.sessionsCreated || 0}</Text>
-                   <Text style={styles.statLabel}>Sessions créées</Text>
-                 </View>
-                 <View style={styles.statItem}>
-                   <Text style={styles.statNumber}>{userProfile.stats?.sessionsParticipated || 0}</Text>
-                   <Text style={styles.statLabel}>Participations</Text>
-                 </View>
-               </View>
-
-               {/* Sports déjà joués */}
-               {userProfile.sports_preferences && userProfile.sports_preferences.length > 0 && (
-                 <View style={styles.sportsSection}>
-                   <Text style={styles.sectionTitle}>Sports déjà joués</Text>
-                   <View style={styles.sportsBadgesContainer}>
-                     {userProfile.sports_preferences.map((sport, index) => (
-                       <View key={index} style={styles.sportBadge}>
-                         <Text style={styles.sportEmoji}>{getSportEmoji(sport as Sport)}</Text>
-                         <Text style={styles.sportName}>{formatSportName(sport)}</Text>
-                       </View>
-                     ))}
-                   </View>
-                 </View>
-               )}
-
-              {/* Bouton Ajouter/Annuler ami */}
-              {userProfile.isAlreadyFriend ? (
-                <View style={styles.alreadyFriendContainer}>
-                  <Ionicons name="checkmark-circle" size={24} color="#34C759" />
-                  <Text style={styles.alreadyFriendText}>Déjà dans vos amis</Text>
-                </View>
-              ) : userProfile.hasPendingRequest ? (
-                <TouchableOpacity
-                  style={[styles.addFriendButton, styles.cancelButton]}
-                  onPress={handleCancelFriend}
-                  disabled={isCancellingRequest}
-                >
-                  <Ionicons name="close-circle" size={20} color="#fff" />
-                  <Text style={styles.addFriendButtonText}>
-                    Annuler la demande
-                  </Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={styles.addFriendButton}
-                  onPress={handleAddFriend}
-                  disabled={isSendingRequest}
-                >
-                  <Ionicons name="person-add" size={20} color="#fff" />
-                  <Text style={styles.addFriendButtonText}>
-                    Ajouter comme ami
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </>
-          ) : (
-            <View style={styles.errorContainer}>
-              <Ionicons name="alert-circle-outline" size={64} color="#FF3B30" />
-              <Text style={styles.errorTitle}>Erreur de chargement</Text>
-              <Text style={styles.errorMessage}>
-                Impossible de charger le profil de {userFirstname} {userLastname}
-              </Text>
-            </View>
-          )}
-        </ScrollView>
-      </SafeAreaView>
+        {renderContent()}
+      </View>
     </Modal>
   );
 }
@@ -257,213 +253,167 @@ export default function UserProfileModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#FFF',
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    padding: 16,
+    alignItems: 'flex-end',
   },
   closeButton: {
-    padding: 4,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-  },
-  placeholder: {
-    width: 32,
+    padding: 8,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 20,
   },
   content: {
     flex: 1,
-    padding: 20,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
+    paddingHorizontal: 24,
     alignItems: 'center',
-    paddingVertical: 40,
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#666',
-  },
-  profileHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginRight: 16,
-  },
-  profileInfo: {
-    flex: 1,
-  },
-  userName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
   },
 
-  statsContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    padding: 20,
+  headerSection: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  avatar: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#F5F5F5',
     marginBottom: 24,
   },
-  statItem: {
-    flex: 1,
+  userName: {
+    fontSize: 32,
+    fontWeight: '900',
+    fontStyle: 'italic',
+    color: '#000',
+    lineHeight: 32,
+    textAlign: 'center',
+  },
+  userLastName: {
+    fontSize: 32,
+    fontWeight: '900',
+    fontStyle: 'italic',
+    color: '#000',
+    lineHeight: 32,
+    textAlign: 'center',
+  },
+
+  statsRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 40,
+    width: '100%',
+  },
+  statItem: {
+    alignItems: 'center',
+    paddingHorizontal: 24,
   },
   statNumber: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: DesignTokens.colors.primary,
-    marginBottom: 4,
+    fontWeight: '900',
+    fontStyle: 'italic',
+    color: '#000',
   },
   statLabel: {
-    fontSize: 14,
+    fontSize: 10,
+    fontWeight: '900',
     color: '#666',
+    marginTop: 4,
   },
+  statDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: '#E0E0E0',
+  },
+
   section: {
-    marginBottom: 24,
+    width: '100%',
+    marginBottom: 40,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 12,
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#666',
+    marginBottom: 16,
+    textAlign: 'center',
   },
-  sportsSection: {
-    marginBottom: 24,
-  },
-  sportsBadgesContainer: {
+  sportsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'center',
     gap: 8,
   },
   sportBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    backgroundColor: '#F5F5F5',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
   },
   sportEmoji: {
     fontSize: 16,
-    marginRight: 6,
+    marginRight: 8,
   },
   sportName: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#333',
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#000',
   },
-  sportsList: {
+
+  actionContainer: {
+    width: '100%',
+    marginTop: 'auto',
+    marginBottom: 40,
+  },
+  actionButton: {
+    backgroundColor: ACCENT_COLOR,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+    borderRadius: 30,
     gap: 8,
-  },
-  sportItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    padding: 12,
-    borderRadius: 8,
-  },
-  sportNameOld: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
-  },
-  sportLevel: {
-    fontSize: 14,
-    color: '#666',
-  },
-  sessionItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  sessionInfo: {
-    flex: 1,
-  },
-  sessionName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
-    marginBottom: 2,
-  },
-  sessionDate: {
-    fontSize: 14,
-    color: '#666',
-  },
-  alreadyFriendContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f0f9ff',
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 16,
-  },
-  alreadyFriendText: {
-    fontSize: 16,
-    color: '#34C759',
-    fontWeight: '500',
-    marginLeft: 8,
-  },
-  addFriendButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-        backgroundColor: DesignTokens.colors.primary,
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 16,
+    shadowColor: "#D4FC79",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   cancelButton: {
-    backgroundColor: '#FF3B30',
+    backgroundColor: '#FFF0F0',
+    shadowOpacity: 0,
   },
-  addFriendButtonText: {
+  actionButtonText: {
     fontSize: 16,
-    color: '#fff',
-    fontWeight: '600',
-    marginLeft: 8,
+    fontWeight: '900',
+    fontStyle: 'italic',
+    color: '#000',
   },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  friendStatus: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 40,
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 16,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 30,
   },
-  errorTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#333',
-    marginTop: 16,
-    marginBottom: 8,
-    textAlign: 'center',
+  friendStatusText: {
+    fontSize: 14,
+    fontWeight: '900',
+    fontStyle: 'italic',
+    color: '#000',
   },
-  errorMessage: {
+  adminButton: {
+    backgroundColor: '#FFD700', // Gold color for admin
+    shadowColor: "#FFD700",
+  },
+  adminButtonText: {
     fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    lineHeight: 22,
+    fontWeight: '900',
+    fontStyle: 'italic',
+    color: '#000',
   },
 });

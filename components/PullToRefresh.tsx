@@ -16,25 +16,25 @@ interface PullToRefreshProps extends Omit<RefreshControlProps, 'colors' | 'tintC
  * avec les couleurs de l'application, des messages en français
  * et des animations smooth pour une meilleure UX.
  */
-const PullToRefresh: React.FC<PullToRefreshProps> = ({ 
-  refreshing, 
-  onRefresh, 
+const PullToRefresh: React.FC<PullToRefreshProps> = ({
+  refreshing,
+  onRefresh,
   color = BrandColors.primary,
   progressViewOffset = 0,
-  ...props 
+  ...props
 }) => {
   const lastRefreshTime = useRef(0);
-  
+
   // Protection supplémentaire contre les déclenchements multiples
   const handleRefresh = () => {
     const now = Date.now();
     const timeSinceLastRefresh = now - lastRefreshTime.current;
-    
+
     // Éviter les déclenchements trop rapprochés (moins de 500ms)
     if (timeSinceLastRefresh < 500) {
       return;
     }
-    
+
     if (!refreshing) {
       lastRefreshTime.current = now;
       onRefresh();
@@ -47,7 +47,7 @@ const PullToRefresh: React.FC<PullToRefreshProps> = ({
       onRefresh={handleRefresh}
       colors={[color]}
       tintColor={color}
-      title="Tirez pour rafraîchir"
+      title={refreshing ? "Rafraîchissement..." : "Tirez pour rafraîchir"}
       titleColor={color}
       progressViewOffset={progressViewOffset}
       // Améliorations pour une animation plus smooth

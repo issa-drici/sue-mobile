@@ -19,7 +19,7 @@ SplashScreen.preventAutoHideAsync();
 // Composant wrapper pour les notifications (seulement si utilisateur connecté)
 function NotificationWrapper({ children }: { children: React.ReactNode }) {
   const { user, isLoading: authLoading, isOnboardingLoading } = useAuth();
-  
+
   // Initialiser les notifications seulement si l'utilisateur est connecté
   // Cela permet la synchronisation avec la BDD à chaque ouverture de l'app
   useEffect(() => {
@@ -28,10 +28,10 @@ function NotificationWrapper({ children }: { children: React.ReactNode }) {
       console.log('🔔 Utilisateur connecté, initialisation des notifications...');
     }
   }, [user, authLoading, isOnboardingLoading]);
-  
+
   // Appeler le hook de manière inconditionnelle mais il ne fera rien si pas connecté
   useAppState();
-  
+
   return <>{children}</>;
 }
 
@@ -81,19 +81,27 @@ function RootLayoutNav() {
     const inOnboardingGroup = segments[0] === '(onboarding)';
     const inTabsGroup = segments[0] === '(tabs)';
 
-    // Si l'onboarding n'est pas terminé, rediriger vers l'onboarding
-    if (!isOnboardingCompleted && !inOnboardingGroup) {
+    console.log('🔍 [Navigation] État:', {
+      isOnboardingCompleted,
+      user: !!user,
+      segments: segments[0],
+      inAuthGroup,
+      inOnboardingGroup,
+      inTabsGroup,
+    });
+
+    // Si l'onboarding n'est pas terminé (false ou null), rediriger vers l'onboarding
+    // Sauf si on est déjà dans le groupe onboarding ou auth (pour éviter les conflits de navigation)
+    if (isOnboardingCompleted !== true && !inOnboardingGroup && !inAuthGroup) {
+      console.log('🔄 Redirection vers onboarding (non terminé)');
       router.replace('/(onboarding)/welcome');
       return;
     }
 
     // Si l'onboarding est terminé mais l'utilisateur n'est pas connecté
-    if (isOnboardingCompleted && !user && !inAuthGroup) {
-      // Si on est dans les tabs sans utilisateur, rediriger vers login
-      if (inTabsGroup) {
-        router.replace('/(auth)/login');
-        return;
-      }
+    // Rediriger vers login si on est dans l'onboarding, les tabs, ou ailleurs (mais pas déjà dans auth)
+    if (isOnboardingCompleted === true && !user && !inAuthGroup) {
+      console.log('🔄 Onboarding terminé, redirection vers login depuis:', segments[0]);
       router.replace('/(auth)/login');
       return;
     }

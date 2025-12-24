@@ -9,10 +9,16 @@ import { CreateSessionData } from "../types/sessions";
 function convertToCreateSessionData(
   sessionData: Partial<SportSession>
 ): CreateSessionData {
+  console.log('🕐 [CONVERT] Données reçues dans convertToCreateSessionData:');
+  console.log('  - sessionData.startTime (reçu):', sessionData.startTime);
+  console.log('  - sessionData.endTime (reçu):', sessionData.endTime);
+  console.log('  - sessionData.date (reçu):', sessionData.date);
+  console.log('  - Type de startTime:', typeof sessionData.startTime);
+  
   // Extraire les IDs des participants
   const participantIds = sessionData.participants?.map((p) => p.id) || [];
 
-  return {
+  const createData = {
     title: sessionData.sport, // Utiliser le sport comme titre
     date: sessionData.date || new Date().toISOString().split("T")[0],
     startTime: sessionData.startTime || "18:00",
@@ -23,6 +29,14 @@ function convertToCreateSessionData(
     pricePerPerson: sessionData.pricePerPerson ?? null,
     participantIds: participantIds, // ✅ Ajouter les IDs des participants
   };
+
+  console.log('🕐 [CONVERT] Données converties (CreateSessionData):');
+  console.log('  - createData.startTime:', createData.startTime);
+  console.log('  - createData.endTime:', createData.endTime);
+  console.log('  - createData.date:', createData.date);
+  console.log('  - createData complet:', JSON.stringify(createData, null, 2));
+
+  return createData;
 }
 
 // Fonction de conversion de Session vers SportSession
@@ -93,7 +107,17 @@ export function useCreateSession() {
           setData(newSession);
           return newSession;
         } else {
+          console.log('🕐 [CREATE-SESSION] Données reçues dans createSession (hook):');
+          console.log('  - sessionData.startTime:', sessionData.startTime);
+          console.log('  - sessionData.endTime:', sessionData.endTime);
+          console.log('  - sessionData.date:', sessionData.date);
+          
           const createData = convertToCreateSessionData(sessionData);
+          
+          console.log('🕐 [CREATE-SESSION] Appel à SessionsApi.create avec:');
+          console.log('  - createData.startTime:', createData.startTime);
+          console.log('  - createData.endTime:', createData.endTime);
+          
           const response = await SessionsApi.create(createData);
 
           // Extraire les données de la réponse Laravel

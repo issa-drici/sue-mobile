@@ -200,8 +200,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const completeOnboarding = async () => {
     try {
+      console.log('✅ Completion de l\'onboarding...');
       await AsyncStorage.setItem('onboarding_completed', 'true');
       setIsOnboardingCompleted(true);
+      console.log('✅ Onboarding marqué comme terminé dans l\'état');
     } catch (error) {
       console.error('Erreur lors de la sauvegarde du statut onboarding:', error);
     }

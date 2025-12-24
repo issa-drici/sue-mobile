@@ -1,251 +1,491 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, View as RNView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { BackScreenLayout } from '../components/ui/ScreenLayout';
-import { DesignTokens } from '../constants/DesignSystem';
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { UsersApi } from '../services/api/usersApi';
 import { useAuth } from './context/auth';
 
+const ACCENT_COLOR = '#D4FC79'; // Electric Volt
 
 export default function PrivacyScreen() {
-  const { user, signOut } = useAuth();
   const router = useRouter();
-  const [currentEmail, setCurrentEmail] = useState('');
+  const insets = useSafeAreaInsets();
+  const { user, signOut } = useAuth();
+
+  const [loading, setLoading] = useState(false);
+
+  // Email Modal State
+  const [emailModalVisible, setEmailModalVisible] = useState(false);
   const [newEmail, setNewEmail] = useState('');
+  const [currentEmail, setCurrentEmail] = useState('');
+
+  // Password Modal State
+  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
-  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  const handleChangeEmail = async () => {
+    if (!newEmail) {
+      Alert.alert('Erreur', 'Veuillez entrer une nouvelle adresse email.');
+      return;
+    }
+    setLoading(true);
+    try {
+      await UsersApi.updateEmail(newEmail, currentEmail);
+      Alert.alert('Succès', 'Votre email a été mis à jour.');
+      setEmailModalVisible(false);
+      setNewEmail('');
+      setCurrentEmail('');
+    } catch (error: any) {
+      Alert.alert('Erreur', error.message || 'Impossible de mettre à jour l\'email.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      Alert.alert('Erreur', 'Veuillez remplir tous les champs.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Erreur', 'Les nouveaux mots de passe ne correspondent pas.');
+      return;
+    }
+    setLoading(true);
+    try {
+      await UsersApi.updatePassword(currentPassword, newPassword);
+      Alert.alert('Succès', 'Votre mot de passe a été mis à jour.');
+      setPasswordModalVisible(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error: any) {
+      Alert.alert('Erreur', error.message || 'Impossible de mettre à jour le mot de passe.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      "Supprimer le compte",
-      "Es-tu sûr de vouloir supprimer ton compte ? Cette action est irréversible.",
+      'Supprimer le compte',
+      'Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible.',
       [
-        { text: "Annuler", style: "cancel" },
+        { text: 'Annuler', style: 'cancel' },
         {
-          text: "Supprimer",
-          style: "destructive",
+          text: 'Supprimer',
+          style: 'destructive',
           onPress: async () => {
+            setLoading(true);
             try {
-              // TODO: Appel API suppression
+              await UsersApi.deleteAccount();
               await signOut();
-              router.replace('/login');
+              router.replace('/(auth)/login');
             } catch (error: any) {
-              Alert.alert(
-                "Erreur",
-                error?.message || "Une erreur est survenue lors de la suppression du compte"
-              );
+              Alert.alert('Erreur', error.message || 'Impossible de supprimer le compte.');
+              setLoading(false);
             }
           }
         }
-      ],
-      { cancelable: true }
+      ]
     );
   };
 
   return (
-    <BackScreenLayout title="Confidentialité" scrollable horizontalPadding="md">
-      {/* Header custom */}
-      <RNView style={styles.header}>
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#222" />
+          <Ionicons name="arrow-back" size={28} color="#000" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Confidentialité</Text>
-        <RNView style={styles.headerRight} />
-      </RNView>
-        <View style={styles.content}>
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Modifier l&apos;adresse e-mail</Text>
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>E-mail actuel</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ton e-mail actuel"
-                placeholderTextColor="#999"
-                value={currentEmail}
-                onChangeText={setCurrentEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-              />
-            </View>
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Nouvel e-mail</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Nouveau e-mail"
-                placeholderTextColor="#999"
-                value={newEmail}
-                onChangeText={setNewEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-              />
-            </View>
-            <TouchableOpacity style={styles.updateButton}>
-              <Text style={styles.updateButtonText}>Mettre à jour</Text>
-            </TouchableOpacity>
+        <Text style={styles.headerTitle}>PRIVACY</Text>
+        <View style={{ width: 28 }} />
+      </View>
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 40 }]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Account Settings Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>PARAMÈTRES DU COMPTE</Text>
+
+          <TouchableOpacity style={styles.actionButton} onPress={() => setEmailModalVisible(true)}>
+            <Text style={styles.actionButtonText}>CHANGER L'EMAIL</Text>
+            <Ionicons name="chevron-forward" size={20} color="#000" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.actionButton} onPress={() => setPasswordModalVisible(true)}>
+            <Text style={styles.actionButtonText}>CHANGER LE MOT DE PASSE</Text>
+            <Ionicons name="chevron-forward" size={20} color="#000" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[styles.actionButton, styles.deleteButton]} onPress={handleDeleteAccount}>
+            <Text style={[styles.actionButtonText, styles.deleteButtonText]}>SUPPRIMER LE COMPTE</Text>
+            <Ionicons name="trash-outline" size={20} color="#FF3B30" />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.divider} />
+
+        <Text style={styles.title}>POLITIQUE DE CONFIDENTIALITÉ</Text>
+        <Text style={styles.lastUpdated}>Dernière mise à jour : 28 Nov. 2025</Text>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>1. COLLECTE DES DONNÉES</Text>
+          <Text style={styles.text}>
+            Nous collectons uniquement les données nécessaires pour vous offrir une expérience sportive optimale :
+          </Text>
+          <View style={styles.bulletPoint}>
+            <Text style={styles.bullet}>•</Text>
+            <Text style={styles.text}>Informations de profil (Nom, Prénom, Photo)</Text>
           </View>
-          <View style={styles.divider} />
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Modifier le mot de passe</Text>
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Mot de passe actuel</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Mot de passe actuel"
-                placeholderTextColor="#999"
-                secureTextEntry
-                value={currentPassword}
-                onChangeText={setCurrentPassword}
-              />
-            </View>
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Nouveau mot de passe</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Nouveau mot de passe"
-                placeholderTextColor="#999"
-                secureTextEntry
-                value={newPassword}
-                onChangeText={setNewPassword}
-              />
-            </View>
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Confirmer le nouveau mot de passe</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Confirme le nouveau mot de passe"
-                placeholderTextColor="#999"
-                secureTextEntry
-                value={confirmNewPassword}
-                onChangeText={setConfirmNewPassword}
-              />
-            </View>
-            <TouchableOpacity style={styles.updateButton}>
-              <Text style={styles.updateButtonText}>Mettre à jour</Text>
-            </TouchableOpacity>
+          <View style={styles.bulletPoint}>
+            <Text style={styles.bullet}>•</Text>
+            <Text style={styles.text}>Données de localisation pour trouver des sessions</Text>
           </View>
-          <View style={styles.divider} />
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Supprimer le compte</Text>
-            <Text style={styles.warningText}>
-              Supprimer ton compte est irréversible. Toutes tes données seront définitivement supprimées.
-            </Text>
-            <TouchableOpacity 
-              style={styles.deleteButton} 
-              onPress={handleDeleteAccount}
-            >
-              <Text style={styles.deleteButtonText}>Supprimer mon compte</Text>
-            </TouchableOpacity>
+          <View style={styles.bulletPoint}>
+            <Text style={styles.bullet}>•</Text>
+            <Text style={styles.text}>Historique de vos matchs et performances</Text>
           </View>
         </View>
-    </BackScreenLayout>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>2. UTILISATION</Text>
+          <Text style={styles.text}>
+            Vos données servent à :
+          </Text>
+          <View style={styles.bulletPoint}>
+            <Text style={styles.bullet}>•</Text>
+            <Text style={styles.text}>Organiser et gérer vos sessions sportives</Text>
+          </View>
+          <View style={styles.bulletPoint}>
+            <Text style={styles.bullet}>•</Text>
+            <Text style={styles.text}>Vous connecter avec d'autres athlètes</Text>
+          </View>
+          <View style={styles.bulletPoint}>
+            <Text style={styles.bullet}>•</Text>
+            <Text style={styles.text}>Améliorer nos services et fonctionnalités</Text>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>3. SÉCURITÉ</Text>
+          <Text style={styles.text}>
+            La sécurité de vos données est notre priorité absolue. Nous utilisons des protocoles de chiffrement avancés pour protéger vos informations personnelles contre tout accès non autorisé.
+          </Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>4. VOS DROITS</Text>
+          <Text style={styles.text}>
+            Vous avez le contrôle total. Vous pouvez à tout moment demander l'accès, la modification ou la suppression de vos données personnelles via les paramètres de l'application ou en nous contactant directement.
+          </Text>
+        </View>
+
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>SUE © 2025</Text>
+          <Text style={styles.footerText}>Fait avec passion pour les athlètes.</Text>
+        </View>
+      </ScrollView>
+
+      {/* Email Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={emailModalVisible}
+        onRequestClose={() => setEmailModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalContainer}
+        >
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>CHANGER L'EMAIL</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Ton e-mail actuel"
+              placeholderTextColor="#999"
+              value={currentEmail}
+              onChangeText={setCurrentEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Nouvel email"
+              placeholderTextColor="#999"
+              value={newEmail}
+              onChangeText={setNewEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={styles.modalButtonCancel} onPress={() => setEmailModalVisible(false)}>
+                <Text style={styles.modalButtonTextCancel}>ANNULER</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalButtonConfirm} onPress={handleChangeEmail} disabled={loading}>
+                {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.modalButtonTextConfirm}>VALIDER</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Password Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={passwordModalVisible}
+        onRequestClose={() => setPasswordModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalContainer}
+        >
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>CHANGER LE MOT DE PASSE</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Mot de passe actuel"
+              placeholderTextColor="#999"
+              value={currentPassword}
+              onChangeText={setCurrentPassword}
+              secureTextEntry
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Nouveau mot de passe"
+              placeholderTextColor="#999"
+              value={newPassword}
+              onChangeText={setNewPassword}
+              secureTextEntry
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Confirmer le mot de passe"
+              placeholderTextColor="#999"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={styles.modalButtonCancel} onPress={() => setPasswordModalVisible(false)}>
+                <Text style={styles.modalButtonTextCancel}>ANNULER</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalButtonConfirm} onPress={handleChangePassword} disabled={loading}>
+                {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.modalButtonTextConfirm}>VALIDER</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Global Loading Overlay */}
+      {loading && !emailModalVisible && !passwordModalVisible && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color={ACCENT_COLOR} />
+        </View>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#FFF',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#fff',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    backgroundColor: '#FFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-    minHeight: 56,
+    borderBottomColor: '#F0F0F0',
   },
   backButton: {
-    width: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: 8,
+    marginLeft: -8,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: '900',
+    fontStyle: 'italic',
+    letterSpacing: 1,
+  },
+  scrollView: {
     flex: 1,
   },
-  headerRight: {
-    width: 32,
-  },
   content: {
-    padding: 16,
+    padding: 24,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: '900',
+    fontStyle: 'italic',
+    marginBottom: 8,
+    lineHeight: 32,
+  },
+  lastUpdated: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 32,
+    fontWeight: '600',
   },
   section: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    marginBottom: 32,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 16,
+    fontWeight: '900',
+    fontStyle: 'italic',
+    marginBottom: 12,
+    color: '#000',
+  },
+  text: {
+    fontSize: 16,
+    lineHeight: 24,
     color: '#333',
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 14,
     fontWeight: '500',
-    color: '#333',
-    marginBottom: 8,
   },
-  input: {
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: '#fff',
-    color: '#333',
-  },
-  updateButton: {
-    backgroundColor: DesignTokens.colors.primary,
-    borderRadius: 8,
-    padding: 12,
-    alignItems: 'center',
+  bulletPoint: {
+    flexDirection: 'row',
     marginTop: 8,
+    paddingRight: 16,
   },
-  updateButtonText: {
-    color: '#fff',
+  bullet: {
     fontSize: 16,
+    lineHeight: 24,
+    color: ACCENT_COLOR,
+    marginRight: 8,
+    fontWeight: '900',
+  },
+  footer: {
+    marginTop: 20,
+    alignItems: 'center',
+    opacity: 0.5,
+  },
+  footerText: {
+    fontSize: 12,
+    color: '#000',
     fontWeight: '600',
+  },
+
+  // Action Buttons
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  actionButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#000',
+    fontStyle: 'italic',
+  },
+  deleteButton: {
+    marginTop: 16,
+    borderBottomWidth: 0,
+  },
+  deleteButtonText: {
+    color: '#FF3B30',
   },
   divider: {
     height: 1,
-    backgroundColor: '#e0e0e0',
-    marginVertical: 24,
+    backgroundColor: '#F0F0F0',
+    marginVertical: 32,
   },
-  warningText: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 20,
+
+  // Modals
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    padding: 20,
+  },
+  modalContent: {
+    width: '100%',
+    backgroundColor: '#111',
+    borderRadius: 20,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: '900',
+    fontStyle: 'italic',
+    color: '#FFF',
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  input: {
+    backgroundColor: '#222',
+    color: '#FFF',
+    padding: 16,
+    borderRadius: 12,
+    fontSize: 16,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#333',
   },
-  deleteButton: {
-    backgroundColor: '#FF3B30',
-    borderRadius: 8,
-    padding: 12,
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  modalButtonCancel: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: '#333',
     alignItems: 'center',
   },
-  deleteButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+  modalButtonConfirm: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: ACCENT_COLOR,
+    alignItems: 'center',
   },
-}); 
+  modalButtonTextCancel: {
+    color: '#FFF',
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  modalButtonTextConfirm: {
+    color: '#000',
+    fontWeight: '900',
+    fontSize: 16,
+    fontStyle: 'italic',
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  }
+});

@@ -28,6 +28,7 @@ export const SESSIONS_ENDPOINTS = {
   PRESENCE_LEAVE: (sessionId: string) => `/sessions/${sessionId}/presence/leave`,
   PRESENCE_TYPING: (sessionId: string) => `/sessions/${sessionId}/presence/typing`,
   PRESENCE_USERS: (sessionId: string) => `/sessions/${sessionId}/presence/users`,
+  CHANGE_ORGANIZER: (sessionId: string) => `/sessions/${sessionId}/change-organizer`,
 } as const;
 
 // Endpoints des utilisateurs

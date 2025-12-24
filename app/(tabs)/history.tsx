@@ -1,15 +1,172 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Dimensions,
+  FlatList,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
+import Animated, {
+  Easing,
+  FadeInDown,
+  FadeInRight,
+  Layout,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming
+} from 'react-native-reanimated';
+
 import PullToRefresh from '../../components/PullToRefresh';
 import { MainScreenLayout } from '../../components/ui/ScreenLayout';
-import { DesignTokens } from '../../constants/DesignSystem';
 import { usePullToRefresh } from '../../hooks/usePullToRefresh';
 import { useGetHistory } from '../../services';
 import { SportSession } from '../../types/sport';
-import { formatDate, formatTimeFrance } from '../../utils/dateHelpers';
-import { getSportEmoji } from '../../utils/sportEmojis';
+import { formatTimeFrance } from '../../utils/dateHelpers';
+
+const { width } = Dimensions.get('window');
+
+// --- Constants ---
+const ACCENT_COLOR = '#D4FC79'; // Electric Volt / Lime
+const ACCENT_COLOR_2 = '#96E6A1'; // Secondary Green
+
+// --- Components ---
+
+const FilterPill = ({
+  label,
+  count,
+  isActive,
+  onPress,
+  index,
+}: {
+  label: string;
+  count: number;
+  isActive: boolean;
+  onPress: () => void;
+  index: number;
+}) => {
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePress = () => {
+    Haptics.selectionAsync();
+    scale.value = withTiming(0.9, { duration: 50 }, () => {
+      scale.value = withTiming(1, { duration: 100 });
+    });
+    onPress();
+  };
+
+  return (
+    <Animated.View
+      entering={FadeInRight.delay(index * 30).springify().damping(15)}
+      style={animatedStyle}
+    >
+      <TouchableOpacity
+        onPress={handlePress}
+        activeOpacity={0.9}
+        style={[
+          styles.filterPill,
+          isActive && styles.filterPillActive,
+        ]}
+      >
+        <Text
+          style={[
+            styles.filterPillText,
+            isActive && styles.filterPillTextActive,
+          ]}
+        >
+          {label.toUpperCase()}
+          <Text style={{ fontSize: 10, opacity: isActive ? 0.8 : 0.5 }}> {count}</Text>
+        </Text>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
+
+const SessionItem = ({
+  item,
+  index,
+  onPress,
+}: {
+  item: SportSession;
+  index: number;
+  onPress: () => void;
+}) => {
+  const scale = useSharedValue(1);
+
+  const handlePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    scale.value = withTiming(0.98, { duration: 50 }, () => {
+      scale.value = withTiming(1, { duration: 100 });
+    });
+    onPress();
+  };
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const isCancelled = item.status === 'cancelled';
+  // Compter uniquement les participants qui ont accepté l'invitation
+  const acceptedParticipants = item.participants.filter(p => p.status === 'accepted');
+
+  return (
+    <Animated.View
+      entering={FadeInDown.delay(index * 80).duration(400).easing(Easing.out(Easing.cubic))}
+      layout={Layout.springify()}
+      style={[styles.itemContainer, animatedStyle]}
+    >
+      <TouchableOpacity
+        onPress={handlePress}
+        activeOpacity={0.9}
+        style={[styles.itemContent, isCancelled && styles.itemCancelled]}
+      >
+        {/* Left: Date Block */}
+        <View style={styles.dateBlock}>
+          <Text style={styles.dateDay}>{new Date(item.date).getDate()}</Text>
+          <Text style={styles.dateMonth}>
+            {new Date(item.date).toLocaleDateString('fr-FR', { month: 'short' }).toUpperCase().replace('.', '')}
+          </Text>
+        </View>
+
+        {/* Center: Info */}
+        <View style={styles.infoBlock}>
+          <View style={styles.sportRow}>
+            <Text style={styles.sportName}>{item.sport.toUpperCase()}</Text>
+            {isCancelled && <View style={styles.cancelledDot} />}
+          </View>
+
+          <Text style={styles.locationText} numberOfLines={1}>
+            {item.location.toUpperCase()}
+          </Text>
+
+          <View style={styles.metaRow}>
+            <Text style={styles.timeText}>{formatTimeFrance(item.startTime)}</Text>
+            <View style={styles.metaDivider} />
+            <Text style={styles.participantsText}>
+              {acceptedParticipants.length} ATHLÈTES
+            </Text>
+          </View>
+        </View>
+
+        {/* Right: Action / Status */}
+        <View style={styles.actionBlock}>
+          <View style={styles.arrowCircle}>
+            <Ionicons name="arrow-forward" size={20} color="#000" />
+          </View>
+        </View>
+      </TouchableOpacity>
+      <View style={styles.separator} />
+    </Animated.View>
+  );
+};
 
 
 export default function HistoryScreen() {
@@ -18,49 +175,38 @@ export default function HistoryScreen() {
   const [searchQuery] = useState('');
   const { data: sessions, isLoading, error, refetch } = useGetHistory();
 
-  // Configuration du pull-to-refresh
   const { refreshing, onRefresh } = usePullToRefresh({
     onRefresh: refetch,
-    onError: (error) => {
-    },
-    minDelay: 1000 // Délai minimum de 1 seconde
+    minDelay: 800,
   });
 
-  // Calculer les sports disponibles dynamiquement avec leurs compteurs
   const availableSports = useMemo(() => {
     const sportCounts = new Map<string, number>();
-    
-    // Compter les sessions par sport
-    sessions.forEach(session => {
+    sessions.forEach((session) => {
       const count = sportCounts.get(session.sport) || 0;
       sportCounts.set(session.sport, count + 1);
     });
-    
-    // Trier par nombre de sessions décroissant
+
     const sortedSports = Array.from(sportCounts.entries())
       .sort((a, b) => b[1] - a[1])
       .map(([sport, count]) => ({ sport, count }));
-    
-    // Combiner sports statiques + sports dynamiques
-    return [
-      { sport: 'Tous', count: sessions.length },
-      ...sortedSports
-    ];
+
+    return [{ sport: 'Tous', count: sessions.length }, ...sortedSports];
   }, [sessions]);
 
   const filteredSessions = useMemo(() => {
     return sessions
-      .filter(session => {
+      .filter((session) => {
         if (selectedSport === 'Tous') return true;
         return session.sport === selectedSport;
       })
-      .filter(session => {
+      .filter((session) => {
         if (!searchQuery) return true;
         const query = searchQuery.toLowerCase();
         return (
           session.sport.toLowerCase().includes(query) ||
           session.location.toLowerCase().includes(query) ||
-          session.participants.some(p => 
+          session.participants.some((p) =>
             `${p.firstname} ${p.lastname}`.toLowerCase().includes(query)
           )
         );
@@ -68,375 +214,290 @@ export default function HistoryScreen() {
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [selectedSport, searchQuery, sessions]);
 
-  const renderSessionItem = ({ item }: { item: SportSession }) => (
-    <TouchableOpacity 
-      style={[
-        styles.card,
-        item.status === 'cancelled' && styles.cancelledCard
-      ]}
-      onPress={() => router.push(`/session/${item.id}?source=history`)}
-    >
-      {/* Bloc emoji dans le coin supérieur droit */}
-      <View style={styles.sportEmojiContainer}>
-        <Text style={styles.sportEmoji}>{getSportEmoji(item.sport)}</Text>
-      </View>
-
-      <View style={styles.cardHeader}>
-        <Text style={styles.sportTitle}>
-          {item.sport.toUpperCase()}
-        </Text>
-        <Text style={styles.date}>
-          {formatDate(item.date)} à {formatTimeFrance(item.startTime)}
-        </Text>
-      </View>
-      
-      <View style={styles.locationContainer}>
-        <Ionicons name="location-outline" size={16} color="#666" />
-        <Text style={styles.location}>{item.location}</Text>
-      </View>
-
-      <View style={styles.participantsContainer}>
-        <Text style={styles.participantsTitle}>Participants :</Text>
-        <View style={styles.participantsList}>
-          {item.participants.slice(0, 5).map((participant) => (
-            <View key={participant.id} style={styles.participant}>
-              <Text style={styles.participantName}>
-                {participant.firstname} {participant.lastname}
-              </Text>
-              <View style={[
-                styles.statusBadge,
-                { backgroundColor: participant.status === 'accepted' ? '#4CAF50' : 
-                                 participant.status === 'declined' ? '#F44336' : '#FFC107' }
-              ]}>
-                <Text style={styles.statusText}>
-                  {participant.status === 'accepted' ? '✓' : 
-                   participant.status === 'declined' ? '✕' : '?'}
-                </Text>
-              </View>
-            </View>
-          ))}
-          {item.participants.length > 5 && (
-            <View style={styles.participant}>
-              <Text style={styles.participantName}>
-                +{item.participants.length - 5} autre{item.participants.length - 5 > 1 ? 's' : ''}
-              </Text>
-            </View>
-          )}
-        </View>
-      </View>
-
-      <View style={styles.commentsContainer}>
-        <Ionicons name="chatbubble-outline" size={16} color="#666" />
-        <Text style={styles.commentsCount}>
-          {item.comments.length} commentaire{item.comments.length !== 1 ? 's' : ''}
-        </Text>
-      </View>
-
-      {/* Indicateur de session annulée */}
-      {item.status === 'cancelled' && (
-        <View style={styles.cancelledBanner}>
-          <Ionicons name="close-circle" size={16} color="#fff" />
-          <Text style={styles.cancelledText}>ANNULÉE</Text>
-        </View>
-      )}
-    </TouchableOpacity>
-  );
-
-  // Ne pas afficher d'écran de chargement séparé, toujours afficher l'interface
-  // Le loading sera géré par le pull-to-refresh et les états vides
-
-  // Les erreurs sont gérées dans le ListEmptyComponent
+  // Calculate stats
+  const totalSessions = sessions.length;
+  const thisMonthSessions = sessions.filter(s => {
+    const d = new Date(s.date);
+    const now = new Date();
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  }).length;
 
   return (
-    <MainScreenLayout title="Historique">
+    <MainScreenLayout title="Historique" showHeader={false} containerStyle={{ backgroundColor: '#FFF' }}>
 
-      <View style={styles.filtersContainer}>
-        <ScrollView 
-          horizontal 
+      {/* Dynamic Header */}
+      <View style={styles.headerContainer}>
+        <View style={styles.headerTop}>
+          <Text style={styles.headerTitle}>VOTRE</Text>
+          <Text style={[styles.headerTitle, styles.headerTitleAccent]}>LÉGENDE</Text>
+        </View>
+        <View style={styles.statsRow}>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{totalSessions}</Text>
+            <Text style={styles.statLabel}>TOTAL</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{thisMonthSessions}</Text>
+            <Text style={styles.statLabel}>CE MOIS</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Filters */}
+      <View style={styles.filtersWrapper}>
+        <ScrollView
+          horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filtersContent}
         >
-          {availableSports.map((sportData) => (
-            <TouchableOpacity
+          {availableSports.map((sportData, index) => (
+            <FilterPill
               key={sportData.sport}
-              style={[
-                styles.filterButton,
-                selectedSport === sportData.sport && styles.filterButtonActive
-              ]}
+              label={sportData.sport}
+              count={sportData.count}
+              isActive={selectedSport === sportData.sport}
               onPress={() => setSelectedSport(sportData.sport)}
-            >
-              <Text style={[
-                styles.filterButtonText,
-                selectedSport === sportData.sport && styles.filterButtonTextActive
-              ]}>
-                {sportData.sport.charAt(0).toUpperCase() + sportData.sport.slice(1)} ({sportData.count})
-              </Text>
-            </TouchableOpacity>
+              index={index}
+            />
           ))}
         </ScrollView>
       </View>
 
-      <View style={styles.listContainer}>
-        <FlatList
-          data={filteredSessions}
-          renderItem={renderSessionItem}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <PullToRefresh
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-            />
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              {isLoading ? (
-                <>
-                  <Ionicons name="refresh-outline" size={48} color="#666" />
-                  <Text style={styles.emptyText}>Chargement de l&apos;historique...</Text>
-                </>
-              ) : error ? (
-                <>
-                  <Ionicons name="alert-circle-outline" size={48} color="#ff6b6b" />
-                  <Text style={[styles.emptyText, { color: '#ff6b6b' }]}>Erreur de chargement</Text>
-                  <Text style={styles.emptyText}>{error}</Text>
-                </>
-              ) : (
-                <>
-                  <Ionicons name="time-outline" size={48} color="#666" />
-                  <Text style={styles.emptyText}>
-                    Aucune session passée trouvée
-                  </Text>
-                </>
-              )}
-            </View>
-          }
-        />
-      </View>
+      {/* List */}
+      <FlatList
+        data={filteredSessions}
+        renderItem={({ item, index }) => (
+          <SessionItem
+            item={item}
+            index={index}
+            onPress={() => router.push(`/session/${item.id}?source=history`)}
+          />
+        )}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <PullToRefresh refreshing={refreshing} onRefresh={onRefresh} color="#000" />
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            {isLoading ? (
+              <Text style={styles.emptyText}>CHARGEMENT...</Text>
+            ) : error ? (
+              <Text style={[styles.emptyText, { color: 'red' }]}>ERREUR SYSTÈME</Text>
+            ) : (
+              <View style={{ alignItems: 'center' }}>
+                <Text style={styles.emptyTitle}>AUCUNE SESSION</Text>
+                <Text style={styles.emptyText}>COMMENCEZ VOTRE AVENTURE.</Text>
+              </View>
+            )}
+          </View>
+        }
+      />
     </MainScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
+  headerContainer: {
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 24,
+    backgroundColor: '#FFF',
   },
-  header: {
-    padding: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+  headerTop: {
+    marginBottom: 20,
   },
-  title: {
+  headerTitle: {
+    fontSize: 48,
+    fontWeight: '900',
+    color: '#000',
+    lineHeight: 48,
+    letterSpacing: -2,
+    fontStyle: 'italic',
+  },
+  headerTitleAccent: {
+    // For "Nike" feel, maybe just keep it black or use the accent color?
+    // Let's use outline style text if possible, but React Native text stroke is tricky.
+    // Let's stick to solid black but maybe add a highlight.
+    color: '#000',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 6,
+  },
+  statValue: {
     fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 16,
+    fontWeight: '800',
+    color: '#000',
+    letterSpacing: -1,
   },
-  filtersContainer: {
-    backgroundColor: '#fff',
+  statLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#888',
+    letterSpacing: 0.5,
+  },
+  statDivider: {
+    width: 1,
+    height: 16,
+    backgroundColor: '#E0E0E0',
+    marginHorizontal: 16,
+  },
+  filtersWrapper: {
+    paddingBottom: 16,
+    backgroundColor: '#FFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f3f4',
-    height: 70,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    borderBottomColor: '#F0F0F0',
   },
   filtersContent: {
-    paddingVertical: 16,
-    paddingHorizontal: 16,
+    paddingHorizontal: 24,
     gap: 8,
   },
-  filterButton: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: '#f8f9fa',
-    marginRight: 10,
-    minWidth: 90,
-    alignItems: 'center',
-    height: 38,
-    flexShrink: 0,
+  filterPill: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 4, // Sharper corners
+    backgroundColor: '#F5F5F5',
+    marginRight: 0,
     borderWidth: 1,
-    borderColor: '#e9ecef',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    borderColor: 'transparent',
   },
-  filterButtonActive: {
-    backgroundColor: DesignTokens.colors.primary,
-    borderColor: DesignTokens.colors.primary,
-    shadowColor: DesignTokens.colors.primary,
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+  filterPillActive: {
+    backgroundColor: '#000',
+    borderColor: '#000',
   },
-  filterButtonText: {
-    color: '#495057',
-    fontSize: 14,
-    fontWeight: '500',
-    textAlign: 'center',
-    letterSpacing: 0.2,
+  filterPillText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#666',
+    letterSpacing: 0.5,
   },
-  filterButtonTextActive: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  listContainer: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
+  filterPillTextActive: {
+    color: '#FFF',
   },
   listContent: {
-    padding: 16,
-    flexGrow: 1,
+    paddingBottom: 100,
   },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    position: 'relative',
+  itemContainer: {
+    backgroundColor: '#FFF',
   },
-  sportEmojiContainer: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    backgroundColor: '#f8f9fa',
-    borderTopRightRadius: 12,
-    borderBottomLeftRadius: 12,
-    width: 50,
-    height: 50,
-    justifyContent: 'center',
+  itemContent: {
+    flexDirection: 'row',
+    paddingVertical: 24,
+    paddingHorizontal: 24,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
   },
-  sportEmoji: {
-    fontSize: 20,
+  itemCancelled: {
+    opacity: 0.5,
   },
-  cancelledCard: {
-    opacity: 0.7, // Indiquer que la session est annulée
+  dateBlock: {
+    width: 50,
+    alignItems: 'center',
+    marginRight: 16,
   },
-  cancelledBanner: {
+  dateDay: {
+    fontSize: 28,
+    fontWeight: '900',
+    color: '#000',
+    letterSpacing: -1,
+  },
+  dateMonth: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#888',
+    marginTop: -4,
+  },
+  infoBlock: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  sportRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FF6B6B', // Couleur rouge pour annulée
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    marginTop: 12,
-  },
-  cancelledText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  cardHeader: {
-    marginBottom: 12,
-  },
-  sportTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: DesignTokens.colors.primary,
     marginBottom: 4,
   },
-  date: {
-    fontSize: 14,
-    color: '#666',
+  sportName: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#000',
+    letterSpacing: -0.5,
+    fontStyle: 'italic',
   },
-  locationContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
+  cancelledDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'red',
+    marginLeft: 8,
   },
-  location: {
-    marginLeft: 4,
-    fontSize: 14,
-    color: '#666',
-  },
-  participantsContainer: {
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-    paddingTop: 12,
-    marginBottom: 12,
-  },
-  participantsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  participantsList: {
-    gap: 8,
-  },
-  participant: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  participantName: {
-    fontSize: 14,
-  },
-  statusBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  statusText: {
-    color: '#fff',
+  locationText: {
     fontSize: 12,
-    fontWeight: 'bold',
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 8,
+    letterSpacing: 0.5,
   },
-  commentsContainer: {
+  metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-    paddingTop: 12,
   },
-  commentsCount: {
-    marginLeft: 4,
-    fontSize: 14,
-    color: '#666',
+  timeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#000',
+    fontVariant: ['tabular-nums'],
+  },
+  metaDivider: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#CCC',
+    marginHorizontal: 8,
+  },
+  participantsText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#000',
+  },
+  actionBlock: {
+    marginLeft: 16,
+  },
+  arrowCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: ACCENT_COLOR,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  separator: {
+    height: 1,
+    backgroundColor: '#F0F0F0',
+    marginLeft: 24,
   },
   emptyContainer: {
-    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: '50%',
+    paddingTop: 80,
+  },
+  emptyTitle: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#000',
+    marginBottom: 8,
+    fontStyle: 'italic',
   },
   emptyText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#888',
+    letterSpacing: 1,
   },
-}); 
+});

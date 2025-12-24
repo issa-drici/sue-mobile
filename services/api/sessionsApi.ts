@@ -39,7 +39,23 @@ export class SessionsApi {
 
   // Créer une nouvelle session
   static async create(sessionData: CreateSessionData): Promise<Session> {
+    console.log('🕐 [SESSIONS-API] Données reçues dans SessionsApi.create:');
+    console.log('  - sessionData.startTime:', sessionData.startTime);
+    console.log('  - sessionData.endTime:', sessionData.endTime);
+    console.log('  - sessionData.date:', sessionData.date);
+    console.log('  - sessionData complet:', JSON.stringify(sessionData, null, 2));
+    
+    console.log('🕐 [SESSIONS-API] Envoi à l\'API avec body:');
+    const bodyString = JSON.stringify(sessionData);
+    console.log('  - Body stringifié:', bodyString);
+    console.log('  - Body parsé:', JSON.parse(bodyString));
+    
     const response = await baseApiService.post<LaravelResponse<Session>>(SESSIONS_ENDPOINTS.ALL, sessionData);
+    
+    console.log('🕐 [SESSIONS-API] Réponse de l\'API:');
+    console.log('  - response.data.startTime:', response.data?.startTime);
+    console.log('  - response.data.endTime:', response.data?.endTime);
+    
     return response.data;
   }
 
@@ -167,4 +183,13 @@ export class SessionsApi {
     );
     return response.data;
   }
-} 
+
+  // Changer l'organisateur
+  static async changeOrganizer(sessionId: string, newOrganizerId: string): Promise<Session> {
+    const response = await baseApiService.patch<LaravelResponse<Session>>(
+      SESSIONS_ENDPOINTS.CHANGE_ORGANIZER(sessionId),
+      { newOrganizerId }
+    );
+    return response.data;
+  }
+}

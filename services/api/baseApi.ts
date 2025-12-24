@@ -146,7 +146,21 @@ class BaseApiService {
       console.log(`🌐 API Request: ${options.method || 'GET'} ${url}`);
       console.log('📋 Request headers:', config.headers);
       if (options.body) {
-        console.log('📋 Request body:', options.body);
+        console.log('📋 Request body (raw):', options.body);
+        try {
+          const parsedBody = JSON.parse(options.body as string);
+          console.log('📋 Request body (parsed):', parsedBody);
+          if (parsedBody.startTime) {
+            console.log('🕐 [BASE-API] startTime dans le body HTTP:', parsedBody.startTime);
+            console.log('🕐 [BASE-API] Type de startTime:', typeof parsedBody.startTime);
+            console.log('🕐 [BASE-API] Longueur de startTime:', parsedBody.startTime?.length);
+          }
+          if (parsedBody.endTime) {
+            console.log('🕐 [BASE-API] endTime dans le body HTTP:', parsedBody.endTime);
+          }
+        } catch (e) {
+          console.log('📋 Request body (non-JSON):', options.body);
+        }
       }
       
       const response = await fetch(url, config);

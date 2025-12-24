@@ -1,20 +1,24 @@
-import { BrandColors } from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+
+import { InlineLoading } from '../../components/OptimizedLoading';
 import { useAuth } from '../context/auth';
+
+const ACCENT_COLOR = '#D4FC79'; // Electric Volt
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -29,6 +33,7 @@ export default function RegisterScreen() {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleRegister = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (!firstname || !lastname || !email || !password || !confirmPassword) {
       Alert.alert('Erreur', 'Veuillez remplir tous les champs');
       return;
@@ -42,13 +47,19 @@ export default function RegisterScreen() {
     try {
       setIsLoading(true);
       await signUp(firstname, lastname, email, password, confirmPassword);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace('/(tabs)');
     } catch (error) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Erreur', error instanceof Error ? error.message : 'Une erreur est survenue');
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (isLoading) {
+    return <InlineLoading message="Création du compte..." />;
+  }
 
   return (
     <KeyboardAvoidingView
@@ -58,32 +69,29 @@ export default function RegisterScreen() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-            disabled={isLoading}
-          >
-            <Ionicons name="arrow-back" size={24} color={BrandColors.white} />
-          </TouchableOpacity>
-          <Image 
-            source={require('../../assets/images/logo.png')} 
-            style={styles.logo}
-          />
-          <Text style={styles.title}>Créer un compte</Text>
-          <Text style={styles.subtitle}>
-            Rejoignez la communauté sportive
-          </Text>
-        </View>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+          disabled={isLoading}
+        >
+          <Ionicons name="arrow-back" size={24} color="#000" />
+        </TouchableOpacity>
 
-        <View style={styles.form}>
-          <View style={styles.nameContainer}>
-            <View style={[styles.inputContainer, styles.nameInput]}>
-              <Ionicons name="person-outline" size={20} color="#666" />
+        <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.header}>
+          <Text style={styles.brandTitle}>REJOINDRE</Text>
+          <Text style={styles.brandSubtitle}>DEVENEZ UN ATHLÈTE SUE.</Text>
+        </Animated.View>
+
+        <Animated.View entering={FadeInUp.delay(400).springify()} style={styles.form}>
+
+          <View style={styles.row}>
+            <View style={[styles.inputGroup, { flex: 1, marginRight: 12 }]}>
+              <Text style={styles.label}>PRÉNOM</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Prénom"
+                placeholder="PRÉNOM"
                 placeholderTextColor="#999"
                 value={firstname}
                 onChangeText={setFirstName}
@@ -92,11 +100,11 @@ export default function RegisterScreen() {
                 editable={!isLoading}
               />
             </View>
-            <View style={[styles.inputContainer, styles.nameInput]}>
-              <Ionicons name="person-outline" size={20} color="#666" />
+            <View style={[styles.inputGroup, { flex: 1, marginLeft: 12 }]}>
+              <Text style={styles.label}>NOM</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Nom"
+                placeholder="NOM"
                 placeholderTextColor="#999"
                 value={lastname}
                 onChangeText={setLastName}
@@ -107,11 +115,11 @@ export default function RegisterScreen() {
             </View>
           </View>
 
-          <View style={styles.inputContainer}>
-            <Ionicons name="mail-outline" size={20} color="#666" />
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>EMAIL</Text>
             <TextInput
               style={styles.input}
-              placeholder="Email"
+              placeholder="VOTRE EMAIL"
               placeholderTextColor="#999"
               value={email}
               onChangeText={setEmail}
@@ -122,95 +130,83 @@ export default function RegisterScreen() {
             />
           </View>
 
-          <View style={styles.inputContainer}>
-            <Ionicons name="lock-closed-outline" size={20} color="#666" />
-            <TextInput
-              style={styles.input}
-              placeholder="Mot de passe"
-              placeholderTextColor="#999"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-              autoComplete="password-new"
-              editable={!isLoading}
-            />
-            <TouchableOpacity
-              onPress={() => setShowPassword(!showPassword)}
-              style={styles.eyeIcon}
-              disabled={isLoading}
-            >
-              <Ionicons
-                name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                size={20}
-                color="#666"
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>MOT DE PASSE</Text>
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={styles.input}
+                placeholder="CRÉER UN MOT DE PASSE"
+                placeholderTextColor="#999"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoComplete="password-new"
+                editable={!isLoading}
               />
-            </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setShowPassword(!showPassword)}
+                style={styles.eyeIcon}
+                disabled={isLoading}
+              >
+                <Ionicons
+                  name={showPassword ? 'eye-off' : 'eye'}
+                  size={24}
+                  color="#000"
+                />
+              </TouchableOpacity>
+            </View>
           </View>
 
-          <View style={styles.inputContainer}>
-            <Ionicons name="lock-closed-outline" size={20} color="#666" />
-            <TextInput
-              style={styles.input}
-              placeholder="Confirmer le mot de passe"
-              placeholderTextColor="#999"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry={!showConfirmPassword}
-              autoCapitalize="none"
-              autoComplete="password-new"
-              editable={!isLoading}
-            />
-            <TouchableOpacity
-              onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-              style={styles.eyeIcon}
-              disabled={isLoading}
-            >
-              <Ionicons
-                name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
-                size={20}
-                color="#666"
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>CONFIRMATION</Text>
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={styles.input}
+                placeholder="CONFIRMER LE MOT DE PASSE"
+                placeholderTextColor="#999"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry={!showConfirmPassword}
+                autoCapitalize="none"
+                autoComplete="password-new"
+                editable={!isLoading}
               />
-            </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                style={styles.eyeIcon}
+                disabled={isLoading}
+              >
+                <Ionicons
+                  name={showConfirmPassword ? 'eye-off' : 'eye'}
+                  size={24}
+                  color="#000"
+                />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <TouchableOpacity
             style={[styles.registerButton, isLoading && styles.registerButtonDisabled]}
             onPress={handleRegister}
             disabled={isLoading}
+            activeOpacity={0.8}
           >
             <Text style={styles.registerButtonText}>
-              {isLoading ? 'Inscription...' : 'S\'inscrire'}
+              {isLoading ? 'CRÉATION...' : 'CRÉER MON COMPTE'}
             </Text>
+            {!isLoading && <Ionicons name="arrow-forward" size={24} color="#000" />}
           </TouchableOpacity>
+        </Animated.View>
 
-          {/* <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>ou</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          <View style={styles.socialButtons}>
-            <TouchableOpacity style={styles.socialButton} disabled={isLoading}>
-              <Ionicons name="logo-google" size={24} color="#DB4437" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.socialButton} disabled={isLoading}>
-              <Ionicons name="logo-facebook" size={24} color="#4267B2" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.socialButton} disabled={isLoading}>
-              <Ionicons name="logo-apple" size={24} color="#000" />
-            </TouchableOpacity>
-          </View> */}
-        </View>
-
-        <View style={styles.footer}>
+        <Animated.View entering={FadeInUp.delay(600).springify()} style={styles.footer}>
           <Text style={styles.footerText}>
-            Vous avez déjà un compte ?
+            DÉJÀ MEMBRE ?
           </Text>
           <TouchableOpacity onPress={() => router.back()} disabled={isLoading}>
-            <Text style={styles.footerLink}>Se connecter</Text>
+            <Text style={styles.footerLink}>SE CONNECTER</Text>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -219,131 +215,113 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: BrandColors.primary,
+    backgroundColor: '#FFF',
   },
   scrollContent: {
     flexGrow: 1,
     padding: 24,
-  },
-  header: {
-    alignItems: 'center',
-    marginTop: 48,
-    marginBottom: 48,
+    paddingTop: 60,
   },
   backButton: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    padding: 8,
-  },
-  logo: {
-    width: 200,
-    height: 108,
     marginBottom: 24,
-    resizeMode: 'contain',
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    color: BrandColors.white,
+  header: {
+    marginBottom: 40,
   },
-  subtitle: {
-    fontSize: 16,
-    color: BrandColors.white,
-    textAlign: 'center',
-    opacity: 0.9,
+  brandTitle: {
+    fontSize: 48,
+    fontWeight: '900',
+    fontStyle: 'italic',
+    color: '#000',
+    letterSpacing: -2,
+    lineHeight: 48,
   },
+  brandSubtitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#000',
+    letterSpacing: 1,
+    marginTop: 8,
+  },
+
   form: {
+    marginBottom: 40,
+  },
+  row: {
+    flexDirection: 'row',
+  },
+  inputGroup: {
     marginBottom: 24,
   },
-  nameContainer: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
-  },
-  nameInput: {
-    flex: 1,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    marginBottom: 16,
-    height: 56,
+  label: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#000',
+    marginBottom: 8,
+    letterSpacing: 0.5,
   },
   input: {
-    flex: 1,
-    marginLeft: 12,
-    fontSize: 16,
+    fontSize: 18,
+    fontWeight: '700',
     color: '#000',
+    borderBottomWidth: 2,
+    borderBottomColor: '#000',
+    paddingVertical: 12,
+    flex: 1,
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: '#000',
   },
   eyeIcon: {
     padding: 8,
   },
+
   registerButton: {
-    backgroundColor: BrandColors.white,
-    borderRadius: 12,
-    height: 56,
+    backgroundColor: ACCENT_COLOR,
+    height: 64,
+    borderRadius: 32,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 24,
+    gap: 12,
+    marginTop: 16,
+    shadowColor: "#D4FC79",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
   },
   registerButtonDisabled: {
-    opacity: 0.7,
+    backgroundColor: '#F5F5F5',
+    shadowOpacity: 0,
   },
   registerButtonText: {
-    color: BrandColors.primary,
-    fontSize: 16,
-    fontWeight: '600',
+    color: '#000',
+    fontSize: 18,
+    fontWeight: '900',
+    fontStyle: 'italic',
   },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#e0e0e0',
-  },
-  dividerText: {
-    marginHorizontal: 16,
-    color: '#666',
-    fontSize: 14,
-  },
-  socialButtons: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 24,
-  },
-  socialButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#f5f5f5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 8,
     marginTop: 'auto',
-    paddingVertical: 24,
+    paddingBottom: 20,
   },
   footerText: {
-    color: BrandColors.white,
-    fontSize: 14,
-    opacity: 0.9,
+    color: '#666',
+    fontSize: 12,
+    fontWeight: '600',
   },
   footerLink: {
-    color: BrandColors.white,
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 4,
+    color: '#000',
+    fontSize: 12,
+    fontWeight: '900',
     textDecorationLine: 'underline',
   },
-}); 
+});

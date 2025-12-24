@@ -14,30 +14,42 @@ export default function NotificationsScreen() {
   const { completeOnboarding } = useAuth();
 
   const handleActivateNotifications = async () => {
-    try {
-      // Demander les permissions de notifications
-      const hasPermission = await pushNotificationService.requestPermissions();
+    console.log('🔘 Bouton "Activer les notifications" cliqué');
+    
+    // Terminer l'onboarding immédiatement
+    console.log('🔄 Appel de completeOnboarding...');
+    await completeOnboarding();
+    console.log('🔄 completeOnboarding terminé');
+    
+    // Attendre un peu pour que l'état soit bien mis à jour dans le contexte
+    await new Promise(resolve => setTimeout(resolve, 50));
+    
+    console.log('🔄 Redirection vers login...');
+    router.replace('/(auth)/login');
+    
+    // Initialiser les notifications en arrière-plan (non bloquant pour la navigation)
+    // La permission est déjà accordée, donc cela devrait être rapide
+    (async () => {
+      try {
+        console.log('🔔 Vérification et initialisation des notifications (en arrière-plan)...');
+        const hasPermission = await pushNotificationService.requestPermissions();
 
-      if (hasPermission) {
-        // Initialiser les notifications et stocker le token localement
-        await pushNotificationService.initialize();
-        console.log('✅ Notifications activées et token stocké localement');
-      } else {
-        console.log('⚠️ Permissions de notifications refusées');
+        if (hasPermission) {
+          await pushNotificationService.initialize();
+          console.log('✅ Notifications activées et token stocké localement');
+        } else {
+          console.log('⚠️ Permissions de notifications non accordées');
+        }
+      } catch (error) {
+        console.error('❌ Erreur lors de l\'activation des notifications:', error);
       }
-    } catch (error) {
-      console.error('❌ Erreur lors de l\'activation des notifications:', error);
-    } finally {
-      // Terminer l'onboarding dans tous les cas
-      await completeOnboarding();
-      router.replace('/(auth)/login');
-    }
+    })();
   };
 
 
 
   return (
-    <ScreenLayout style={styles.container}>
+    <ScreenLayout containerStyle={styles.container} showHeader={false}>
       <View style={styles.content}>
         <OnboardingProgress currentStep={3} totalSteps={3} />
 
