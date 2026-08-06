@@ -1,9 +1,10 @@
 import { useFocusEffect } from '@react-navigation/native';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { ENV } from '../../config/env';
 import { mockSessions } from '../../mocks/sessions';
 import { SportSession } from '../../types/sport';
 import { SessionsApi } from '../api/sessionsApi';
+import { formatAvatarUrl } from '../../utils';
 
 // Fonction de conversion de Session vers SportSession
 function convertToSportSession(session: any): SportSession {
@@ -30,6 +31,7 @@ function convertToSportSession(session: any): SportSession {
       firstname: participantNames.firstname,
       lastname: participantNames.lastname,
       status: participant.status || 'pending',
+      avatar: formatAvatarUrl(participant.avatar || participant.avatarUrl) || null,
     };
   });
   
@@ -43,10 +45,12 @@ function convertToSportSession(session: any): SportSession {
     maxParticipants: session.maxParticipants,
     pricePerPerson: session.pricePerPerson,
     status: session.status, // Ajouter le champ status
+    shareToken: session.shareToken, // Token de partage (Universal Links)
     organizer: {
       id: session.organizer?.id || '',
       firstname: organizerNames.firstname,
       lastname: organizerNames.lastname,
+      avatar: formatAvatarUrl(session.organizer?.avatar || session.organizer?.avatarUrl) || null,
     },
     participants: participants,
     comments: (session.comments || []).map((comment: any) => {
@@ -68,10 +72,14 @@ export function useGetSessionById() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const dataRef = useRef<SportSession | null>(null);
+  dataRef.current = data;
 
-  const getSessionById = useCallback(async (id: string) => {
+  const getSessionById = useCallback(async (id: string, showLoading = true) => {
     setCurrentSessionId(id);
-    setIsLoading(true);
+    if (showLoading) {
+      setIsLoading(true);
+    }
     setError(null);
 
     try {
@@ -103,7 +111,7 @@ export function useGetSessionById() {
   useFocusEffect(
     useCallback(() => {
       if (currentSessionId) {
-        getSessionById(currentSessionId);
+        getSessionById(currentSessionId, !dataRef.current);
       }
     }, [currentSessionId, getSessionById])
   );

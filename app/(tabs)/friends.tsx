@@ -7,11 +7,13 @@ import {
   FlatList,
   Image,
   Modal,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
   View
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
 
 import { InlineLoading } from '../../components/OptimizedLoading';
@@ -24,6 +26,7 @@ const ACCENT_COLOR = '#D4FC79'; // Electric Volt
 
 export default function FriendsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { data: friends, isLoading: friendsLoading, refetch: refetchFriends } = useGetFriends();
   const { data: friendRequests, isLoading: requestsLoading, refetch: refetchRequests } = useGetFriendRequests();
   const { respondToFriendRequest, isLoading: isResponding } = useRespondToFriendRequest();
@@ -154,7 +157,7 @@ export default function FriendsScreen() {
   return (
     <MainScreenLayout title="Friends" showHeader={false} containerStyle={{ backgroundColor: '#FFF' }}>
       {/* Custom Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, Platform.OS === 'android' && { paddingTop: Math.max(insets.top, 20) }]}>
         <View>
           <Text style={styles.headerTitle}>ATHLÈTES</Text>
           <Text style={styles.headerSubtitle}>TON SQUAD ({friends?.length || 0})</Text>
@@ -171,7 +174,10 @@ export default function FriendsScreen() {
         data={friends}
         renderItem={renderFriendItem}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[
+          styles.listContent,
+          Platform.OS === 'android' && { paddingBottom: Math.max(insets.bottom, 100) + 60 }
+        ]}
         ListHeaderComponent={
           friendRequests && friendRequests.length > 0 ? (
             <View style={styles.requestsSection}>

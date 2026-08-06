@@ -46,12 +46,14 @@ function convertToSportSession(session: Session): SportSession {
       id: session.organizer?.id || '',
       firstname: session.organizer?.firstname || '',
       lastname: session.organizer?.lastname || '',
+      avatar: session.organizer?.avatar || session.organizer?.avatarUrl || null,
     },
     participants: (session.participants || []).map(participant => ({
       id: participant.id,
       firstname: participant.firstname || '',
       lastname: participant.lastname || '',
       status: participant.status,
+      avatar: participant.avatar || participant.avatarUrl || null,
     })),
     comments: session.comments.map(comment => {
       // Fonction pour extraire firstname et lastname de authorName

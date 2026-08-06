@@ -21,6 +21,8 @@ export interface Session {
     firstname?: string;
     lastname?: string;
     fullName?: string;
+    avatar?: string | null;
+    avatarUrl?: string | null;
   };
   participants: {
     id: string;
@@ -28,8 +30,40 @@ export interface Session {
     lastname?: string;
     fullName?: string;
     status: SessionStatus;
+    avatar?: string | null;
+    avatarUrl?: string | null;
   }[];
   comments: Comment[];
+}
+
+// Aperçu public d'une session renvoyé par l'endpoint /join/{token}
+export interface SessionSharePreview {
+  sport: Sport;
+  sportName: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  startDate: string;
+  endDate: string;
+  location: string;
+  maxParticipants?: number | null;
+  participantsCount: number;
+  organizer: {
+    id?: string;
+    fullName: string;
+    avatarUrl?: string | null;
+  };
+  // Personne qui a partagé le lien (présent seulement si ?from valide et participant)
+  inviter?: {
+    fullName: string;
+    avatarUrl?: string | null;
+  };
+  participants?: {
+    id: string;
+    fullName: string;
+    status: string;
+    avatarUrl: string | null;
+  }[];
 }
 
 export interface CreateSessionData {

@@ -25,7 +25,7 @@ export function useSearchUsers() {
           (user) =>
             user.firstname.toLowerCase().includes(query.toLowerCase()) ||
             user.lastname.toLowerCase().includes(query.toLowerCase()) ||
-            user.email.toLowerCase().includes(query.toLowerCase())
+            (user.email?.toLowerCase().includes(query.toLowerCase()) ?? false)
         );
 
         const mockResults: SearchUserResult[] = filteredUsers.map((user) => ({
@@ -33,7 +33,7 @@ export function useSearchUsers() {
           firstname: user.firstname,
           lastname: user.lastname,
           avatar: user.avatar,
-          email: user.email,
+          email: user.email ?? '',
           isFriend: false,
           hasPendingRequest: false,
         }));

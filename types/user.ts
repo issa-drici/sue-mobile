@@ -4,7 +4,8 @@ export interface User {
   id: string;
   firstname: string;
   lastname: string;
-  email: string;
+  email?: string | null; // nullable depuis l'auth par téléphone (comptes sans email)
+  phone?: string;
   avatar?: string;
   token?: string;
 }

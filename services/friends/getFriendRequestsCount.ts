@@ -6,8 +6,7 @@ import { UsersApi } from '../api/usersApi';
 export function useGetFriendRequestsCount() {
   const fetchFriendRequestsCount = useCallback(async (): Promise<number> => {
     if (ENV.USE_MOCKS) {
-      // Simuler 2 demandes d'amis en attente
-      const mockCount = 2;
+      const mockCount = 3;
       return mockCount;
     } else {
       const response = await UsersApi.getFriendRequestsCount();

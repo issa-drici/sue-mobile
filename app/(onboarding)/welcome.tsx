@@ -69,12 +69,10 @@ export default function WelcomeScreen() {
     const handleNext = async () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-        const currentStep = ONBOARDING_STEPS[currentIndex];
-
-        // Handle Notification Permission on specific step
-        if (currentStep.action === 'request_notifications') {
-            await requestNotifications();
-        }
+        // NOTE: la demande de permission notifications a été DÉPLACÉE hors de l'onboarding.
+        // Elle est désormais affichée après que l'utilisateur rejoint une session
+        // (bottom sheet sur l'écran de détail de session). On ne déclenche donc plus
+        // la permission native ici, même sur l'étape "request_notifications".
 
         if (currentIndex < ONBOARDING_STEPS.length - 1) {
             flatListRef.current?.scrollToIndex({
@@ -183,7 +181,7 @@ export default function WelcomeScreen() {
                     activeOpacity={0.8}
                 >
                     <Text style={styles.buttonText}>
-                        {currentIndex === ONBOARDING_STEPS.length - 1 ? 'COMMENCER' : (ONBOARDING_STEPS[currentIndex].action === 'request_notifications' ? 'ACTIVER & CONTINUER' : 'SUIVANT')}
+                        {currentIndex === ONBOARDING_STEPS.length - 1 ? 'COMMENCER' : (ONBOARDING_STEPS[currentIndex].action === 'request_notifications' || ONBOARDING_STEPS[currentIndex].action === 'request_contacts' ? 'ACTIVER & CONTINUER' : 'SUIVANT')}
                     </Text>
                     <Ionicons
                         name={currentIndex === ONBOARDING_STEPS.length - 1 ? "checkmark" : "arrow-forward"}

@@ -5,11 +5,14 @@
 
 // Couleurs principales
 export const BrandColors = {
-  primary: '#f93e34',      // Rouge principal
-  white: '#fcfcfc',        // Blanc
-  lightPink: '#fbe0df',    // Rose clair
-  mediumPink: '#fbc5c2',   // Rose moyen
-  darkPink: '#faaaa6',     // Rose foncé
+  primary: '#D4FC79',      // Volt Électrique (unifié)
+  primaryDark: '#D4FC79',  // Volt Électrique
+  white: '#FFFFFF',        // Blanc
+  lightPink: '#E6F2D6',    // Vert très clair (ancien lightPink)
+  mediumPink: '#CDE5A8',   // Vert clair (ancien mediumPink)
+  darkPink: '#8CBF3D',     // Vert vif (ancien darkPink)
+  warning: '#F59223',      // Orange (maquette)
+  success: '#70A831',      // Vert réussite/complet (maquette)
 };
 
 // Couleurs système (héritées)

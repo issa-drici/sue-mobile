@@ -5,6 +5,7 @@ import {
   Alert,
   Image,
   Modal,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -15,11 +16,8 @@ import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useAuth } from '../app/context/auth';
 import { useCancelFriendRequest, useGetUserById, useSendFriendRequest } from '../services';
 import { SessionsApi } from '../services/api/sessionsApi';
-import { Sport } from '../types/sport';
-import { formatSportName, getSportEmoji } from '../utils/sportEmojis';
 import { InlineLoading } from './OptimizedLoading';
-
-const ACCENT_COLOR = '#D4FC79'; // Electric Volt
+import { BrandColors } from '../constants/Colors';
 
 interface UserProfileModalProps {
   visible: boolean;
@@ -27,9 +25,10 @@ interface UserProfileModalProps {
   userId?: string;
   userFirstname?: string;
   userLastname?: string;
-  userStatus?: string;
+  userStatus?: string; // 'accepted', 'pending', 'declined'
+  isPlayerOrganizer?: boolean; // S'il s'agit de l'organisateur de la session
   sessionId?: string;
-  isSessionOrganizer?: boolean;
+  isSessionOrganizer?: boolean; // Si l'utilisateur connecté est organisateur
   isSessionFinished?: boolean;
   onOrganizerChanged?: () => void;
 }
@@ -41,6 +40,7 @@ export default function UserProfileModal({
   userFirstname,
   userLastname,
   userStatus,
+  isPlayerOrganizer,
   sessionId,
   isSessionOrganizer,
   isSessionFinished,
@@ -131,102 +131,134 @@ export default function UserProfileModal({
 
   const renderContent = () => {
     if (isLoading || !userProfile) {
-      return <InlineLoading message="Chargement du profil..." />;
+      return (
+        <View style={styles.loadingWrapper}>
+          <InlineLoading message="Chargement du profil..." />
+        </View>
+      );
     }
 
     const isMe = currentUser?.id === userId;
+    const initials = `${(userProfile.firstname || '').charAt(0)}${(userProfile.lastname || '').charAt(0)}`.toUpperCase() || '?';
+    
+    // Palette de couleurs pour l'initiale
+    const avatarBgColors = ['#E3F2FD', '#F3E5F5', '#E8F5E9', '#FFF3E0', '#FFEBEE'];
+    const colorIdx = Math.abs((userProfile.id || '').split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0)) % avatarBgColors.length;
+    const avatarBg = avatarBgColors[colorIdx];
 
     return (
       <Animated.View entering={FadeInUp.springify()} style={styles.content}>
-        {/* Avatar & Name */}
-        <View style={styles.headerSection}>
-          <Image
-            source={require('../assets/images/icon-avatar.png')}
-            style={styles.avatar}
-          />
-          <Text style={styles.userName}>
-            {userProfile.firstname.toUpperCase()}
-          </Text>
-          <Text style={styles.userLastName}>
-            {userProfile.lastname.toUpperCase()}
-          </Text>
+        
+        {/* Avatar avec badges uniformes */}
+        <View style={styles.avatarSection}>
+          {userProfile.avatar ? (
+            <Image
+              source={{ uri: userProfile.avatar }}
+              style={styles.avatar}
+            />
+          ) : (
+            <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: avatarBg }]}>
+              <Text style={styles.avatarPlaceholderText}>{initials}</Text>
+            </View>
+          )}
+
+          {/* Badge Organisateur (Étoile) */}
+          {isPlayerOrganizer ? (
+            <View style={styles.organizerBadgeLarge}>
+              <Ionicons name="star" size={10} color="#000" />
+            </View>
+          ) : null}
+
+          {/* Badge Statut de Participation */}
+          {userStatus === 'accepted' ? (
+            <View style={[styles.statusBadgeLarge, { backgroundColor: '#70A831' }]}>
+              <Ionicons name="checkmark" size={10} color="#FFF" />
+            </View>
+          ) : null}
+          {userStatus === 'pending' ? (
+            <View style={[styles.statusBadgeLarge, { backgroundColor: '#F59223' }]}>
+              <Ionicons name="time" size={10} color="#FFF" />
+            </View>
+          ) : null}
+          {userStatus === 'declined' ? (
+            <View style={[styles.statusBadgeLarge, { backgroundColor: '#D32F2F' }]}>
+              <Ionicons name="close" size={10} color="#FFF" />
+            </View>
+          ) : null}
         </View>
 
-        {/* Stats */}
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{userProfile.stats?.sessionsCreated || 0}</Text>
-            <Text style={styles.statLabel}>CRÉÉES</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{userProfile.stats?.sessionsParticipated || 0}</Text>
-            <Text style={styles.statLabel}>JOUÉES</Text>
-          </View>
-        </View>
+        {/* Nom Complet */}
+        <Text style={styles.userNameText}>
+          {userProfile.firstname} {userProfile.lastname}
+        </Text>
 
-        {/* Sports */}
-        {userProfile.sports_preferences && userProfile.sports_preferences.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>TERRAIN DE JEU</Text>
-            <View style={styles.sportsContainer}>
-              {userProfile.sports_preferences.map((sport, index) => (
-                <View key={index} style={styles.sportBadge}>
-                  <Text style={styles.sportEmoji}>{getSportEmoji(sport as Sport)}</Text>
-                  <Text style={styles.sportName}>{formatSportName(sport).toUpperCase()}</Text>
-                </View>
-              ))}
+        {/* Lignes d'informations */}
+        {!isMe ? (
+          <View style={styles.infoBlock}>
+            {/* Statut Squad */}
+            <View style={styles.infoRow}>
+              <Ionicons 
+                name={userProfile.isAlreadyFriend ? "checkmark-circle" : "time"} 
+                size={16} 
+                color={userProfile.isAlreadyFriend ? "#70A831" : "#F59223"} 
+                style={styles.infoIcon} 
+              />
+              <Text style={styles.infoText}>
+                {userProfile.isAlreadyFriend ? 'Dans ton Squad' : 'Pas encore dans ton Squad'}
+              </Text>
             </View>
           </View>
-        )}
+        ) : null}
 
-        {/* Action Button */}
-        {!isMe && (
-          <View style={styles.actionContainer}>
-            {userProfile.isAlreadyFriend ? (
-              <View style={styles.friendStatus}>
-                <Ionicons name="checkmark-circle" size={24} color={ACCENT_COLOR} />
-                <Text style={styles.friendStatusText}>DANS LE SQUAD</Text>
-              </View>
-            ) : userProfile.hasPendingRequest ? (
-              <TouchableOpacity
-                style={[styles.actionButton, styles.cancelButton]}
-                onPress={handleCancelFriend}
-                disabled={isCancellingRequest}
-              >
-                <Text style={[styles.actionButtonText, { color: '#FF3B30' }]}>
-                  ANNULER LA DEMANDE
-                </Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={handleAddFriend}
-                disabled={isSendingRequest}
-              >
-                <Text style={styles.actionButtonText}>
-                  RECRUTER DANS LE SQUAD
-                </Text>
-                <Ionicons name="add" size={24} color="#000" />
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
+        {/* Actions de répertoire */}
+        <View style={styles.actionContainer}>
+          {!isMe ? (
+            <>
+              {userProfile.isAlreadyFriend ? null : userProfile.hasPendingRequest ? (
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={[styles.primaryActionBtn, styles.cancelBtn]}
+                  onPress={handleCancelFriend}
+                  disabled={isCancellingRequest}
+                >
+                  <Text style={styles.cancelBtnText}>Annuler la demande</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={styles.primaryActionBtn}
+                  onPress={handleAddFriend}
+                  disabled={isSendingRequest}
+                >
+                  <Ionicons name="person-add" size={16} color="#000" style={{ marginRight: 8 }} />
+                  <Text style={styles.primaryActionBtnText}>Ajouter au répertoire</Text>
+                </TouchableOpacity>
+              )}
+            </>
+          ) : null}
 
-        {/* Admin Action Button */}
-        {isSessionOrganizer && !isMe && sessionId && userStatus !== 'declined' && !isSessionFinished && (
-          <View style={[styles.actionContainer, { marginTop: 12 }]}>
+          {/* Nommer administrateur */}
+          {!!isSessionOrganizer && !isMe && !!sessionId && userStatus !== 'declined' && !isSessionFinished ? (
             <TouchableOpacity
-              style={[styles.actionButton, styles.adminButton]}
+              activeOpacity={0.8}
+              style={styles.adminActionBtn}
               onPress={handleMakeAdmin}
             >
-              <Text style={styles.adminButtonText}>
-                NOMMER ADMIN
-              </Text>
-              <Ionicons name="key" size={24} color="#000" />
+              <Ionicons name="key" size={16} color="#000" style={{ marginRight: 8 }} />
+              <Text style={styles.adminActionBtnText}>Nommer administrateur</Text>
             </TouchableOpacity>
-          </View>
-        )}
+          ) : null}
+
+          {/* Fermer */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={styles.secondaryActionBtn}
+            onPress={onClose}
+          >
+            <Text style={styles.secondaryActionBtnText}>Fermer</Text>
+          </TouchableOpacity>
+        </View>
+
       </Animated.View>
     );
   };
@@ -239,10 +271,13 @@ export default function UserProfileModal({
       onRequestClose={onClose}
     >
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Ionicons name="close" size={28} color="#000" />
+        {/* Barre supérieure avec indicateur et bouton X */}
+        <View style={styles.sheetHeader}>
+          <TouchableOpacity onPress={onClose} style={styles.closeButtonX}>
+            <Ionicons name="close" size={20} color="#000" />
           </TouchableOpacity>
+          <View style={styles.dragIndicator} />
+          <View style={{ width: 36 }} />
         </View>
         {renderContent()}
       </View>
@@ -255,165 +290,180 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFF',
   },
-  header: {
-    padding: 16,
-    alignItems: 'flex-end',
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 8,
   },
-  closeButton: {
-    padding: 8,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 20,
+  closeButtonX: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F5F5F7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dragIndicator: {
+    width: 40,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#E5E5EA',
+    alignSelf: 'center',
+  },
+  loadingWrapper: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     alignItems: 'center',
+    paddingTop: 16,
   },
-
-  headerSection: {
-    alignItems: 'center',
-    marginBottom: 32,
+  avatarSection: {
+    position: 'relative',
+    width: 90,
+    height: 90,
+    marginBottom: 16,
   },
   avatar: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#F5F5F5',
-    marginBottom: 24,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: '#F5F5F7',
   },
-  userName: {
-    fontSize: 32,
-    fontWeight: '900',
-    fontStyle: 'italic',
-    color: '#000',
-    lineHeight: 32,
-    textAlign: 'center',
-  },
-  userLastName: {
-    fontSize: 32,
-    fontWeight: '900',
-    fontStyle: 'italic',
-    color: '#000',
-    lineHeight: 32,
-    textAlign: 'center',
-  },
-
-  statsRow: {
-    flexDirection: 'row',
+  avatarPlaceholder: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 40,
-    width: '100%',
   },
-  statItem: {
+  avatarPlaceholderText: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#333',
+  },
+  organizerBadgeLarge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: '#FFC107',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     alignItems: 'center',
-    paddingHorizontal: 24,
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFF',
   },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: '900',
-    fontStyle: 'italic',
+  statusBadgeLarge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFF',
+  },
+  userNameText: {
+    fontSize: 22,
+    fontWeight: '700',
     color: '#000',
-  },
-  statLabel: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: '#666',
-    marginTop: 4,
-  },
-  statDivider: {
-    width: 1,
-    height: 30,
-    backgroundColor: '#E0E0E0',
-  },
-
-  section: {
-    width: '100%',
-    marginBottom: 40,
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: '900',
-    color: '#666',
+    textAlign: 'center',
     marginBottom: 16,
-    textAlign: 'center',
   },
-  sportsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
+  infoBlock: {
+    alignItems: 'center',
     gap: 8,
+    marginBottom: 32,
   },
-  sportBadge: {
+  infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 20,
+    justifyContent: 'center',
   },
-  sportEmoji: {
-    fontSize: 16,
+  infoIcon: {
     marginRight: 8,
   },
-  sportName: {
-    fontSize: 12,
-    fontWeight: '900',
-    color: '#000',
+  infoText: {
+    fontSize: 13,
+    color: '#555',
+    fontWeight: '500',
   },
-
   actionContainer: {
     width: '100%',
+    gap: 12,
     marginTop: 'auto',
-    marginBottom: 40,
+    marginBottom: Platform.OS === 'ios' ? 40 : 24,
   },
-  actionButton: {
-    backgroundColor: ACCENT_COLOR,
+  primaryActionBtn: {
+    width: '100%',
+    height: 46,
+    borderRadius: 12,
+    backgroundColor: BrandColors.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 20,
-    borderRadius: 30,
-    gap: 8,
-    shadowColor: "#D4FC79",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
   },
-  cancelButton: {
-    backgroundColor: '#FFF0F0',
-    shadowOpacity: 0,
-  },
-  actionButtonText: {
-    fontSize: 16,
-    fontWeight: '900',
-    fontStyle: 'italic',
-    color: '#000',
-  },
-  friendStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 16,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 30,
-  },
-  friendStatusText: {
+  primaryActionBtnText: {
     fontSize: 14,
-    fontWeight: '900',
-    fontStyle: 'italic',
+    fontWeight: '700',
     color: '#000',
   },
-  adminButton: {
-    backgroundColor: '#FFD700', // Gold color for admin
-    shadowColor: "#FFD700",
+  cancelBtn: {
+    backgroundColor: '#FFEBEE',
   },
-  adminButtonText: {
-    fontSize: 16,
-    fontWeight: '900',
-    fontStyle: 'italic',
+  cancelBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#D32F2F',
+  },
+  friendStatusContainer: {
+    width: '100%',
+    height: 46,
+    borderRadius: 12,
+    backgroundColor: '#F2F9EB',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  friendStatusLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#70A831',
+  },
+  adminActionBtn: {
+    width: '100%',
+    height: 46,
+    borderRadius: 12,
+    backgroundColor: '#FFF9C4',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  adminActionBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#000',
+  },
+  secondaryActionBtn: {
+    width: '100%',
+    height: 46,
+    borderRadius: 12,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#EAEAEA',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryActionBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
     color: '#000',
   },
 });

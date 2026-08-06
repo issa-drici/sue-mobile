@@ -2,11 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     Alert,
     FlatList,
     Modal,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -15,6 +16,7 @@ import {
     View
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { InlineLoading } from '../../components/OptimizedLoading';
 import { MainScreenLayout } from '../../components/ui/ScreenLayout';
@@ -29,6 +31,7 @@ const ACCENT_COLOR = '#D4FC79'; // Electric Volt
 export default function EditSessionScreen() {
     const { id } = useLocalSearchParams();
     const router = useRouter();
+    const insets = useSafeAreaInsets();
     const { user } = useAuth();
 
     const sessionId = typeof id === 'string' ? id : '';
@@ -49,6 +52,11 @@ export default function EditSessionScreen() {
     const [maxParticipants, setMaxParticipants] = useState('');
     const [pricePerPerson, setPricePerPerson] = useState('');
 
+    // États pour contrôler la visibilité des pickers sur Android
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [showStartTimePicker, setShowStartTimePicker] = useState(false);
+    const [showEndTimePicker, setShowEndTimePicker] = useState(false);
+
     // Load session data
     useEffect(() => {
         if (sessionId) {
@@ -67,26 +75,18 @@ export default function EditSessionScreen() {
         return date;
     };
 
-    // Initialize form with session data
+    // Initialize form with session data (une seule fois par session : un refetch
+    // en arrière-plan pendant l'édition ne doit pas écraser ce que l'utilisateur a choisi)
+    const initializedSessionId = useRef<string | null>(null);
     useEffect(() => {
-        if (session) {
+        if (session && initializedSessionId.current !== session.id) {
+            initializedSessionId.current = session.id;
             setSelectedSport(session.sport as Sport);
             setDate(new Date(session.date));
 
             // Parser les heures correctement depuis le format HH:MM ou HH:MM:SS
             const sessionStartTime = parseTimeString(session.startTime || '18:00');
             const sessionEndTime = parseTimeString(session.endTime || '20:00');
-
-            console.log('🕐 [EDIT-SESSION] Initialisation des heures:');
-            console.log('  - session.startTime (string):', session.startTime);
-            console.log('  - session.endTime (string):', session.endTime);
-            console.log('  - sessionStartTime (Date):', sessionStartTime);
-            console.log('  - sessionStartTime.getHours():', sessionStartTime.getHours());
-            console.log('  - sessionStartTime.getMinutes():', sessionStartTime.getMinutes());
-            console.log('  - sessionEndTime (Date):', sessionEndTime);
-            console.log('  - sessionEndTime.getHours():', sessionEndTime.getHours());
-            console.log('  - sessionEndTime.getMinutes():', sessionEndTime.getMinutes());
-            console.log('  - isValidEndTime:', isValidEndTime(sessionStartTime, sessionEndTime));
 
             setStartTime(sessionStartTime);
 
@@ -144,10 +144,16 @@ export default function EditSessionScreen() {
     };
 
     const onChangeDatePicker = (event: any, selectedDate?: Date) => {
+        if (Platform.OS === 'android') {
+            setShowDatePicker(false);
+        }
         if (selectedDate) setDate(selectedDate);
     };
 
     const onChangeStartTimePicker = (event: any, selectedTime?: Date) => {
+        if (Platform.OS === 'android') {
+            setShowStartTimePicker(false);
+        }
         if (selectedTime) {
             // Ne pas arrondir : garder exactement ce que l'utilisateur a choisi
             setStartTime(selectedTime);
@@ -158,6 +164,9 @@ export default function EditSessionScreen() {
     };
 
     const onChangeEndTimePicker = (event: any, selectedTime?: Date) => {
+        if (Platform.OS === 'android') {
+            setShowEndTimePicker(false);
+        }
         if (selectedTime) {
             if (isValidEndTime(startTime, selectedTime)) {
                 setEndTime(selectedTime);
@@ -165,6 +174,14 @@ export default function EditSessionScreen() {
                 setEndTime(getDefaultEndTime(startTime));
             }
         }
+    };
+
+    const formatDate = (d: Date) => {
+        return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase();
+    };
+
+    const formatTime = (d: Date) => {
+        return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
     };
 
     const handleUpdateSession = async () => {
@@ -192,27 +209,25 @@ export default function EditSessionScreen() {
             return;
         }
 
-        console.log('🕐 [EDIT-SESSION] Données avant envoi:');
-        console.log('  - finalStartTime:', finalStartTime);
-        console.log('  - finalEndTime:', finalEndTime);
-        console.log('  - startTimeMinutes:', startTimeMinutes);
-        console.log('  - endTimeMinutes:', endTimeMinutes);
-        console.log('  - Validation:', endTimeMinutes > startTimeMinutes);
-
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
         try {
+            // Date en composants LOCAUX (cohérent avec les heures locales ci-dessus).
+            // Ne PAS utiliser toISOString() (UTC) → décalage d'un jour près de minuit.
+            const localYear = date.getFullYear();
+            const localMonth = String(date.getMonth() + 1).padStart(2, '0');
+            const localDay = String(date.getDate()).padStart(2, '0');
+            const finalDate = `${localYear}-${localMonth}-${localDay}`;
+
             const sessionData = {
                 sport: selectedSport,
-                date: date.toISOString().split('T')[0],
+                date: finalDate,
                 startTime: finalStartTime,
                 endTime: finalEndTime,
                 location: location,
                 maxParticipants: maxParticipants ? parseInt(maxParticipants) : null,
                 pricePerPerson: pricePerPerson ? parseFloat(pricePerPerson) : null,
             };
-
-            console.log('🕐 [EDIT-SESSION] sessionData complet:', JSON.stringify(sessionData, null, 2));
 
             await updateSession(sessionId, sessionData);
 
@@ -234,7 +249,7 @@ export default function EditSessionScreen() {
         <MainScreenLayout title="MODIFIER" showHeader={false} containerStyle={{ backgroundColor: '#FFF' }}>
 
             {/* Header */}
-            <View style={styles.header}>
+            <View style={[styles.header, Platform.OS === 'android' && { paddingTop: Math.max(insets.top, 16) }]}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                     <Ionicons name="close" size={28} color="#000" />
                 </TouchableOpacity>
@@ -282,44 +297,107 @@ export default function EditSessionScreen() {
                     <Text style={styles.sectionLabel}>QUAND ?</Text>
 
                     <View style={styles.dateTimeRow}>
-                        <View style={styles.dateContainer}>
-                            <DateTimePicker
-                                value={date}
-                                mode="date"
-                                onChange={onChangeDatePicker}
-                                minimumDate={new Date()}
-                                themeVariant='light'
-                                locale="fr-FR"
-                                style={styles.datePicker}
-                            />
-                        </View>
+                        {Platform.OS === 'android' ? (
+                            <TouchableOpacity
+                                style={styles.dateButton}
+                                onPress={() => setShowDatePicker(true)}
+                            >
+                                <Text style={styles.dateButtonText}>{formatDate(date)}</Text>
+                                <Ionicons name="calendar-outline" size={20} color="#000" />
+                            </TouchableOpacity>
+                        ) : (
+                            <View style={styles.dateContainer}>
+                                <DateTimePicker
+                                    value={date}
+                                    mode="date"
+                                    onChange={onChangeDatePicker}
+                                    minimumDate={new Date()}
+                                    themeVariant='light'
+                                    locale="fr-FR"
+                                    style={styles.datePicker}
+                                />
+                            </View>
+                        )}
                     </View>
 
+                    {Platform.OS === 'android' && showDatePicker && (
+                        <DateTimePicker
+                            value={date}
+                            mode="date"
+                            onChange={onChangeDatePicker}
+                            minimumDate={new Date()}
+                            themeVariant='light'
+                            locale="fr-FR"
+                        />
+                    )}
+
                     <View style={styles.timeRow}>
-                        <View style={styles.timeContainer}>
-                            <Text style={styles.timeLabel}>DÉBUT</Text>
-                            <DateTimePicker
-                                value={startTime}
-                                mode="time"
-                                onChange={onChangeStartTimePicker}
-                                themeVariant='light'
-                                locale="fr-FR"
-                                style={styles.timePicker}
-                            />
-                        </View>
-                        <View style={styles.timeDivider} />
-                        <View style={styles.timeContainer}>
-                            <Text style={styles.timeLabel}>FIN</Text>
-                            <DateTimePicker
-                                value={endTime}
-                                mode="time"
-                                onChange={onChangeEndTimePicker}
-                                themeVariant='light'
-                                locale="fr-FR"
-                                style={styles.timePicker}
-                            />
-                        </View>
+                        {Platform.OS === 'android' ? (
+                            <>
+                                <TouchableOpacity
+                                    style={styles.timeButton}
+                                    onPress={() => setShowStartTimePicker(true)}
+                                >
+                                    <Text style={styles.timeLabel}>DÉBUT</Text>
+                                    <Text style={styles.timeButtonText}>{formatTime(startTime)}</Text>
+                                </TouchableOpacity>
+                                <View style={styles.timeDivider} />
+                                <TouchableOpacity
+                                    style={styles.timeButton}
+                                    onPress={() => setShowEndTimePicker(true)}
+                                >
+                                    <Text style={styles.timeLabel}>FIN</Text>
+                                    <Text style={styles.timeButtonText}>{formatTime(endTime)}</Text>
+                                </TouchableOpacity>
+                            </>
+                        ) : (
+                            <>
+                                <View style={styles.timeContainer}>
+                                    <Text style={styles.timeLabel}>DÉBUT</Text>
+                                    <DateTimePicker
+                                        value={startTime}
+                                        mode="time"
+                                        onChange={onChangeStartTimePicker}
+                                        themeVariant='light'
+                                        locale="fr-FR"
+                                        style={styles.timePicker}
+                                    />
+                                </View>
+                                <View style={styles.timeDivider} />
+                                <View style={styles.timeContainer}>
+                                    <Text style={styles.timeLabel}>FIN</Text>
+                                    <DateTimePicker
+                                        value={endTime}
+                                        mode="time"
+                                        onChange={onChangeEndTimePicker}
+                                        themeVariant='light'
+                                        locale="fr-FR"
+                                        style={styles.timePicker}
+                                    />
+                                </View>
+                            </>
+                        )}
                     </View>
+
+                    {Platform.OS === 'android' && showStartTimePicker && (
+                        <DateTimePicker
+                            value={startTime}
+                            mode="time"
+                            onChange={onChangeStartTimePicker}
+                            themeVariant='light'
+                            locale="fr-FR"
+                        />
+                    )}
+
+                    {Platform.OS === 'android' && showEndTimePicker && (
+                        <DateTimePicker
+                            value={endTime}
+                            mode="time"
+                            onChange={onChangeEndTimePicker}
+                            themeVariant='light'
+                            locale="fr-FR"
+                        />
+                    )}
                 </Animated.View>
 
                 {/* Location */}
@@ -374,7 +452,8 @@ export default function EditSessionScreen() {
             {/* Submit Button */}
             <Animated.View
                 // entering={FadeInUp.delay(600).springify()} 
-                style={styles.footer}>
+                style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 24) }]}
+            >
                 <TouchableOpacity
                     style={[styles.submitButton, isUpdating && styles.submitButtonDisabled]}
                     onPress={handleUpdateSession}
@@ -510,6 +589,23 @@ const styles = StyleSheet.create({
     datePicker: {
         marginLeft: -10, // Align left visually
     },
+    dateButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#F9F9F9',
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+        borderRadius: 4,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        minHeight: 48,
+    },
+    dateButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#000',
+    },
     timeRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -518,11 +614,27 @@ const styles = StyleSheet.create({
     timeContainer: {
         alignItems: 'flex-start',
     },
+    timeButton: {
+        alignItems: 'flex-start',
+        backgroundColor: '#F9F9F9',
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+        borderRadius: 4,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        minHeight: 56,
+        flex: 1,
+    },
     timeLabel: {
         fontSize: 10,
         fontWeight: '700',
         color: '#666',
         marginBottom: 4,
+    },
+    timeButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#000',
     },
     timePicker: {
         marginLeft: -10,
@@ -550,6 +662,7 @@ const styles = StyleSheet.create({
     },
     input: {
         flex: 1,
+        height: '100%',
         fontSize: 16,
         fontWeight: '600',
         color: '#000',
@@ -611,7 +724,12 @@ const styles = StyleSheet.create({
         borderRadius: 4,
         gap: 12,
     },
-    searchInput: { flex: 1, fontSize: 16, fontWeight: '600' },
+    searchInput: {
+        flex: 1,
+        height: '100%',
+        fontSize: 16,
+        fontWeight: '600',
+    },
     sportListItem: {
         flexDirection: 'row',
         justifyContent: 'space-between',

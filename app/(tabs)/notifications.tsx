@@ -3,12 +3,14 @@ import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
+  Platform,
   RefreshControl,
   StyleSheet,
   Text,
   TouchableOpacity,
   View
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SwipeListView } from 'react-native-swipe-list-view';
 
 import { InlineLoading } from '../../components/OptimizedLoading';
@@ -26,6 +28,7 @@ const ACCENT_COLOR = '#D4FC79'; // Electric Volt
 
 export default function NotificationsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { data: notifications, isLoading, refetch } = useGetNotifications();
   const { unreadCount, refetch: refetchGlobal } = useGlobalNotifications();
   const { markAsRead } = useMarkNotificationAsRead();
@@ -127,7 +130,7 @@ export default function NotificationsScreen() {
   return (
     <MainScreenLayout title="Notifications" showHeader={false} containerStyle={{ backgroundColor: '#FFF' }}>
       {/* Custom Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, Platform.OS === 'android' && { paddingTop: Math.max(insets.top, 20) }]}>
         <View>
           <Text style={styles.headerTitle}>ALERTS</Text>
           <Text style={styles.headerSubtitle}>
@@ -153,7 +156,10 @@ export default function NotificationsScreen() {
           renderHiddenItem={renderHiddenItem}
           rightOpenValue={-75}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[
+            styles.listContent,
+            Platform.OS === 'android' && { paddingBottom: Math.max(insets.bottom, 100) + 60 }
+          ]}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}

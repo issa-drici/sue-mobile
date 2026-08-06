@@ -58,8 +58,15 @@ function convertToSportSession(session: any): SportSession {
       id: session.organizer?.id || "",
       firstname: nameParts[0] || "",
       lastname: nameParts.slice(1).join(" ") || "",
+      avatar: session.organizer?.avatar || session.organizer?.avatarUrl || null,
     },
-    participants: session.participants || [],
+    participants: (session.participants || []).map((participant: any) => ({
+      id: participant.id || '',
+      firstname: participant.firstname || '',
+      lastname: participant.lastname || '',
+      status: participant.status || 'pending',
+      avatar: participant.avatar || participant.avatarUrl || null,
+    })),
     comments: (session.comments || []).map((comment: any) => ({
       id: comment.id,
       userId: comment.authorId || comment.userId,

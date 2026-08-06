@@ -26,11 +26,12 @@ export const DesignTokens = {
   colors: {
     // Couleurs principales
     primary: BrandColors.primary,
-    secondary: BrandColors.secondary || '#6C7B7F',
+    primaryDark: BrandColors.primaryDark,
+    secondary: '#6C7B7F',
     
     // Couleurs de fond
-    background: '#FFFFFF',
-    backgroundSecondary: '#F8F9FA',
+    background: '#FAFAFA',
+    backgroundSecondary: '#F7F7F9',
     backgroundTertiary: '#F5F5F5',
     
     // Couleurs de texte
@@ -40,13 +41,13 @@ export const DesignTokens = {
     textInverse: '#FFFFFF',
     
     // Couleurs de bordure
-    border: '#E0E0E0',
-    borderLight: '#F0F0F0',
+    border: '#EFEFEF',
+    borderLight: '#F5F5F5',
     borderDark: '#CCCCCC',
     
     // Couleurs d'état
-    success: '#34C759',
-    warning: '#FF9500',
+    success: BrandColors.success,
+    warning: BrandColors.warning,
     error: '#FF3B30',
     info: BrandColors.primary,
     
@@ -57,7 +58,7 @@ export const DesignTokens = {
     
     // Couleurs spécifiques aux cartes
     cardBackground: '#FFFFFF',
-    cardShadow: 'rgba(0, 0, 0, 0.1)',
+    cardShadow: 'rgba(0, 0, 0, 0.05)',
   },
 
   /**

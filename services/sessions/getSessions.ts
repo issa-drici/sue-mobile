@@ -4,6 +4,7 @@ import { useApiRequest } from '../../hooks/useApiRequest';
 import { mockSessions } from '../../mocks/sessions';
 import { SportSession } from '../../types/sport';
 import { SessionsApi } from '../api/sessionsApi';
+import { formatAvatarUrl } from '../../utils';
 
 // Fonction de conversion de Session vers SportSession
 function convertToSportSession(session: any): SportSession {
@@ -30,6 +31,7 @@ function convertToSportSession(session: any): SportSession {
       firstname: participantNames.firstname,
       lastname: participantNames.lastname,
       status: participant.status || 'pending',
+      avatar: formatAvatarUrl(participant.avatar || participant.avatarUrl) || null,
     };
   });
   
@@ -47,6 +49,7 @@ function convertToSportSession(session: any): SportSession {
       id: session.organizer?.id || '',
       firstname: organizerNames.firstname,
       lastname: organizerNames.lastname,
+      avatar: formatAvatarUrl(session.organizer?.avatar || session.organizer?.avatarUrl) || null,
     },
     participants: participants,
     comments: (session.comments || []).map((comment: any) => {
@@ -65,27 +68,18 @@ function convertToSportSession(session: any): SportSession {
 
 export function useGetSessions() {
   const fetchSessions = useCallback(async (): Promise<SportSession[]> => {
-    console.log('📡 [useGetSessions] Début du fetch - USE_MOCKS:', ENV.USE_MOCKS);
     if (ENV.USE_MOCKS) {
-      console.log('📡 [useGetSessions] Utilisation des mocks, nombre:', mockSessions.length);
       return mockSessions;
     } else {
-      console.log('📡 [useGetSessions] Appel API SessionsApi.getAll()');
       const response = await SessionsApi.getAll();
-      console.log('📡 [useGetSessions] Réponse brute de l\'API:', JSON.stringify(response, null, 2));
       
       // Extraire les données de la réponse Laravel
       const sessionsResponse = (response as any).data || response;
-      console.log('📡 [useGetSessions] sessionsResponse extrait:', JSON.stringify(sessionsResponse, null, 2));
-      console.log('📡 [useGetSessions] sessionsResponse est un array?', Array.isArray(sessionsResponse));
       
       const sessionsArray = Array.isArray(sessionsResponse) ? sessionsResponse : [];
-      console.log('📡 [useGetSessions] sessionsArray length:', sessionsArray.length);
       
       // Convertir les vraies sessions
       const convertedSessions = sessionsArray.map(convertToSportSession);
-      console.log('📡 [useGetSessions] Sessions converties:', convertedSessions.length);
-      console.log('📡 [useGetSessions] Première session convertie:', convertedSessions[0] ? JSON.stringify(convertedSessions[0], null, 2) : 'aucune');
       
       return convertedSessions;
     }
@@ -97,7 +91,7 @@ export function useGetSessions() {
     retryDelay: 1000,
     enableRetry: true,
     onRetry: (attempt: number, error: any) => {
-      console.log(`🔄 Tentative ${attempt}/5 pour charger les sessions:`, error.message);
+      // Retry en silence
     },
     onMaxRetriesReached: (error: any) => {
       console.error('❌ Échec après 5 tentatives pour charger les sessions:', error.message);
@@ -106,22 +100,12 @@ export function useGetSessions() {
 
   const result = useApiRequest(fetchSessions, options);
   
-  // Logs pour voir ce qui est retourné par useApiRequest
-  console.log('📡 [useGetSessions] Résultat de useApiRequest:', {
-    hasData: !!result.data,
-    dataType: typeof result.data,
-    isArray: Array.isArray(result.data),
-    dataLength: result.data?.length ?? 0,
-    isLoading: result.isLoading,
-    error: result.error,
-  });
-  
   // S'assurer que data est toujours un tableau
   const finalData = result.data || [];
-  console.log('📡 [useGetSessions] Données finales retournées:', finalData.length);
   
   return {
     ...result,
     data: finalData,
+    isFirstLoading: result.data === null && result.isLoading,
   };
 } 

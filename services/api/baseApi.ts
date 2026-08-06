@@ -77,15 +77,6 @@ class BaseApiService {
       
       // NE PAS déclencher la déconnexion automatique
       // L'utilisateur reste connecté même en cas d'erreur d'authentification
-      console.log('⚠️ Erreur d\'authentification détectée, mais l\'utilisateur reste connecté');
-      
-      // Optionnel : essayer de rafraîchir le token en arrière-plan
-      // mais sans forcer la déconnexion
-      if (this.logoutCallback) {
-        console.log('🔄 Tentative de rafraîchissement silencieux du token...');
-        // Ici on pourrait appeler une méthode de refresh silencieux
-        // mais sans déconnecter l'utilisateur
-      }
     }
   }
 
@@ -97,9 +88,11 @@ class BaseApiService {
       '/register',
       '/refresh',
       '/password/reset',
-      '/password/forgot',
+      '/forgot-password',
       '/verify-email',
-      '/resend-verification'
+      '/resend-verification',
+      '/join/', // Aperçu public d'une session partagée (le token éventuel reste attaché si présent)
+      '/auth/phone' // Auth par téléphone + OTP (send-otp, verify, register)
     ];
 
     // Vérifier si l'endpoint est public
@@ -143,26 +136,6 @@ class BaseApiService {
     };
 
     try {
-      console.log(`🌐 API Request: ${options.method || 'GET'} ${url}`);
-      console.log('📋 Request headers:', config.headers);
-      if (options.body) {
-        console.log('📋 Request body (raw):', options.body);
-        try {
-          const parsedBody = JSON.parse(options.body as string);
-          console.log('📋 Request body (parsed):', parsedBody);
-          if (parsedBody.startTime) {
-            console.log('🕐 [BASE-API] startTime dans le body HTTP:', parsedBody.startTime);
-            console.log('🕐 [BASE-API] Type de startTime:', typeof parsedBody.startTime);
-            console.log('🕐 [BASE-API] Longueur de startTime:', parsedBody.startTime?.length);
-          }
-          if (parsedBody.endTime) {
-            console.log('🕐 [BASE-API] endTime dans le body HTTP:', parsedBody.endTime);
-          }
-        } catch (e) {
-          console.log('📋 Request body (non-JSON):', options.body);
-        }
-      }
-      
       const response = await fetch(url, config);
       
       if (!response.ok) {
@@ -191,7 +164,6 @@ class BaseApiService {
       }
 
       const data = await response.json();
-      console.log(`✅ API Response: ${options.method || 'GET'} ${endpoint}`);
       return data;
     } catch (error: any) {
       console.error('API Request Error:', error);
@@ -209,8 +181,6 @@ class BaseApiService {
 
     const method = options.method || 'GET';
     const body = options.body ? JSON.parse(options.body as string) : {};
-
-    console.log(`🎭 Mock Request: ${method} ${endpoint}`);
 
     // Mock pour l'authentification
     if (endpoint === '/register' && method === 'POST') {
@@ -339,6 +309,43 @@ class BaseApiService {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
+  }
+
+  // Upload multipart (FormData). On ne fixe PAS Content-Type : React Native ajoute
+  // automatiquement le bon en-tête multipart avec la boundary.
+  async upload<T>(endpoint: string, formData: FormData, method: 'POST' | 'PUT' = 'POST'): Promise<T> {
+    if (this.useMocks) {
+      return this.mockRequest<T>(endpoint, { method });
+    }
+
+    const url = buildApiUrl(endpoint);
+    const headers: Record<string, string> = { Accept: 'application/json' };
+    if (this.token) {
+      headers['Authorization'] = `Bearer ${this.token}`;
+    }
+
+    try {
+      const response = await fetch(url, { method, headers, body: formData as any });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (errorData.error?.message) {
+          errorMessage = errorData.error.message;
+        } else if (typeof errorData.error === 'string') {
+          errorMessage = errorData.error;
+        }
+        this.handleAuthError(response.status, errorMessage);
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('API Upload Error:', error);
+      throw error;
+    }
   }
 }
 

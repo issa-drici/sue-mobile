@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React from 'react';
 import { View, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -8,11 +9,13 @@ import { DevOnly } from '../components/DevOnly';
 import { getDevScreens } from '../config/devScreens';
 import { DesignTokens } from '../constants/DesignSystem';
 import { useAuth } from './context/auth';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 
 export default function DevMenuScreen() {
   const router = useRouter();
   const devScreens = getDevScreens();
-  const { resetOnboarding, isOnboardingCompleted } = useAuth();
+  const { resetOnboarding, isOnboardingCompleted, user } = useAuth();
+  const { sendLocalNotification, sendTestNotification, isInitialized: pushReady, token: expoPushToken } = usePushNotifications();
 
   const handleResetOnboarding = async () => {
     Alert.alert(
@@ -127,6 +130,118 @@ export default function DevMenuScreen() {
             title="Réinitialiser l'onboarding"
             variant="outline"
             onPress={handleResetOnboarding}
+          />
+        </Card>
+
+        <Card padding="md">
+          <View style={{ 
+            flexDirection: 'row', 
+            alignItems: 'center',
+            marginBottom: DesignTokens.spacing.sm 
+          }}>
+            <Icon name="notifications" size="md" color="primary" />
+            <View style={{ marginLeft: DesignTokens.spacing.sm, flex: 1 }}>
+              <Text variant="h2">
+                Test Notifications
+              </Text>
+              <Text variant="body" color="secondary" style={{ marginTop: DesignTokens.spacing.xs }}>
+                Push: {pushReady ? '✅ Prêt' : '❌ Non prêt'} | Token: {expoPushToken ? '✅' : '❌'}
+              </Text>
+            </View>
+          </View>
+          
+          <Text variant="body" color="secondary" style={{ 
+            marginBottom: DesignTokens.spacing.md 
+          }}>
+            Testez les notifications locales (fonctionne sur simulateurs) ou push (nécessite backend).
+          </Text>
+          
+          <View style={{ gap: DesignTokens.spacing.sm }}>
+            <Button
+              title="📱 Test Notification Locale (Simulateur)"
+              variant="outline"
+              onPress={async () => {
+                try {
+                  await sendLocalNotification({
+                    title: '🔔 Test Notification Locale',
+                    body: 'Ceci est une notification locale de test. Fonctionne sur simulateurs !',
+                    data: {
+                      type: 'test',
+                      session_id: 'test-123',
+                      notification_id: `test-${Date.now()}`,
+                    },
+                  });
+                  Alert.alert('Succès', 'Notification locale envoyée !');
+                } catch (error) {
+                  Alert.alert('Erreur', 'Impossible d\'envoyer la notification locale');
+                  console.error('Erreur notification locale:', error);
+                }
+              }}
+            />
+            
+            <Button
+              title="🚀 Test Notification Push (Backend)"
+              variant="outline"
+              onPress={async () => {
+                if (!pushReady) {
+                  Alert.alert('Erreur', 'Notifications push non initialisées');
+                  return;
+                }
+                try {
+                  const success = await sendTestNotification(user?.id);
+                  if (success) {
+                    Alert.alert('Succès', 'Notification push envoyée !');
+                  } else {
+                    Alert.alert('Échec', 'Impossible d\'envoyer la notification push');
+                  }
+                } catch (error) {
+                  Alert.alert('Erreur', 'Erreur lors de l\'envoi de la notification push');
+                  console.error('Erreur notification push:', error);
+                }
+              }}
+              disabled={!pushReady}
+            />
+          </View>
+        </Card>
+
+        <Card padding="md">
+          <View style={{ 
+            flexDirection: 'row', 
+            alignItems: 'center',
+            marginBottom: DesignTokens.spacing.sm 
+          }}>
+            <Icon name="people" size="md" color="primary" />
+            <View style={{ marginLeft: DesignTokens.spacing.sm, flex: 1 }}>
+              <Text variant="h2">
+                Réinitialiser Permission Contacts
+              </Text>
+              <Text variant="body" color="secondary" style={{ marginTop: DesignTokens.spacing.xs }}>
+                Réinitialise le flag de demande de permission contacts
+              </Text>
+            </View>
+          </View>
+          
+          <Text variant="body" color="secondary" style={{ 
+            marginBottom: DesignTokens.spacing.md 
+          }}>
+            Réinitialise le flag AsyncStorage pour redemander la permission contacts. Vous devrez aussi réinitialiser la permission dans les paramètres du simulateur.
+          </Text>
+          
+          <Button
+            title="Réinitialiser Flag Contacts"
+            variant="outline"
+            onPress={async () => {
+              try {
+                await AsyncStorage.removeItem('contacts_permission_requested');
+                Alert.alert(
+                  'Succès',
+                  'Flag réinitialisé !\n\nPour tester complètement :\n1. Réinitialisez la permission dans les paramètres du simulateur\n2. Relancez l\'app\n3. Allez sur l\'écran "Ajouter un ami"'
+                );
+              } catch (error) {
+                Alert.alert('Erreur', 'Impossible de réinitialiser le flag');
+                console.error('Erreur réinitialisation contacts:', error);
+              }
+            }}
           />
         </Card>
 

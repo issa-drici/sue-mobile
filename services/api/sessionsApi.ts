@@ -6,9 +6,9 @@ import {
     TypingData,
     UpdateCommentData
 } from '../../types/comment';
-import { CreateSessionData, Session, UpdateSessionData } from '../types/sessions';
+import { CreateSessionData, Session, SessionSharePreview, UpdateSessionData } from '../types/sessions';
 import { baseApiService } from './baseApi';
-import { SESSIONS_ENDPOINTS } from './endpoints';
+import { SESSIONS_ENDPOINTS, SHARE_ENDPOINTS } from './endpoints';
 import { LaravelResponse } from './types';
 
 // Service API des sessions
@@ -180,6 +180,25 @@ export class SessionsApi {
   static async getPresenceUsers(sessionId: string): Promise<PresenceResponse> {
     const response = await baseApiService.get<LaravelResponse<PresenceResponse>>(
       SESSIONS_ENDPOINTS.PRESENCE_USERS(sessionId)
+    );
+    return response.data;
+  }
+
+  // Aperçu public d'une session à partir d'un token de partage (sans authentification).
+  // `from` = id de la personne qui a partagé le lien (facultatif) → renvoie l'inviteur.
+  static async resolveShareToken(token: string, from?: string): Promise<SessionSharePreview> {
+    const url =
+      SHARE_ENDPOINTS.RESOLVE_TOKEN(token) + (from ? `?from=${encodeURIComponent(from)}` : '');
+    const response = await baseApiService.get<LaravelResponse<SessionSharePreview>>(url);
+    return response.data;
+  }
+
+  // Rejoindre une session à partir d'un token de partage (utilisateur authentifié).
+  // `from` → l'ami créé automatiquement est le partageur (à défaut, l'organisateur).
+  static async joinByShareToken(token: string, from?: string): Promise<Session> {
+    const response = await baseApiService.post<LaravelResponse<Session>>(
+      SHARE_ENDPOINTS.JOIN_BY_TOKEN(token),
+      from ? { from } : {}
     );
     return response.data;
   }

@@ -48,3 +48,5 @@ export { getSportEmoji, SPORT_EMOJIS } from './sportEmojis';
 
 export { SPORTS_LIST } from './sportsList';
 
+export { formatAvatarUrl } from './avatar';
+

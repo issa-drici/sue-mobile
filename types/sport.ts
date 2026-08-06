@@ -63,6 +63,7 @@ export interface ApiSportSession {
   maxParticipants?: number | null;
   pricePerPerson?: number | null;
   status?: SessionStatusType;
+  shareToken?: string | null;
   organizer: {
     id: string;
     fullName: string;
@@ -92,16 +93,19 @@ export interface SportSession {
   maxParticipants?: number | null;
   pricePerPerson?: number | null;
   status?: SessionStatusType;
+  shareToken?: string | null;
   organizer: {
     id: string;
     firstname: string;
     lastname: string;
+    avatar?: string | null;
   };
   participants: {
     id: string;
     firstname: string;
     lastname: string;
     status: SessionStatus;
+    avatar?: string | null;
   }[];
   comments: {
     id: string;

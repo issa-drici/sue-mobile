@@ -1,10 +1,13 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Linking } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { UpdatePhoneOverlay } from '../components/UpdatePhoneOverlay';
 import { GlobalFriendRequestsProvider } from '../context/globalFriendRequests';
 import { GlobalNotificationsProvider } from '../context/globalNotifications';
 import { useAppState } from '../hooks/useAppState';
+import { extractFromParam, extractShareToken, setPendingShareToken } from '../utils/shareLink';
 import { AuthProvider, useAuth } from './context/auth';
 
 
@@ -25,7 +28,6 @@ function NotificationWrapper({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (user && !authLoading && !isOnboardingLoading) {
       // Le hook useAppState sera appelé automatiquement
-      console.log('🔔 Utilisateur connecté, initialisation des notifications...');
     }
   }, [user, authLoading, isOnboardingLoading]);
 
@@ -40,87 +42,110 @@ function RootLayoutNav() {
   const segments = useSegments();
   const router = useRouter();
 
-  // Cacher le SplashScreen une fois que l'authentification est chargée
+  // Suivi de la vérification du lien initial (Universal Link) pour éviter tout flash :
+  // on ne cache le splash qu'une fois l'URL de démarrage traitée.
+  const [initialLinkChecked, setInitialLinkChecked] = useState(false);
+  const initialLinkProcessed = useRef(false);
+
+  // État d'auth accessible sans stale-closure dans le listener d'URL
+  const authStateRef = useRef({ isAuthenticated: false, isOnboardingCompleted: false });
+  authStateRef.current = {
+    isAuthenticated: !!user,
+    isOnboardingCompleted: isOnboardingCompleted === true,
+  };
+
+  // Cacher le SplashScreen une fois l'auth chargée ET le lien initial traité
   useEffect(() => {
-    const hideSplashScreen = async () => {
-      if (!authLoading && !isOnboardingLoading) {
-        try {
-          // Attendre un petit délai pour une transition plus fluide
-          await new Promise(resolve => setTimeout(resolve, 100));
-          await SplashScreen.hideAsync();
-          console.log('✅ SplashScreen caché');
-        } catch (error) {
-          console.warn('⚠️ Erreur lors du masquage du SplashScreen:', error);
-        }
-      }
-    };
-
-    hideSplashScreen();
-  }, [authLoading, isOnboardingLoading]);
-
-  useEffect(() => {
-    // Ne pas bloquer la navigation pendant le chargement initial
-    // Laisser l'utilisateur naviguer pendant que l'auth se charge en arrière-plan
-    if (authLoading || isOnboardingLoading) {
-      // Si on est déjà sur une page valide, ne pas rediriger
-      const inAuthGroup = segments[0] === '(auth)';
-      const inOnboardingGroup = segments[0] === '(onboarding)';
-      const inTabsGroup = segments[0] === '(tabs)';
-
-      // Si on est déjà sur une page appropriée, ne pas faire de redirection
-      if (inAuthGroup || inOnboardingGroup || inTabsGroup) {
-        return;
-      }
-
-      // Sinon, rediriger vers une page par défaut sans attendre
-      router.replace('/(auth)/login');
-      return;
+    if (!authLoading && !isOnboardingLoading && initialLinkChecked) {
+      SplashScreen.hideAsync().catch(() => { });
     }
+  }, [authLoading, isOnboardingLoading, initialLinkChecked]);
 
-    const inAuthGroup = segments[0] === '(auth)';
-    const inOnboardingGroup = segments[0] === '(onboarding)';
-    const inTabsGroup = segments[0] === '(tabs)';
+  // Cas "app lancée depuis fermée par le clic sur le lien" (initial URL).
+  // On attend que l'auth soit chargée pour décider où aller, puis on traite l'URL
+  // avant de cacher le splash (pas de flash de l'écran de démarrage par défaut).
+  useEffect(() => {
+    if (initialLinkProcessed.current) return;
+    if (authLoading || isOnboardingLoading) return;
+    initialLinkProcessed.current = true;
 
-    console.log('🔍 [Navigation] État:', {
-      isOnboardingCompleted,
-      user: !!user,
-      segments: segments[0],
-      inAuthGroup,
-      inOnboardingGroup,
-      inTabsGroup,
+    Linking.getInitialURL()
+      .then(async (url) => {
+        const shareToken = extractShareToken(url);
+        if (shareToken) {
+          const from = extractFromParam(url);
+          if (user) {
+            // Déjà connecté → aperçu/join direct
+            router.replace(from ? `/join/${shareToken}?from=${from}` : `/join/${shareToken}`);
+          } else {
+            // Non connecté → on mémorise le lien (token + from), l'auth le reconsommera
+            await setPendingShareToken(shareToken, from);
+          }
+        }
+      })
+      .catch(() => { })
+      .finally(() => setInitialLinkChecked(true));
+  }, [authLoading, isOnboardingLoading, user, isOnboardingCompleted, router]);
+
+  // Cas "app déjà ouverte en arrière-plan" (link event)
+  useEffect(() => {
+    const subscription = Linking.addEventListener('url', async ({ url }) => {
+      const shareToken = extractShareToken(url);
+      if (!shareToken) return;
+
+      const from = extractFromParam(url);
+      if (authStateRef.current.isAuthenticated) {
+        router.replace(from ? `/join/${shareToken}?from=${from}` : `/join/${shareToken}`);
+      } else {
+        await setPendingShareToken(shareToken, from);
+        router.replace('/(auth)/login');
+      }
     });
 
-    // Si l'onboarding n'est pas terminé (false ou null), rediriger vers l'onboarding
-    // Sauf si on est déjà dans le groupe onboarding ou auth (pour éviter les conflits de navigation)
-    if (isOnboardingCompleted !== true && !inOnboardingGroup && !inAuthGroup) {
-      console.log('🔄 Redirection vers onboarding (non terminé)');
-      router.replace('/(onboarding)/welcome');
-      return;
-    }
+    return () => subscription.remove();
+  }, [router]);
 
-    // Si l'onboarding est terminé mais l'utilisateur n'est pas connecté
-    // Rediriger vers login si on est dans l'onboarding, les tabs, ou ailleurs (mais pas déjà dans auth)
-    if (isOnboardingCompleted === true && !user && !inAuthGroup) {
-      console.log('🔄 Onboarding terminé, redirection vers login depuis:', segments[0]);
+  // Navigation basée sur l'état d'authentification
+  useEffect(() => {
+    // Attendre que les segments et l'auth soient chargés
+    if (!segments?.length || isOnboardingLoading) return;
+
+    const currentGroup = segments[0];
+    const isInOnboarding = currentGroup === '(onboarding)' || currentGroup === 'onboarding';
+    const isInAuth = currentGroup === '(auth)';
+    const isInTabs = currentGroup === '(tabs)';
+    // Écran de réception d'un lien de partage (/join/[token]) : accessible même
+    // non connecté pour afficher l'aperçu public de la session.
+    const isInJoin = currentGroup === 'join';
+
+    // ⚠️ Onboarding temporairement désactivé (jugé secondaire pour l'instant).
+    // Pour le réactiver : décommenter le bloc ci-dessous et remettre la condition
+    // `isOnboardingCompleted === true &&` devant la règle 1.
+    // if (isOnboardingCompleted !== true && !isInOnboarding && !isInJoin) {
+    //   router.replace('/(onboarding)/welcome');
+    //   return;
+    // }
+
+    // 1. Pas d'utilisateur → rediriger vers login (sauf sur l'aperçu public /join)
+    if (!user && !isInAuth && !isInJoin) {
       router.replace('/(auth)/login');
       return;
     }
 
-    // Si l'utilisateur est connecté mais dans l'onboarding ou l'auth
-    if (isOnboardingCompleted && user && (inOnboardingGroup || inAuthGroup)) {
+    // 2. Utilisateur connecté mais dans onboarding/auth → rediriger vers tabs
+    if (user && (isInOnboarding || isInAuth)) {
       router.replace('/(tabs)');
       return;
     }
 
-    // Protection supplémentaire : si on est dans les tabs sans utilisateur connecté
-    if (inTabsGroup && !user) {
+    // 3. Protection : tabs sans utilisateur → rediriger vers login
+    if (isInTabs && !user) {
       router.replace('/(auth)/login');
-      return;
     }
-  }, [user, isOnboardingCompleted, segments, authLoading, isOnboardingLoading, router]);
+  }, [user, isOnboardingCompleted, segments, isOnboardingLoading, router]);
 
   return (
-    <Stack
+    <><Stack
       screenOptions={{
         headerShown: false,
         // Optimiser les transitions pour plus de fluidité
@@ -133,13 +158,15 @@ function RootLayoutNav() {
       <Stack.Screen name="(onboarding)" />
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="join/[token]" />
       <Stack.Screen name="session/[id]" />
       <Stack.Screen name="edit-session/[id]" />
       <Stack.Screen name="create-session" />
       <Stack.Screen name="add-friend" />
+      <Stack.Screen name="friend-requests" />
       <Stack.Screen name="privacy" />
       <Stack.Screen name="debug" />
-    </Stack>
+    </Stack><UpdatePhoneOverlay /></>
   );
 }
 

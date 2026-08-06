@@ -1,6 +1,8 @@
 // Configuration des environnements
 export const ENV = {
   API_BASE_URL: process.env.EXPO_PUBLIC_API_BASE_URL || (process.env.NODE_ENV === 'production' ? 'https://api.sue.alliance-tech.fr/api' : 'http://api.sue.alliance-tech.fr/api'),
+  // Domaine web (landing + Universal Links). Sert à construire les liens de partage /join/{token}.
+  WEB_BASE_URL: process.env.EXPO_PUBLIC_WEB_BASE_URL || 'https://sue-app.fr',
   WEBSOCKET_URL: process.env.EXPO_PUBLIC_WEBSOCKET_URL || (process.env.NODE_ENV === 'production' ? 'wss://websocket.sue.alliance-tech.fr' : 'ws://localhost:6001'),
   
   // Configuration Soketi/Pusher

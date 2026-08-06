@@ -6,6 +6,17 @@ export const AUTH_ENDPOINTS = {
   REGISTER: '/register',
   LOGOUT: '/logout',
   REFRESH_TOKEN: '/refresh',
+  FORGOT_PASSWORD: '/forgot-password',
+  // Auth par téléphone + OTP SMS
+  PHONE_SEND_OTP: '/auth/phone/send-otp',
+  PHONE_VERIFY: '/auth/phone/verify',
+  PHONE_REGISTER: '/auth/phone/register',
+} as const;
+
+// Endpoints des sports
+export const SPORTS_ENDPOINTS = {
+  ALL: '/sports',
+  PLAYED_BY_USER: '/users/played-sports',
 } as const;
 
 // Endpoints des sessions
@@ -31,9 +42,18 @@ export const SESSIONS_ENDPOINTS = {
   CHANGE_ORGANIZER: (sessionId: string) => `/sessions/${sessionId}/change-organizer`,
 } as const;
 
+// Endpoints de partage / Universal Links (/join/{token})
+export const SHARE_ENDPOINTS = {
+  // Aperçu public d'une session à partir du token (sans authentification)
+  RESOLVE_TOKEN: (token: string) => `/join/${token}`,
+  // Rejoindre une session à partir du token (nécessite d'être authentifié)
+  JOIN_BY_TOKEN: (token: string) => `/join/${token}`,
+} as const;
+
 // Endpoints des utilisateurs
 export const USERS_ENDPOINTS = {
   PROFILE: '/users/profile',
+  PROFILE_AVATAR: '/profile/avatar',
   GET_USER_BY_ID: (userId: string) => `/users/${userId}`,
   FRIENDS: '/users/friends',
   FRIEND_REQUESTS: '/users/friend-requests',
@@ -43,6 +63,7 @@ export const USERS_ENDPOINTS = {
   DELETE_ACCOUNT: '/users',
   REMOVE_FRIEND: (friendId: string) => `/users/friends/${friendId}`,
   SPORTS_PREFERENCES: '/users/sports-preferences',
+  CHECK_CONTACTS: '/users/check-contacts',
 } as const;
 
 // Endpoints des demandes d'amis

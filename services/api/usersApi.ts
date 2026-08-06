@@ -11,6 +11,49 @@ import { LaravelResponse } from './types';
 
 // Service API des utilisateurs
 export class UsersApi {
+  // Upload de la photo de profil (multipart). Renvoie l'URL publique du nouvel avatar.
+  static async updateAvatar(uri: string): Promise<{ avatar_url: string }> {
+    const filename = uri.split('/').pop() || `avatar_${Date.now()}.jpg`;
+    const extMatch = /\.(\w+)$/.exec(filename);
+    const ext = (extMatch ? extMatch[1] : 'jpg').toLowerCase();
+    const type =
+      ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : 'image/jpeg';
+
+    const formData = new FormData();
+    // React Native attend un objet { uri, name, type } pour un fichier
+    formData.append('avatar', { uri, name: filename, type } as any);
+
+    return baseApiService.upload<{ avatar_url: string }>(
+      USERS_ENDPOINTS.PROFILE_AVATAR,
+      formData,
+      'POST'
+    );
+  }
+
+  // Vérifier quels contacts sont sur Sue
+  static async checkContacts(phoneNumbers: string[]): Promise<any> {
+    console.log('🌐 [UsersApi.checkContacts] Appel API avec', phoneNumbers.length, 'numéros');
+    console.log('🌐 [UsersApi.checkContacts] Numéros:', phoneNumbers.slice(0, 5), '...');
+    
+    try {
+      const response = await baseApiService.post<LaravelResponse<any>>(USERS_ENDPOINTS.CHECK_CONTACTS, { phoneNumbers });
+      console.log('✅ [UsersApi.checkContacts] Réponse reçue:', JSON.stringify(response, null, 2));
+      
+      // La réponse Laravel est généralement { data: {...} }
+      // Mais la réponse peut aussi être directement dans response.data.data si c'est un LaravelResponse
+      if (response?.data) {
+        return response.data;
+      }
+      
+      return response;
+    } catch (error: any) {
+      console.error('❌ [UsersApi.checkContacts] Erreur:', error);
+      console.error('❌ [UsersApi.checkContacts] Message:', error.message);
+      console.error('❌ [UsersApi.checkContacts] Response:', error.response?.data);
+      throw error;
+    }
+  }
+
   // Récupérer le profil utilisateur
   static async getProfile(): Promise<UserProfile> {
     const response = await baseApiService.get<LaravelResponse<UserProfile>>(USERS_ENDPOINTS.PROFILE);
@@ -37,20 +80,17 @@ export class UsersApi {
 
   // Envoyer une demande d'ami
   static async sendFriendRequest(userId: string): Promise<FriendRequest> {
-    console.log('📡 [UsersApi] Envoi demande d\'ami pour userId:', userId);
-    console.log('📡 [UsersApi] Endpoint:', USERS_ENDPOINTS.FRIEND_REQUESTS);
-    
     // Vérifier que l'utilisateur n'essaie pas de s'ajouter lui-même
     if (!userId || userId.trim() === '') {
       throw new Error('ID utilisateur invalide');
     }
     
-    const body = { userId };
-    console.log('📡 [UsersApi] Body:', body);
+    // Structure du corps de la requête attendue par le backend
+    // Selon la documentation API, le backend attend "userId" (camelCase)
+    const body = { userId: userId };
     
     try {
       const response = await baseApiService.post<LaravelResponse<FriendRequest>>(USERS_ENDPOINTS.FRIEND_REQUESTS, body);
-      console.log('✅ [UsersApi] Réponse reçue:', response);
       return response.data;
     } catch (error) {
       console.error('❌ [UsersApi] Erreur lors de l\'envoi de demande d\'ami:', error);

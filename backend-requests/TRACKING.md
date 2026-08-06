@@ -6,11 +6,11 @@ Ce fichier centralise le suivi de toutes les demandes adressées à l'équipe ba
 
 | Type | En attente | En cours | Terminé | Annulé | Total |
 |------|------------|----------|---------|--------|-------|
-| **Feature Request** | 7 | 0 | 0 | 0 | 7 |
+| **Feature Request** | 8 | 0 | 0 | 0 | 8 |
 | **Bug Report** | 4 | 0 | 1 | 0 | 5 |
 | **API Improvement** | 2 | 0 | 0 | 0 | 2 |
 | **Breaking Change** | 0 | 0 | 0 | 0 | 0 |
-| **Total** | 13 | 0 | 1 | 0 | 14 |
+| **Total** | 14 | 0 | 1 | 0 | 15 |
 
 ## 🔴 Demandes critiques
 
@@ -18,6 +18,7 @@ Ce fichier centralise le suivi de toutes les demandes adressées à l'équipe ba
 |----|-------|------|----------|----------|--------|
 | BUG-20250122-001 | Erreur 500 lors de l'envoi de demandes d'ami | Bug | CRITICAL | ASAP | ⏳ En attente |
 | BUG-20250122-002 | Mise à jour des champs de session non fonctionnelle | Bug | CRITICAL | 25/01/2025 | ⏳ En attente |
+| FR-20260706-001 | Authentification par Téléphone et OTP | Feature | CRITICAL | ASAP | ⏳ En attente |
 
 ## 🟡 Demandes importantes
 
@@ -135,6 +136,8 @@ Ce fichier centralise le suivi de toutes les demandes adressées à l'équipe ba
 ||----|-------|------|----------|----------|--------|
 || FR-20250122-009 | Tri des participants par statut | Feature | MEDIUM | 30/01/2025 | ⏳ En attente |
 || FR-20250122-010 | Mise à jour API création de session | Feature | CRITICAL | 30/01/2025 | ⏳ En attente |
+|| FR-20260703-001 | Avatars participants et highlights accueil | Feature | MEDIUM | 15/07/2026 | ⏳ En attente |
+|| FR-20260706-001 | Authentification par Téléphone et OTP | Feature | CRITICAL | ASAP | ⏳ En attente |
 
-**Dernière mise à jour :** 21/09/2025
+**Dernière mise à jour :** 06/07/2026
 **Responsable :** Équipe Mobile 

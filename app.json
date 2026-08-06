@@ -2,7 +2,7 @@
   "expo": {
     "name": "sue",
     "slug": "sue",
-    "version": "1.1.0",
+    "version": "2.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "sue",
@@ -12,8 +12,12 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.alliancetech.com",
       "deploymentTarget": "15.0",
+      "associatedDomains": [
+        "applinks:sue-app.fr"
+      ],
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSContactsUsageDescription": "SUE utilise vos contacts pour vous aider à trouver vos amis qui utilisent déjà l'application et à les inviter à vos sessions."
       }
     },
     "android": {
@@ -22,7 +26,11 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.alliancetech.com"
+      "package": "com.alliancetech.com",
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "READ_CONTACTS"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -37,10 +45,10 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#f93e34",
+          "backgroundColor": "#D4FC79",
           "dark": {
             "image": "./assets/images/splash-icon.png",
-            "backgroundColor": "#f93e34"
+            "backgroundColor": "#D4FC79"
           }
         }
       ],
@@ -49,11 +57,24 @@
         "expo-notifications",
         {
           "icon": "./assets/images/notification-icon.png",
-          "color": "#F93E34"
+          "color": "#D4FC79"
         }
       ],
       "expo-web-browser",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "SUE utilise vos contacts pour vous aider à trouver vos amis qui utilisent déjà l'application et à les inviter à vos sessions."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "SUE accède à vos photos pour choisir votre photo de profil.",
+          "cameraPermission": "SUE accède à votre caméra pour prendre votre photo de profil."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

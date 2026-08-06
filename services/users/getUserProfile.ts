@@ -5,6 +5,7 @@ import { mockUserProfile } from '../../mocks/users';
 import { UserProfile } from '../../types/user';
 import { baseApiService } from '../api/baseApi';
 import { USERS_ENDPOINTS } from '../api/endpoints';
+import { formatAvatarUrl } from '../../utils';
 
 export const useGetUserProfile = () => {
   const [data, setData] = useState<UserProfile | null>(null);
@@ -31,7 +32,7 @@ export const useGetUserProfile = () => {
           firstname: userData.firstname || '',
           lastname: userData.lastname || '',
           email: userData.email || '',
-          avatar: userData.avatar || undefined,
+          avatar: formatAvatarUrl(userData.avatar || userData.avatar_url || userData.avatarUrl) || undefined,
           sports_preferences: userData.sports_preferences || [],
           // Stats adaptées à la structure de l'API
           stats: {

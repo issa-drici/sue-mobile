@@ -4,6 +4,7 @@ export interface UserProfile {
   firstname: string;
   lastname: string;
   email: string;
+  phone?: string;
   avatar?: string;
   bio?: string;
   sports_preferences?: string[];
@@ -13,6 +14,8 @@ export interface UserProfile {
 export interface UpdateProfileData {
   firstname?: string;
   lastname?: string;
+  email?: string;
+  phone?: string;
   avatar?: string;
   bio?: string;
   sports_preferences?: string[];
@@ -33,6 +36,7 @@ export interface FriendRequest {
   status: 'pending' | 'accepted' | 'declined';
   createdAt: string;
   mutualFriends?: number; // Ajouté pour l'affichage
+  sessionsTogether?: number;
 }
 
 export interface SearchUserResult {

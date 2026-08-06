@@ -5,12 +5,14 @@ import React, { useMemo, useState } from 'react';
 import {
   Dimensions,
   FlatList,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   Easing,
   FadeInDown,
@@ -170,6 +172,7 @@ const SessionItem = ({
 
 
 export default function HistoryScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const [selectedSport, setSelectedSport] = useState('Tous');
   const [searchQuery] = useState('');
@@ -226,7 +229,7 @@ export default function HistoryScreen() {
     <MainScreenLayout title="Historique" showHeader={false} containerStyle={{ backgroundColor: '#FFF' }}>
 
       {/* Dynamic Header */}
-      <View style={styles.headerContainer}>
+      <View style={[styles.headerContainer, Platform.OS === 'android' && { paddingTop: Math.max(insets.top, 20) }]}>
         <View style={styles.headerTop}>
           <Text style={styles.headerTitle}>VOTRE</Text>
           <Text style={[styles.headerTitle, styles.headerTitleAccent]}>LÉGENDE</Text>
@@ -275,7 +278,10 @@ export default function HistoryScreen() {
           />
         )}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[
+          styles.listContent,
+          Platform.OS === 'android' && { paddingBottom: Math.max(insets.bottom, 100) + 60 }
+        ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <PullToRefresh refreshing={refreshing} onRefresh={onRefresh} color="#000" />

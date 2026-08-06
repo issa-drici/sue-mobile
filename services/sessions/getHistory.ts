@@ -21,6 +21,7 @@ function convertToSportSession(session: any): SportSession {
       firstname: nameParts[0] || '',
       lastname: nameParts.slice(1).join(' ') || '',
       status: participant.status || 'pending',
+      avatar: participant.avatar || participant.avatarUrl || null,
     };
   });
   
@@ -38,6 +39,7 @@ function convertToSportSession(session: any): SportSession {
       id: session.organizer?.id || '',
       firstname: organizerNameParts[0] || '',
       lastname: organizerNameParts.slice(1).join(' ') || '',
+      avatar: session.organizer?.avatar || session.organizer?.avatarUrl || null,
     },
     participants: participants,
     comments: (session.comments || []).map((comment: any) => ({

@@ -22,14 +22,10 @@ const mockNotifications: Notification[] = oldMockNotifications.map(notification 
 
 export function useGetNotifications(page: number = 1, limit: number = 20) {
   const fetchNotifications = useCallback(async (): Promise<{ data: Notification[], pagination: any }> => {
-    console.log('🔍 [useGetNotifications] fetchNotifications appelé - page:', page, 'limit:', limit);
-    
     if (ENV.USE_MOCKS) {
       return { data: mockNotifications, pagination: { page: 1, limit, total: mockNotifications.length, totalPages: 1 } };
     } else {
-      console.log('📡 [useGetNotifications] Appel API réel');
       const response = await NotificationsApi.getAll(page, limit);
-      console.log('✅ [useGetNotifications] Réponse API:', response);
       return response;
     }
   }, [page, limit]);
@@ -40,7 +36,7 @@ export function useGetNotifications(page: number = 1, limit: number = 20) {
     retryDelay: 1000,
     enableRetry: true,
     onRetry: (attempt: number, error: any) => {
-      console.log(`🔄 Tentative ${attempt}/5 pour charger les notifications:`, error.message);
+      // Retry en silence
     },
     onMaxRetriesReached: (error: any) => {
       console.error('❌ Échec après 5 tentatives pour charger les notifications:', error.message);
@@ -63,11 +59,6 @@ export function useGetNotifications(page: number = 1, limit: number = 20) {
   // Extraire les données et la pagination
   const notifications = result.data?.data || [];
   const pagination = result.data?.pagination || {};
-  
-  console.log('🔍 [useGetNotifications] Données extraites:', {
-    notificationsLength: notifications.length,
-    pagination
-  });
   
   return {
     ...result,

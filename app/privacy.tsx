@@ -18,7 +18,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { UsersApi } from '../services/api/usersApi';
 import { useAuth } from './context/auth';
 
-const ACCENT_COLOR = '#D4FC79'; // Electric Volt
+const ACCENT_COLOR = '#70A831'; // Vert SUE / Vert d'action
+const VOLT_COLOR = '#D4FC79'; // Electric Volt pour validation
 
 export default function PrivacyScreen() {
   const router = useRouter();
@@ -37,6 +38,10 @@ export default function PrivacyScreen() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Legal Modals State
+  const [legalModalVisible, setLegalModalVisible] = useState(false);
+  const [legalModalType, setLegalModalType] = useState<'privacy' | 'terms'>('privacy');
 
   const handleChangeEmail = async () => {
     if (!newEmail) {
@@ -84,7 +89,7 @@ export default function PrivacyScreen() {
   const handleDeleteAccount = () => {
     Alert.alert(
       'Supprimer le compte',
-      'Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible.',
+      'Cette action est irréversible. Toutes tes sessions créées et participations seront effacées. Continuer ?',
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -106,15 +111,20 @@ export default function PrivacyScreen() {
     );
   };
 
+  const openLegalModal = (type: 'privacy' | 'terms') => {
+    setLegalModalType(type);
+    setLegalModalVisible(true);
+  };
+
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={28} color="#000" />
+          <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>PRIVACY</Text>
-        <View style={{ width: 28 }} />
+        <Text style={styles.headerTitle}>Compte & confidentialité</Text>
+        <View style={{ width: 40 }} />
       </View>
 
       <ScrollView
@@ -122,102 +132,99 @@ export default function PrivacyScreen() {
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 40 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Account Settings Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>PARAMÈTRES DU COMPTE</Text>
-
-          <TouchableOpacity style={styles.actionButton} onPress={() => setEmailModalVisible(true)}>
-            <Text style={styles.actionButtonText}>CHANGER L'EMAIL</Text>
-            <Ionicons name="chevron-forward" size={20} color="#000" />
+        {/* COMPTE */}
+        <Text style={styles.sectionHeader}>COMPTE</Text>
+        <View style={styles.sectionCard}>
+          <TouchableOpacity 
+            activeOpacity={0.8}
+            style={styles.rowItem} 
+            onPress={() => setEmailModalVisible(true)}
+          >
+            <View style={styles.rowLeft}>
+              <Ionicons name="mail-outline" size={20} color={ACCENT_COLOR} />
+              <Text style={styles.rowText}>Changer l'email</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#C7C7CC" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton} onPress={() => setPasswordModalVisible(true)}>
-            <Text style={styles.actionButtonText}>CHANGER LE MOT DE PASSE</Text>
-            <Ionicons name="chevron-forward" size={20} color="#000" />
+          <TouchableOpacity 
+            activeOpacity={0.8}
+            style={[styles.rowItem, { borderBottomWidth: 0 }]} 
+            onPress={() => setPasswordModalVisible(true)}
+          >
+            <View style={styles.rowLeft}>
+              <Ionicons name="lock-closed-outline" size={20} color={ACCENT_COLOR} />
+              <Text style={styles.rowText}>Changer le mot de passe</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#C7C7CC" />
+          </TouchableOpacity>
+        </View>
+
+        {/* LÉGAL */}
+        <Text style={styles.sectionHeader}>LÉGAL</Text>
+        <View style={styles.sectionCard}>
+          <TouchableOpacity 
+            activeOpacity={0.8}
+            style={styles.rowItem}
+            onPress={() => openLegalModal('privacy')}
+          >
+            <View style={styles.rowLeft}>
+              <Ionicons name="shield-outline" size={20} color={ACCENT_COLOR} />
+              <Text style={styles.rowText}>Politique de confidentialité</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#C7C7CC" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.actionButton, styles.deleteButton]} onPress={handleDeleteAccount}>
-            <Text style={[styles.actionButtonText, styles.deleteButtonText]}>SUPPRIMER LE COMPTE</Text>
-            <Ionicons name="trash-outline" size={20} color="#FF3B30" />
+          <TouchableOpacity 
+            activeOpacity={0.8}
+            style={[styles.rowItem, { borderBottomWidth: 0 }]}
+            onPress={() => openLegalModal('terms')}
+          >
+            <View style={styles.rowLeft}>
+              <Ionicons name="document-text-outline" size={20} color={ACCENT_COLOR} />
+              <Text style={styles.rowText}>Conditions d'utilisation</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#C7C7CC" />
           </TouchableOpacity>
         </View>
 
-        <View style={styles.divider} />
-
-        <Text style={styles.title}>POLITIQUE DE CONFIDENTIALITÉ</Text>
-        <Text style={styles.lastUpdated}>Dernière mise à jour : 28 Nov. 2025</Text>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>1. COLLECTE DES DONNÉES</Text>
-          <Text style={styles.text}>
-            Nous collectons uniquement les données nécessaires pour vous offrir une expérience sportive optimale :
-          </Text>
-          <View style={styles.bulletPoint}>
-            <Text style={styles.bullet}>•</Text>
-            <Text style={styles.text}>Informations de profil (Nom, Prénom, Photo)</Text>
-          </View>
-          <View style={styles.bulletPoint}>
-            <Text style={styles.bullet}>•</Text>
-            <Text style={styles.text}>Données de localisation pour trouver des sessions</Text>
-          </View>
-          <View style={styles.bulletPoint}>
-            <Text style={styles.bullet}>•</Text>
-            <Text style={styles.text}>Historique de vos matchs et performances</Text>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>2. UTILISATION</Text>
-          <Text style={styles.text}>
-            Vos données servent à :
-          </Text>
-          <View style={styles.bulletPoint}>
-            <Text style={styles.bullet}>•</Text>
-            <Text style={styles.text}>Organiser et gérer vos sessions sportives</Text>
-          </View>
-          <View style={styles.bulletPoint}>
-            <Text style={styles.bullet}>•</Text>
-            <Text style={styles.text}>Vous connecter avec d'autres athlètes</Text>
-          </View>
-          <View style={styles.bulletPoint}>
-            <Text style={styles.bullet}>•</Text>
-            <Text style={styles.text}>Améliorer nos services et fonctionnalités</Text>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>3. SÉCURITÉ</Text>
-          <Text style={styles.text}>
-            La sécurité de vos données est notre priorité absolue. Nous utilisons des protocoles de chiffrement avancés pour protéger vos informations personnelles contre tout accès non autorisé.
-          </Text>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>4. VOS DROITS</Text>
-          <Text style={styles.text}>
-            Vous avez le contrôle total. Vous pouvez à tout moment demander l'accès, la modification ou la suppression de vos données personnelles via les paramètres de l'application ou en nous contactant directement.
-          </Text>
-        </View>
-
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>SUE © 2025</Text>
-          <Text style={styles.footerText}>Fait avec passion pour les athlètes.</Text>
+        {/* ZONE DANGER */}
+        <Text style={styles.sectionHeader}>ZONE DANGER</Text>
+        <View style={styles.sectionCard}>
+          <TouchableOpacity 
+            activeOpacity={0.8}
+            style={[styles.rowItem, { borderBottomWidth: 0 }]} 
+            onPress={handleDeleteAccount}
+          >
+            <View style={styles.rowLeft}>
+              <Ionicons name="trash-outline" size={20} color="#FF3B30" />
+              <Text style={[styles.rowText, { color: '#FF3B30' }]}>Supprimer mon compte</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#C7C7CC" />
+          </TouchableOpacity>
         </View>
       </ScrollView>
 
       {/* Email Modal */}
       <Modal
-        animationType="fade"
+        animationType="slide"
         transparent={true}
         visible={emailModalVisible}
         onRequestClose={() => setEmailModalVisible(false)}
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.modalContainer}
+          style={styles.modalOverlay}
         >
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>CHANGER L'EMAIL</Text>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Modifier l'email</Text>
+              <TouchableOpacity onPress={() => setEmailModalVisible(false)} style={styles.modalCloseBtn}>
+                <Ionicons name="close" size={20} color="#000" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.inputLabel}>EMAIL ACTUEL</Text>
             <TextInput
               style={styles.input}
               placeholder="Ton e-mail actuel"
@@ -227,6 +234,8 @@ export default function PrivacyScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
             />
+            
+            <Text style={styles.inputLabel}>NOUVEL EMAIL</Text>
             <TextInput
               style={styles.input}
               placeholder="Nouvel email"
@@ -236,31 +245,39 @@ export default function PrivacyScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
             />
-            <View style={styles.modalButtons}>
-              <TouchableOpacity style={styles.modalButtonCancel} onPress={() => setEmailModalVisible(false)}>
-                <Text style={styles.modalButtonTextCancel}>ANNULER</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.modalButtonConfirm} onPress={handleChangeEmail} disabled={loading}>
-                {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.modalButtonTextConfirm}>VALIDER</Text>}
-              </TouchableOpacity>
-            </View>
+
+            <TouchableOpacity 
+              activeOpacity={0.8}
+              style={styles.modalSaveBtn} 
+              onPress={handleChangeEmail} 
+              disabled={loading}
+            >
+              {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.modalSaveBtnText}>Enregistrer</Text>}
+            </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
       </Modal>
 
       {/* Password Modal */}
       <Modal
-        animationType="fade"
+        animationType="slide"
         transparent={true}
         visible={passwordModalVisible}
         onRequestClose={() => setPasswordModalVisible(false)}
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.modalContainer}
+          style={styles.modalOverlay}
         >
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>CHANGER LE MOT DE PASSE</Text>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Changer le mot de passe</Text>
+              <TouchableOpacity onPress={() => setPasswordModalVisible(false)} style={styles.modalCloseBtn}>
+                <Ionicons name="close" size={20} color="#000" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.inputLabel}>MOT DE PASSE ACTUEL</Text>
             <TextInput
               style={styles.input}
               placeholder="Mot de passe actuel"
@@ -269,6 +286,8 @@ export default function PrivacyScreen() {
               onChangeText={setCurrentPassword}
               secureTextEntry
             />
+
+            <Text style={styles.inputLabel}>NOUVEAU MOT DE PASSE</Text>
             <TextInput
               style={styles.input}
               placeholder="Nouveau mot de passe"
@@ -277,6 +296,8 @@ export default function PrivacyScreen() {
               onChangeText={setNewPassword}
               secureTextEntry
             />
+
+            <Text style={styles.inputLabel}>CONFIRMATION</Text>
             <TextInput
               style={styles.input}
               placeholder="Confirmer le mot de passe"
@@ -285,16 +306,84 @@ export default function PrivacyScreen() {
               onChangeText={setConfirmPassword}
               secureTextEntry
             />
-            <View style={styles.modalButtons}>
-              <TouchableOpacity style={styles.modalButtonCancel} onPress={() => setPasswordModalVisible(false)}>
-                <Text style={styles.modalButtonTextCancel}>ANNULER</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.modalButtonConfirm} onPress={handleChangePassword} disabled={loading}>
-                {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.modalButtonTextConfirm}>VALIDER</Text>}
-              </TouchableOpacity>
-            </View>
+
+            <TouchableOpacity 
+              activeOpacity={0.8}
+              style={styles.modalSaveBtn} 
+              onPress={handleChangePassword} 
+              disabled={loading}
+            >
+              {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.modalSaveBtnText}>Enregistrer</Text>}
+            </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Legal Content Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={legalModalVisible}
+        onRequestClose={() => setLegalModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: '80%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {legalModalType === 'privacy' ? 'Politique de confidentialité' : "Conditions d'utilisation"}
+              </Text>
+              <TouchableOpacity onPress={() => setLegalModalVisible(false)} style={styles.modalCloseBtn}>
+                <Ionicons name="close" size={20} color="#000" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 12 }}>
+              {legalModalType === 'privacy' ? (
+                <>
+                  <Text style={styles.legalSubTitle}>1. COLLECTE DES DONNÉES</Text>
+                  <Text style={styles.legalText}>
+                    Nous collectons uniquement les données nécessaires pour vous offrir une expérience sportive optimale :
+                    {"\n\n"}
+                    • Informations de profil (Nom, Prénom, Photo)
+                    {"\n"}
+                    • Données de localisation pour trouver des sessions de sport à proximité
+                    {"\n"}
+                    • Historique de vos matchs et performances sportives
+                  </Text>
+                  <Text style={styles.legalSubTitle}>2. UTILISATION DES DONNÉES</Text>
+                  <Text style={styles.legalText}>
+                    Vos données servent uniquement à :
+                    {"\n\n"}
+                    • Organiser et gérer vos sessions de sport
+                    {"\n"}
+                    • Vous connecter avec d'autres athlètes de votre squad
+                    {"\n"}
+                    • Améliorer les services SUE
+                  </Text>
+                  <Text style={styles.legalSubTitle}>3. PROTECTION & PARTAGE</Text>
+                  <Text style={styles.legalText}>
+                    La sécurité de vos données est notre priorité. Vos informations personnelles ne sont jamais partagées, vendues ou cédées à des tiers.
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.legalSubTitle}>1. ACCEPTATION DES CONDITIONS</Text>
+                  <Text style={styles.legalText}>
+                    En utilisant l'application SUE, vous acceptez d'être lié par les présentes conditions d'utilisation. Si vous ne les acceptez pas, merci de ne pas utiliser le service.
+                  </Text>
+                  <Text style={styles.legalSubTitle}>2. RÈGLES DE CONDUITE</Text>
+                  <Text style={styles.legalText}>
+                    SUE est une communauté d'athlètes fondée sur le respect. Tout comportement inapproprié, injurieux ou frauduleux lors des sessions organisées entraînera la suppression immédiate du compte.
+                  </Text>
+                  <Text style={styles.legalSubTitle}>3. RESPONSABILITÉ SPORTIVE</Text>
+                  <Text style={styles.legalText}>
+                    SUE facilite l'organisation de sessions de sport indépendantes. Chaque athlète participe sous sa propre responsabilité et s'assure d'être en bonne condition physique. SUE décline toute responsabilité en cas de blessure physique.
+                  </Text>
+                </>
+              )}
+            </ScrollView>
+          </View>
+        </View>
       </Modal>
 
       {/* Global Loading Overlay */}
@@ -310,182 +399,164 @@ export default function PrivacyScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFF',
+    backgroundColor: '#FAFAFA',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    backgroundColor: '#FFF',
+    paddingHorizontal: 16,
+    height: 56,
+    backgroundColor: '#FAFAFA',
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: '#F3F4F6',
   },
   backButton: {
-    padding: 8,
-    marginLeft: -8,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
     fontSize: 16,
-    fontWeight: '900',
-    fontStyle: 'italic',
-    letterSpacing: 1,
+    fontWeight: '800',
+    color: '#000',
+    fontFamily: 'Outfit-Bold',
   },
   scrollView: {
     flex: 1,
   },
   content: {
-    padding: 24,
+    paddingHorizontal: 20,
+    paddingTop: 24,
   },
-  title: {
-    fontSize: 32,
-    fontWeight: '900',
-    fontStyle: 'italic',
+  sectionHeader: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#8E8E93',
     marginBottom: 8,
-    lineHeight: 32,
-  },
-  lastUpdated: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 32,
-    fontWeight: '600',
-  },
-  section: {
-    marginBottom: 32,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '900',
-    fontStyle: 'italic',
-    marginBottom: 12,
-    color: '#000',
-  },
-  text: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: '#333',
-    fontWeight: '500',
-  },
-  bulletPoint: {
-    flexDirection: 'row',
-    marginTop: 8,
-    paddingRight: 16,
-  },
-  bullet: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: ACCENT_COLOR,
-    marginRight: 8,
-    fontWeight: '900',
-  },
-  footer: {
     marginTop: 20,
-    alignItems: 'center',
-    opacity: 0.5,
+    letterSpacing: 0.5,
   },
-  footerText: {
-    fontSize: 12,
-    color: '#000',
-    fontWeight: '600',
+  sectionCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 2,
   },
-
-  // Action Buttons
-  actionButton: {
+  rowItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: '#F3F4F6',
   },
-  actionButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
+  rowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  rowText: {
+    fontSize: 15,
+    fontWeight: '600',
     color: '#000',
-    fontStyle: 'italic',
-  },
-  deleteButton: {
-    marginTop: 16,
-    borderBottomWidth: 0,
-  },
-  deleteButtonText: {
-    color: '#FF3B30',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#F0F0F0',
-    marginVertical: 32,
   },
 
-  // Modals
-  modalContainer: {
+  // Modals stylisés comme des Bottom Sheets propres
+  modalOverlay: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.8)',
-    padding: 20,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   modalContent: {
-    width: '100%',
-    backgroundColor: '#111',
-    borderRadius: 20,
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     padding: 24,
-    borderWidth: 1,
-    borderColor: '#333',
+    paddingBottom: 40,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
   },
   modalTitle: {
-    fontSize: 24,
-    fontWeight: '900',
-    fontStyle: 'italic',
-    color: '#FFF',
-    marginBottom: 24,
-    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#000',
+    fontFamily: 'Outfit-Bold',
+  },
+  modalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inputLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#8E8E93',
+    marginBottom: 6,
+    marginTop: 14,
+    letterSpacing: 0.5,
   },
   input: {
-    backgroundColor: '#222',
-    color: '#FFF',
-    padding: 16,
-    borderRadius: 12,
-    fontSize: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#333',
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
-  },
-  modalButtonCancel: {
-    flex: 1,
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: '#333',
-    alignItems: 'center',
-  },
-  modalButtonConfirm: {
-    flex: 1,
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: ACCENT_COLOR,
-    alignItems: 'center',
-  },
-  modalButtonTextCancel: {
-    color: '#FFF',
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  modalButtonTextConfirm: {
+    backgroundColor: '#F9FAFB',
     color: '#000',
-    fontWeight: '900',
+    paddingHorizontal: 16,
+    height: 48,
+    borderRadius: 12,
+    fontSize: 15,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  modalSaveBtn: {
+    backgroundColor: VOLT_COLOR,
+    height: 52,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 28,
+  },
+  modalSaveBtnText: {
+    color: '#000',
+    fontWeight: '800',
     fontSize: 16,
-    fontStyle: 'italic',
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(255,255,255,0.7)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+
+  // Legal styling
+  legalSubTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#000',
+    marginTop: 16,
+    marginBottom: 4,
+  },
+  legalText: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#6B7280',
+    marginBottom: 12,
   }
 });

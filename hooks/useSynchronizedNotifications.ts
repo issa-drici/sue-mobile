@@ -11,16 +11,12 @@ export const useSynchronizedNotifications = (page: number = 1, limit: number = 2
   
   // Fonction de synchronisation
   const syncRefresh = async () => {
-    console.log('🔄 [useSynchronizedNotifications] Synchronisation des notifications');
-    
     try {
       // Refetch les deux en parallèle
       await Promise.all([
         unreadCountResult.refetch(),
         notificationsResult.refetch()
       ]);
-      
-      console.log('✅ [useSynchronizedNotifications] Synchronisation terminée');
     } catch (error) {
       console.error('❌ [useSynchronizedNotifications] Erreur lors de la synchronisation:', error);
     }
@@ -36,13 +32,10 @@ export const useSynchronizedNotifications = (page: number = 1, limit: number = 2
     // Créer un nouvel intervalle
     intervalRef.current = setInterval(syncRefresh, 10000);
     
-    console.log('🔄 [useSynchronizedNotifications] Polling synchronisé démarré (10s)');
-    
     // Cleanup à la destruction du composant
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
-        console.log('🔄 [useSynchronizedNotifications] Polling synchronisé arrêté');
       }
     };
   }, [page, limit]); // Redémarrer le polling si page ou limit changent

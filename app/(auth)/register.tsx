@@ -13,9 +13,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeInUp, FadeOutDown } from 'react-native-reanimated';
 
 import { InlineLoading } from '../../components/OptimizedLoading';
+import { clearPendingShareToken, getPendingShareToken } from '../../utils/shareLink';
 import { useAuth } from '../context/auth';
 
 const ACCENT_COLOR = '#D4FC79'; // Electric Volt
@@ -23,32 +24,87 @@ const ACCENT_COLOR = '#D4FC79'; // Electric Volt
 export default function RegisterScreen() {
   const router = useRouter();
   const { signUp } = useAuth();
+  const [step, setStep] = useState(1);
   const [firstname, setFirstName] = useState('');
   const [lastname, setLastName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleRegister = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    if (!firstname || !lastname || !email || !password || !confirmPassword) {
-      Alert.alert('Erreur', 'Veuillez remplir tous les champs');
-      return;
+  const validateStep1 = () => {
+    if (!firstname || !lastname) {
+      Alert.alert('Erreur', 'Veuillez remplir votre prénom et nom');
+      return false;
     }
+    return true;
+  };
 
+  const validateStep2 = () => {
+    if (!email || !phone) {
+      Alert.alert('Erreur', 'Veuillez remplir votre email et téléphone');
+      return false;
+    }
+    // Basic email validation could go here
+    return true;
+  };
+
+  const validateStep3 = () => {
+    if (!password || !confirmPassword) {
+      Alert.alert('Erreur', 'Veuillez choisir un mot de passe');
+      return false;
+    }
     if (password !== confirmPassword) {
       Alert.alert('Erreur', 'Les mots de passe ne correspondent pas');
-      return;
+      return false;
     }
+    return true;
+  };
 
+  const handleNext = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (step === 1 && validateStep1()) {
+      setStep(2);
+    } else if (step === 2 && validateStep2()) {
+      setStep(3);
+    }
+  };
+
+  const handleBack = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (step > 1) {
+      setStep(step - 1);
+    } else {
+      router.back();
+    }
+  };
+
+  const handleRegister = async () => {
+    if (!validateStep3()) return;
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       setIsLoading(true);
-      await signUp(firstname, lastname, email, password, confirmPassword);
+      // Format phone number to international format (+33 for France)
+      const formattedPhone = phone.startsWith('0')
+        ? '+33' + phone.substring(1)
+        : phone;
+
+      await signUp(firstname, lastname, email, formattedPhone, password, confirmPassword);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.replace('/(tabs)');
+
+      // Si l'utilisateur venait d'un lien de partage, le reconduire vers la session
+      const pending = await getPendingShareToken();
+      if (pending) {
+        await clearPendingShareToken();
+        const query = pending.from ? `?from=${pending.from}&auto=1` : '?auto=1';
+        router.replace(`/join/${pending.token}${query}`);
+      } else {
+        router.replace('/(tabs)');
+      }
     } catch (error) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Erreur', error instanceof Error ? error.message : 'Une erreur est survenue');
@@ -73,140 +129,177 @@ export default function RegisterScreen() {
       >
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => router.back()}
+          onPress={handleBack}
           disabled={isLoading}
         >
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
 
         <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.header}>
-          <Text style={styles.brandTitle}>REJOINDRE</Text>
-          <Text style={styles.brandSubtitle}>DEVENEZ UN ATHLÈTE SUE.</Text>
+          <Text style={styles.brandTitle}>
+            {step === 1 ? 'QUI ÊTES-VOUS ?' : step === 2 ? 'CONTACT' : 'SÉCURITÉ'}
+          </Text>
+          <Text style={styles.brandSubtitle}>
+            ÉTAPE {step}/3 • {step === 1 ? 'VOS INFORMATIONS' : step === 2 ? 'POUR VOUS JOINDRE' : 'PROTÉGEZ VOTRE COMPTE'}
+          </Text>
         </Animated.View>
 
         <Animated.View entering={FadeInUp.delay(400).springify()} style={styles.form}>
 
-          <View style={styles.row}>
-            <View style={[styles.inputGroup, { flex: 1, marginRight: 12 }]}>
-              <Text style={styles.label}>PRÉNOM</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="PRÉNOM"
-                placeholderTextColor="#999"
-                value={firstname}
-                onChangeText={setFirstName}
-                autoCapitalize="words"
-                autoComplete="given-name"
-                editable={!isLoading}
-              />
-            </View>
-            <View style={[styles.inputGroup, { flex: 1, marginLeft: 12 }]}>
-              <Text style={styles.label}>NOM</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="NOM"
-                placeholderTextColor="#999"
-                value={lastname}
-                onChangeText={setLastName}
-                autoCapitalize="words"
-                autoComplete="family-name"
-                editable={!isLoading}
-              />
-            </View>
-          </View>
+          {step === 1 && (
+            <Animated.View entering={FadeInUp} exiting={FadeOutDown}>
+              <View style={styles.row}>
+                <View style={[styles.inputGroup, { flex: 1, marginRight: 12 }]}>
+                  <Text style={styles.label}>PRÉNOM</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="PRÉNOM"
+                    placeholderTextColor="#999"
+                    value={firstname}
+                    onChangeText={setFirstName}
+                    autoCapitalize="words"
+                    autoComplete="given-name"
+                    editable={!isLoading}
+                    autoFocus
+                  />
+                </View>
+                <View style={[styles.inputGroup, { flex: 1, marginLeft: 12 }]}>
+                  <Text style={styles.label}>NOM</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="NOM"
+                    placeholderTextColor="#999"
+                    value={lastname}
+                    onChangeText={setLastName}
+                    autoCapitalize="words"
+                    autoComplete="family-name"
+                    editable={!isLoading}
+                  />
+                </View>
+              </View>
+            </Animated.View>
+          )}
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>EMAIL</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="VOTRE EMAIL"
-              placeholderTextColor="#999"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-              editable={!isLoading}
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>MOT DE PASSE</Text>
-            <View style={styles.passwordContainer}>
-              <TextInput
-                style={styles.input}
-                placeholder="CRÉER UN MOT DE PASSE"
-                placeholderTextColor="#999"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                autoComplete="password-new"
-                editable={!isLoading}
-              />
-              <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.eyeIcon}
-                disabled={isLoading}
-              >
-                <Ionicons
-                  name={showPassword ? 'eye-off' : 'eye'}
-                  size={24}
-                  color="#000"
+          {step === 2 && (
+            <Animated.View entering={FadeInUp} exiting={FadeOutDown}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>EMAIL</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="VOTRE EMAIL"
+                  placeholderTextColor="#999"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  editable={!isLoading}
+                  autoFocus
                 />
-              </TouchableOpacity>
-            </View>
-          </View>
+              </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>CONFIRMATION</Text>
-            <View style={styles.passwordContainer}>
-              <TextInput
-                style={styles.input}
-                placeholder="CONFIRMER LE MOT DE PASSE"
-                placeholderTextColor="#999"
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry={!showConfirmPassword}
-                autoCapitalize="none"
-                autoComplete="password-new"
-                editable={!isLoading}
-              />
-              <TouchableOpacity
-                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                style={styles.eyeIcon}
-                disabled={isLoading}
-              >
-                <Ionicons
-                  name={showConfirmPassword ? 'eye-off' : 'eye'}
-                  size={24}
-                  color="#000"
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>NUMÉRO DE TÉLÉPHONE</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="VOTRE NUMÉRO"
+                  placeholderTextColor="#999"
+                  value={phone}
+                  onChangeText={(text) => setPhone(text.replace(/[^0-9]/g, ''))}
+                  maxLength={10}
+                  keyboardType="phone-pad"
+                  autoCapitalize="none"
+                  autoComplete="tel"
+                  editable={!isLoading}
                 />
-              </TouchableOpacity>
-            </View>
-          </View>
+              </View>
+            </Animated.View>
+          )}
+
+          {step === 3 && (
+            <Animated.View entering={FadeInUp} exiting={FadeOutDown}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>MOT DE PASSE</Text>
+                <View style={styles.passwordContainer}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="CRÉER UN MOT DE PASSE"
+                    placeholderTextColor="#999"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    autoComplete="password-new"
+                    editable={!isLoading}
+                    autoFocus
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                    style={styles.eyeIcon}
+                    disabled={isLoading}
+                  >
+                    <Ionicons
+                      name={showPassword ? 'eye-off' : 'eye'}
+                      size={24}
+                      color="#000"
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>CONFIRMATION</Text>
+                <View style={styles.passwordContainer}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="CONFIRMER LE MOT DE PASSE"
+                    placeholderTextColor="#999"
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry={!showConfirmPassword}
+                    autoCapitalize="none"
+                    autoComplete="password-new"
+                    editable={!isLoading}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                    style={styles.eyeIcon}
+                    disabled={isLoading}
+                  >
+                    <Ionicons
+                      name={showConfirmPassword ? 'eye-off' : 'eye'}
+                      size={24}
+                      color="#000"
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Animated.View>
+          )}
 
           <TouchableOpacity
             style={[styles.registerButton, isLoading && styles.registerButtonDisabled]}
-            onPress={handleRegister}
+            onPress={step === 3 ? handleRegister : handleNext}
             disabled={isLoading}
             activeOpacity={0.8}
           >
             <Text style={styles.registerButtonText}>
-              {isLoading ? 'CRÉATION...' : 'CRÉER MON COMPTE'}
+              {isLoading ? 'CRÉATION...' : step === 3 ? 'CRÉER MON COMPTE' : 'CONTINUER'}
             </Text>
             {!isLoading && <Ionicons name="arrow-forward" size={24} color="#000" />}
           </TouchableOpacity>
         </Animated.View>
 
-        <Animated.View entering={FadeInUp.delay(600).springify()} style={styles.footer}>
-          <Text style={styles.footerText}>
-            DÉJÀ MEMBRE ?
-          </Text>
-          <TouchableOpacity onPress={() => router.back()} disabled={isLoading}>
-            <Text style={styles.footerLink}>SE CONNECTER</Text>
-          </TouchableOpacity>
-        </Animated.View>
+        {step === 1 && (
+          <Animated.View entering={FadeInUp.delay(600).springify()} style={styles.footer}>
+            <Text style={styles.footerText}>
+              DÉJÀ MEMBRE ?
+            </Text>
+            <TouchableOpacity onPress={() => router.back()} disabled={isLoading}>
+              <Text style={styles.footerLink}>SE CONNECTER</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );

@@ -3,8 +3,24 @@ import React, { createContext, ReactNode, useContext, useEffect, useState } from
 import { ENV } from '../../config/env';
 import { AuthApi } from '../../services/api/authApi';
 import { baseApiService } from '../../services/api/baseApi';
+import { UsersApi } from '../../services/api/usersApi';
 import { pushNotificationService } from '../../services/notifications/pushNotifications';
+import { UpdateProfileData } from '../../services/types/users';
 import { User } from '../../types/user';
+import { formatAvatarUrl } from '../../utils';
+
+function normalizeUser(userData: any): User {
+  if (!userData) return {} as User;
+  const rawAvatar = userData.avatar || userData.avatar_url || userData.avatarUrl || undefined;
+  return {
+    id: userData.id || '',
+    firstname: userData.firstname || userData.first_name || '',
+    lastname: userData.lastname || userData.last_name || '',
+    email: userData.email,
+    phone: userData.phone,
+    avatar: formatAvatarUrl(rawAvatar) || undefined,
+  };
+}
 
 interface AuthContextType {
   user: User | null;
@@ -13,7 +29,8 @@ interface AuthContextType {
   isOnboardingCompleted: boolean | null;
   isOnboardingLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (firstname: string, lastname: string, email: string, password: string, password_confirmation: string) => Promise<void>;
+  signUp: (firstname: string, lastname: string, email: string, phone: string, password: string, password_confirmation: string) => Promise<void>;
+  authenticateWithSession: (token: string, userData: User, refreshToken?: string) => Promise<void>;
   signOut: () => Promise<void>;
   forceSignOut: () => Promise<void>;
   checkTokenValidity: () => Promise<boolean>;
@@ -21,6 +38,9 @@ interface AuthContextType {
   completeOnboarding: () => Promise<void>;
   resetOnboarding: () => Promise<void>;
   getAuthToken: () => Promise<string | null>;
+  forgotPassword: (email: string) => Promise<void>;
+  updateUserProfile: (data: UpdateProfileData) => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -49,12 +69,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Déconnexion forcée (nettoyage complet)
   const forceSignOut = async () => {
     try {
-      console.log('🔄 Déconnexion forcée en cours...');
-
       // Supprimer le token push de la BDD avant déconnexion
       try {
         await pushNotificationService.unregisterTokenFromDatabase();
-        console.log('✅ Token push supprimé de la BDD avant déconnexion');
       } catch (error) {
         console.warn('⚠️ Erreur lors de la suppression du token push:', error);
       }
@@ -67,8 +84,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Réinitialiser l'état
       setUser(null);
-
-      console.log('✅ Déconnexion forcée terminée');
     } catch (error) {
       console.error('❌ Erreur lors de la déconnexion forcée:', error);
     }
@@ -80,11 +95,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     try {
       setIsRefreshing(true);
-      console.log('🔄 Tentative de rafraîchissement de l\'authentification...');
 
       const refreshToken = await AsyncStorage.getItem('refreshToken');
       if (!refreshToken) {
-        console.log('❌ Pas de refresh token disponible');
         return false;
       }
 
@@ -107,12 +120,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           await AsyncStorage.setItem('authToken', newToken);
           baseApiService.setAuthToken(newToken);
 
-          console.log('✅ Token rafraîchi avec succès');
           return true;
         }
       }
 
-      console.log('❌ Échec du rafraîchissement du token');
       return false;
     } catch (error) {
       console.error('❌ Erreur lors du rafraîchissement:', error);
@@ -127,11 +138,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       if (!token) {
-        console.log('❌ Aucun token disponible');
         return false;
       }
-
-      console.log('🔍 Vérification de la validité du token...');
 
       const response = await fetch(`${ENV.API_BASE_URL}/profile`, {
         headers: {
@@ -141,11 +149,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
 
       if (response.ok) {
-        console.log('✅ Token valide');
         return true;
       } else if (response.status === 401) {
-        console.log('⚠️ Token expiré, tentative de rafraîchissement...');
-
         // Essayer de rafraîchir le token
         const refreshSuccess = await refreshAuth();
         if (refreshSuccess) {
@@ -155,10 +160,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         // Si le refresh échoue, on ne déconnecte PAS automatiquement
         // L'utilisateur reste connecté avec l'ancien token
-        console.log('⚠️ Échec du refresh, mais l\'utilisateur reste connecté');
         return true;
       } else {
-        console.log(`❌ Erreur API: ${response.status}`);
         // En cas d'erreur API, on ne déconnecte PAS automatiquement
         // L'utilisateur reste connecté
         return true;
@@ -168,7 +171,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // En cas d'erreur réseau, on ne déconnecte PAS automatiquement
       // L'utilisateur reste connecté
-      console.log('🌐 Erreur réseau détectée, mais l\'utilisateur reste connecté');
       return true;
     }
   };
@@ -200,10 +202,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const completeOnboarding = async () => {
     try {
-      console.log('✅ Completion de l\'onboarding...');
       await AsyncStorage.setItem('onboarding_completed', 'true');
       setIsOnboardingCompleted(true);
-      console.log('✅ Onboarding marqué comme terminé dans l\'état');
     } catch (error) {
       console.error('Erreur lors de la sauvegarde du statut onboarding:', error);
     }
@@ -222,8 +222,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const loadUser = async () => {
       try {
-        console.log('🚀 Chargement de l\'utilisateur depuis le stockage...');
-
         // Réduire le délai pour une navigation plus fluide
         await new Promise(resolve => setTimeout(resolve, 50));
 
@@ -234,34 +232,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const token = await AsyncStorage.getItem('authToken');
 
         if (userData && token) {
-          console.log('📱 Utilisateur et token trouvés dans le stockage');
-
           const parsedUser = JSON.parse(userData);
-          setUser(parsedUser);
+          const normalized = normalizeUser(parsedUser);
+          setUser(normalized);
           baseApiService.setAuthToken(token);
 
           // Configurer le callback de déconnexion automatique
           baseApiService.setLogoutCallback(forceSignOut);
 
-          // Vérifier la validité du token en arrière-plan SANS déconnexion automatique
-          console.log('🔍 Vérification de la validité du token (sans déconnexion automatique)...');
-          const isValid = await checkTokenValidity();
+          // Synchroniser le profil utilisateur en arrière-plan
+          refreshUser().catch(() => {});
 
-          if (isValid) {
-            console.log('✅ Utilisateur connecté avec succès');
-          } else {
-            console.log('⚠️ Token potentiellement invalide, mais l\'utilisateur reste connecté');
-            // L'utilisateur reste connecté même si le token est invalide
-          }
+          // Vérifier la validité du token en arrière-plan SANS déconnexion automatique
+          await checkTokenValidity();
         } else {
-          console.log('📱 Aucune donnée d\'authentification trouvée');
           setUser(null);
         }
       } catch (error) {
         console.error('❌ Erreur lors du chargement de l\'utilisateur:', error);
         // En cas d'erreur, on ne nettoie PAS automatiquement le stockage
         // L'utilisateur reste connecté
-        console.log('⚠️ Erreur lors du chargement, mais l\'utilisateur reste connecté');
 
         // Essayer de récupérer les données malgré l'erreur
         try {
@@ -270,9 +260,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
           if (userData && token) {
             const parsedUser = JSON.parse(userData);
-            setUser(parsedUser);
+            const normalized = normalizeUser(parsedUser);
+            setUser(normalized);
             baseApiService.setAuthToken(token);
-            console.log('✅ Utilisateur récupéré malgré l\'erreur');
           }
         } catch (recoveryError) {
           console.error('❌ Impossible de récupérer l\'utilisateur:', recoveryError);
@@ -280,7 +270,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       } finally {
         setIsLoading(false);
-        console.log('🏁 Chargement terminé');
       }
     };
 
@@ -288,12 +277,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   // Connexion avec mock
-  const signInWithMock = async (email: string, password: string) => {
+  const signInWithMock = async (email: string, password: string, firstname?: string, lastname?: string) => {
     try {
       const mockUser: User = {
         id: '1',
-        firstname: 'Utilisateur',
-        lastname: 'Test',
+        firstname: firstname || 'Utilisateur',
+        lastname: lastname || 'Test',
         email: email,
       };
 
@@ -313,15 +302,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (permissionsGranted) {
           // Enregistrer le token push en BDD après connexion
           await pushNotificationService.registerTokenInDatabase();
-          console.log('✅ Token push enregistré en BDD après connexion (mock)');
-        } else {
-          console.log('ℹ️ Permissions de notifications non accordées, pas d\'enregistrement de token (mock)');
         }
       } catch (error) {
         console.warn('⚠️ Erreur lors de l\'enregistrement du token push (mock):', error);
       }
-
-      console.log('✅ Connexion mock réussie');
     } catch {
       throw new Error('Erreur lors de la connexion mock');
     }
@@ -334,8 +318,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         await signInWithMock(email, password);
         return;
       }
-
-      console.log('🔐 Tentative de connexion...');
 
       // Ajouter le device_name requis par l'API
       const loginData = {
@@ -353,11 +335,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error('Format de réponse invalide du serveur');
       }
 
-      console.log('✅ Connexion réussie, sauvegarde des données...');
-
       // Sauvegarder l'utilisateur
-      await AsyncStorage.setItem('user', JSON.stringify(userData));
-      setUser(userData);
+      const normalized = normalizeUser(userData);
+      await AsyncStorage.setItem('user', JSON.stringify(normalized));
+      setUser(normalized);
 
       // Sauvegarder les tokens
       await AsyncStorage.setItem('authToken', token);
@@ -374,15 +355,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (permissionsGranted) {
           // Enregistrer le token push en BDD après connexion
           await pushNotificationService.registerTokenInDatabase();
-          console.log('✅ Token push enregistré en BDD après connexion');
-        } else {
-          console.log('ℹ️ Permissions de notifications non accordées, pas d\'enregistrement de token');
         }
       } catch (error) {
         console.warn('⚠️ Erreur lors de l\'enregistrement du token push:', error);
       }
-
-      console.log('✅ Données d\'authentification sauvegardées');
     } catch (error: any) {
       console.error('❌ Erreur lors de la connexion:', error);
       throw new Error(error.message || 'Erreur lors de la connexion');
@@ -390,20 +366,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // Inscription
-  const signUp = async (firstname: string, lastname: string, email: string, password: string, password_confirmation: string) => {
+  const signUp = async (firstname: string, lastname: string, email: string, phone: string, password: string, password_confirmation: string) => {
     try {
       if (ENV.USE_MOCKS) {
-        await signInWithMock(email, password);
+        await signInWithMock(email, password, firstname, lastname);
         return;
       }
-
-      console.log('📝 Tentative d\'inscription...');
 
       // Ajouter le device_name requis par l'API
       const registerData = {
         firstname,
         lastname,
         email,
+        phone,
         password,
         password_confirmation,
         device_name: 'Alarrache Mobile App'
@@ -418,11 +393,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error('Format de réponse invalide du serveur');
       }
 
-      console.log('✅ Inscription réussie, sauvegarde des données...');
-
       // Sauvegarder l'utilisateur
-      await AsyncStorage.setItem('user', JSON.stringify(userData));
-      setUser(userData);
+      const normalized = normalizeUser(userData);
+      await AsyncStorage.setItem('user', JSON.stringify(normalized));
+      setUser(normalized);
 
       // Sauvegarder les tokens
       await AsyncStorage.setItem('authToken', token);
@@ -432,23 +406,48 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Configurer le token pour les requêtes API
       baseApiService.setAuthToken(token);
-
-      console.log('✅ Données d\'authentification sauvegardées');
     } catch (error: any) {
       console.error('❌ Erreur lors de l\'inscription:', error);
       throw new Error(error.message || 'Erreur lors de l\'inscription');
     }
   };
 
+  // Persister une session à partir d'un token + user déjà obtenus
+  // (utilisé par l'auth par téléphone : verify / register renvoient directement {token, user})
+  const authenticateWithSession = async (token: string, userData: User, refreshToken?: string) => {
+    try {
+      const normalized = normalizeUser(userData);
+      await AsyncStorage.setItem('user', JSON.stringify(normalized));
+      setUser(normalized);
+
+      await AsyncStorage.setItem('authToken', token);
+      if (refreshToken) {
+        await AsyncStorage.setItem('refreshToken', refreshToken);
+      }
+
+      baseApiService.setAuthToken(token);
+
+      // Enregistrer le token push (comme après une connexion classique)
+      try {
+        const permissionsGranted = await pushNotificationService.checkAndReinitializePermissions();
+        if (permissionsGranted) {
+          await pushNotificationService.registerTokenInDatabase();
+        }
+      } catch (error) {
+        console.warn('⚠️ Erreur lors de l\'enregistrement du token push:', error);
+      }
+    } catch (error: any) {
+      console.error('❌ Erreur lors de l\'ouverture de session:', error);
+      throw new Error(error.message || 'Erreur lors de la connexion');
+    }
+  };
+
   // Déconnexion
   const signOut = async () => {
     try {
-      console.log('🚪 Déconnexion en cours...');
-
       // Supprimer le token push de la BDD AVANT de déconnecter l'utilisateur
       try {
         await pushNotificationService.unregisterTokenFromDatabase();
-        console.log('✅ Token push supprimé de la BDD avant déconnexion');
       } catch (error) {
         console.warn('⚠️ Erreur lors de la suppression du token push:', error);
       }
@@ -456,7 +455,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (!ENV.USE_MOCKS) {
         try {
           await AuthApi.logout();
-          console.log('✅ Déconnexion API réussie');
         } catch (error) {
           console.warn('⚠️ Erreur lors de la déconnexion API, continuation...');
         }
@@ -466,12 +464,53 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await AsyncStorage.multiRemove(['user', 'authToken', 'refreshToken']);
       baseApiService.clearAuthToken();
       setUser(null);
-
-      console.log('✅ Déconnexion terminée');
     } catch (error) {
       console.error('❌ Erreur lors de la déconnexion:', error);
       // Forcer la déconnexion même en cas d'erreur
       await forceSignOut();
+    }
+  };
+
+  const forgotPassword = async (email: string) => {
+    try {
+      if (ENV.USE_MOCKS) {
+        // Mock success
+        return;
+      }
+      await AuthApi.forgotPassword(email);
+    } catch (error: any) {
+      console.error('❌ Erreur forgot password:', error);
+      throw new Error(error.message || 'Erreur lors de la demande de réinitialisation');
+    }
+  };
+
+  // Mettre à jour le profil utilisateur
+  const updateUserProfile = async (data: UpdateProfileData) => {
+    try {
+      setIsLoading(true);
+      const updatedUser = await UsersApi.updateProfile(data);
+      const normalized = normalizeUser(updatedUser);
+
+      // Mettre à jour l'état local et le stockage
+      setUser(normalized);
+      await AsyncStorage.setItem('user', JSON.stringify(normalized));
+    } catch (error) {
+      console.error('❌ Erreur lors de la mise à jour du profil:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Synchronise le profil depuis l'API
+  const refreshUser = async () => {
+    try {
+      const profile = await UsersApi.getProfile();
+      const normalized = normalizeUser(profile);
+      setUser(normalized);
+      await AsyncStorage.setItem('user', JSON.stringify(normalized));
+    } catch (error) {
+      console.error('❌ Erreur lors de la synchronisation de l\'utilisateur:', error);
     }
   };
 
@@ -483,6 +522,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isOnboardingLoading,
     signIn,
     signUp,
+    authenticateWithSession,
     signOut,
     forceSignOut,
     checkTokenValidity,
@@ -490,6 +530,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     completeOnboarding,
     resetOnboarding,
     getAuthToken,
+    forgotPassword,
+    updateUserProfile,
+    refreshUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

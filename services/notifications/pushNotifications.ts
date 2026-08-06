@@ -35,6 +35,14 @@ export class PushNotificationService {
   private expoPushToken: string | null = null;
   private isInitialized = false;
   private static readonly STORAGE_KEY = 'expo_push_token';
+  // Flag local : la demande "soft" (bottom sheet) a déjà été traitée (activée OU refusée)
+  private static readonly SOFT_PROMPT_KEY = 'notif_soft_prompt_handled';
+
+  // Abonnements aux listeners (pour éviter les doublons lors de ré-initialisations)
+  private receivedSubscription: Notifications.Subscription | null = null;
+  private responseSubscription: Notifications.Subscription | null = null;
+  // Déduplication des taps déjà traités (cold start + listener peuvent délivrer le même)
+  private handledResponseIds = new Set<string>();
 
   private constructor() {}
 
@@ -54,22 +62,25 @@ export class PushNotificationService {
     }
 
     try {
-      // Demander les permissions
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
+      // NE PAS demander la permission ici. L'initialisation ne configure le service
+      // (token + listeners) QUE si la permission est DÉJÀ accordée. La demande native
+      // est déclenchée uniquement par la demande "soft" (bottom sheet) via
+      // activateFromPrompt() -> requestPermissions(). Cela évite que la popup Apple
+      // s'affiche automatiquement au login/au foreground, sans contexte pour l'utilisateur.
+      const { status } = await Notifications.getPermissionsAsync();
 
-      if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-      }
-
-      if (finalStatus !== 'granted') {
+      if (status !== 'granted') {
         return false;
       }
 
       // Obtenir et stocker le token localement
       const token = await this.getExpoPushToken();
       if (!token) {
+        console.warn('⚠️ Impossible d\'obtenir le token Expo Push');
+        console.warn('   Le service sera initialisé partiellement (notifications locales uniquement)');
+        // On initialise quand même pour permettre les notifications locales
+        this.setupNotificationListeners();
+        // On ne marque pas comme initialisé car pas de token pour les push
         return false;
       }
 
@@ -86,9 +97,17 @@ export class PushNotificationService {
 
   /**
    * Obtient le token Expo Push et le stocke localement
+   * 
+   * Note: Sur iOS, fonctionne directement avec APNs via Expo.
+   * Sur Android, nécessite Firebase Cloud Messaging (FCM) configuré.
+   * Pour le développement local Android, ajoutez google-services.json.
+   * Pour les builds EAS, configurez les credentials FCM via `eas credentials`.
    */
   private async getExpoPushToken(): Promise<string | null> {
     try {
+      // Configuration identique pour iOS et Android
+      // Sur iOS: utilise APNs automatiquement
+      // Sur Android: nécessite FCM configuré (google-services.json ou EAS credentials)
       const token = await Notifications.getExpoPushTokenAsync({
         projectId: '1b831c3a-2180-4050-b751-7e5248737d95',
       });
@@ -98,10 +117,41 @@ export class PushNotificationService {
       // Stocker le token localement
       await AsyncStorage.setItem(PushNotificationService.STORAGE_KEY, token.data);
       
-      console.log('📱 Token Expo obtenu et stocké localement:', token.data);
       return token.data;
     } catch (error: any) {
-      console.error('❌ Erreur lors de l\'obtention du token:', error);
+      // Log détaillé de l'erreur pour diagnostic
+      const errorMessage = error?.message || String(error);
+      const errorCode = error?.code || 'UNKNOWN';
+      const errorStack = error?.stack || '';
+      
+      console.error(`❌ Erreur lors de l'obtention du token Expo Push (${Platform.OS}):`);
+      console.error('   Message:', errorMessage);
+      console.error('   Code:', errorCode);
+      
+      // Gestion spécifique selon la plateforme
+      if (Platform.OS === 'android') {
+        // Sur Android, les erreurs Firebase sont courantes si FCM n'est pas configuré
+        if (errorMessage.includes('FirebaseApp') || errorMessage.includes('FCM') || errorMessage.includes('Firebase')) {
+          console.warn('⚠️ Firebase non configuré sur Android');
+          console.warn('   Les notifications push Android nécessitent Firebase Cloud Messaging (FCM)');
+          console.warn('   Options:');
+          console.warn('   1. Développement local: Ajoutez google-services.json à la racine du projet');
+          console.warn('   2. Build EAS: Configurez les credentials FCM via `eas credentials`');
+          console.warn('   Documentation: https://docs.expo.dev/push-notifications/using-fcm/');
+        } else {
+          console.error('   Stack:', errorStack);
+        }
+      } else if (Platform.OS === 'ios') {
+        // Sur iOS, les erreurs sont moins courantes (APNs géré automatiquement)
+        if (errorMessage.includes('network') || errorMessage.includes('Network')) {
+          console.warn('⚠️ Erreur réseau lors de l\'obtention du token (iOS)');
+        } else if (errorMessage.includes('permission') || errorMessage.includes('Permission')) {
+          console.warn('⚠️ Permissions de notifications non accordées (iOS)');
+        } else {
+          console.error('   Stack:', errorStack);
+        }
+      }
+      
       return null;
     }
   }
@@ -141,10 +191,17 @@ export class PushNotificationService {
    */
   async registerTokenInDatabase(): Promise<boolean> {
     try {
-      const token = await this.getStoredToken();
+      console.log('🔄 Tentative d\'enregistrement du token en base de données...');
+      
+      // D'abord, essayer d'obtenir un token si on n'en a pas
+      let token = await this.getStoredToken();
       if (!token) {
-        console.log('⚠️ Aucun token stocké localement');
-        return false;
+        token = await this.getExpoPushToken();
+        if (!token) {
+          console.error('❌ Impossible d\'obtenir un token Expo Push pour l\'enregistrement');
+          console.error('   Vérifiez que les permissions sont accordées et que Firebase est configuré (Android)');
+          return false;
+        }
       }
 
       const payload = {
@@ -155,14 +212,20 @@ export class PushNotificationService {
       const response = await baseApiService.post('/push-tokens', payload) as any;
 
       if (response?.success) {
-        console.log('✅ Token enregistré en BDD avec succès');
         return true;
       } else {
-        console.log('❌ Échec de l\'enregistrement du token en BDD');
+        console.error('❌ Échec de l\'enregistrement du token en BDD');
+        console.error('   Réponse:', response);
         return false;
       }
     } catch (error: any) {
-      console.error('❌ Erreur lors de l\'enregistrement du token en BDD:', error);
+      console.error('❌ Erreur lors de l\'enregistrement du token en BDD:');
+      console.error('   Message:', error?.message || String(error));
+      console.error('   Code:', error?.code || 'UNKNOWN');
+      if (error?.response) {
+        console.error('   Status:', error.response.status);
+        console.error('   Data:', error.response.data);
+      }
       return false;
     }
   }
@@ -174,17 +237,15 @@ export class PushNotificationService {
     try {
       const token = await this.getStoredToken();
       if (!token) {
-        console.log('⚠️ Aucun token stocké localement');
         return true; // Pas d'erreur si pas de token
       }
 
       const response = await baseApiService.delete('/push-tokens', { token }) as any;
 
       if (response?.success) {
-        console.log('✅ Token supprimé de la BDD avec succès');
         return true;
       } else {
-        console.log('❌ Échec de la suppression du token de la BDD');
+        console.error('❌ Échec de la suppression du token de la BDD');
         return false;
       }
     } catch (error: any) {
@@ -227,6 +288,56 @@ export class PushNotificationService {
   }
 
   /**
+   * Détermine s'il faut afficher la demande "soft" (bottom sheet) avant la popup native.
+   * Ne réutilise que des méthodes existantes. Retourne false si :
+   *  - la demande soft a déjà été traitée (flag local) ;
+   *  - la permission est déjà accordée OU refusée (status ≠ 'undetermined') ;
+   *  - un token push existe déjà.
+   */
+  async shouldShowSoftPrompt(): Promise<boolean> {
+    try {
+      const handled = await AsyncStorage.getItem(PushNotificationService.SOFT_PROMPT_KEY);
+      if (handled === 'true') return false;
+
+      const { status } = await this.getPermissions();
+      if (status !== 'undetermined') return false;
+
+      const token = await this.getStoredToken();
+      if (token) return false;
+
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Marque la demande soft comme traitée (pour ne jamais la réafficher en boucle).
+   */
+  async markSoftPromptHandled(): Promise<void> {
+    try {
+      await AsyncStorage.setItem(PushNotificationService.SOFT_PROMPT_KEY, 'true');
+    } catch {
+      // silencieux
+    }
+  }
+
+  /**
+   * Active les notifications depuis la demande soft : compose la logique EXISTANTE
+   * (permission native -> initialisation -> enregistrement du token en BDD).
+   * Aucune logique dupliquée.
+   */
+  async activateFromPrompt(): Promise<boolean> {
+    const granted = await this.requestPermissions();
+    if (!granted) {
+      return false;
+    }
+    await this.initialize();
+    await this.registerTokenInDatabase();
+    return true;
+  }
+
+  /**
    * Vérifie si les permissions sont accordées et réinitialise si nécessaire
    */
   async checkAndReinitializePermissions(): Promise<boolean> {
@@ -234,7 +345,7 @@ export class PushNotificationService {
       const { status } = await Notifications.getPermissionsAsync();
       
       if (status === 'granted') {
-        // Les permissions sont maintenant accordées
+        // Les permissions sont accordées
         const storedToken = await this.getStoredToken();
         
         if (!storedToken) {
@@ -249,7 +360,10 @@ export class PushNotificationService {
               this.isInitialized = true;
             }
             
-            console.log('✅ Token obtenu après activation des permissions');
+            return true;
+          } else {
+            // Permissions OK mais token non obtenu (probablement Firebase non configuré)
+            // On retourne true car les permissions sont OK, c'est juste Firebase qui manque
             return true;
           }
         } else {
@@ -259,17 +373,15 @@ export class PushNotificationService {
             this.isInitialized = true;
           }
           
-          console.log('✅ Permissions accordées, token déjà disponible');
           return true;
         }
       } else {
         // Les permissions ne sont plus accordées
-        console.log('⚠️ Permissions de notifications révoquées');
+        console.warn('⚠️ Permissions de notifications non accordées ou révoquées');
         
         // Supprimer le token de la BDD si l'utilisateur est connecté
         try {
           await this.unregisterTokenFromDatabase();
-          console.log('✅ Token supprimé de la BDD après révocation des permissions');
         } catch (error) {
           console.warn('⚠️ Erreur lors de la suppression du token après révocation:', error);
         }
@@ -281,13 +393,12 @@ export class PushNotificationService {
         // Supprimer le token du stockage local
         try {
           await AsyncStorage.removeItem(PushNotificationService.STORAGE_KEY);
-          console.log('✅ Token supprimé du stockage local');
         } catch (error) {
           console.warn('⚠️ Erreur lors de la suppression du token du stockage local:', error);
         }
+        
+        return false;
       }
-      
-      return false;
     } catch (error) {
       console.error('❌ Erreur lors de la vérification des permissions:', error);
       return false;
@@ -403,15 +514,31 @@ export class PushNotificationService {
    * Configure les listeners de notifications
    */
   private setupNotificationListeners(): void {
-    // Notification reçue quand l'app est en arrière-plan
-    Notifications.addNotificationReceivedListener((notification) => {
+    // Retirer d'éventuels listeners précédents : setupNotificationListeners peut être
+    // appelé plusieurs fois (ré-init au foreground). Sans ça, les listeners s'empilent
+    // et un seul tap déclenche plusieurs navigations (écrans dupliqués / retour cassé).
+    this.receivedSubscription?.remove();
+    this.responseSubscription?.remove();
+
+    // Notification reçue (app au premier plan / arrière-plan)
+    this.receivedSubscription = Notifications.addNotificationReceivedListener((notification) => {
       this.handleNotificationReceived(notification);
     });
 
-    // Notification cliquée
-    Notifications.addNotificationResponseReceivedListener((response) => {
+    // Notification cliquée (app ouverte ou en arrière-plan)
+    this.responseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
       this.handleNotificationClicked(response);
     });
+
+    // Cold start : traiter la notification qui a lancé l'app depuis un état tué.
+    // Le listener ci-dessus ne capte pas toujours ce cas → on récupère la dernière réponse.
+    Notifications.getLastNotificationResponseAsync()
+      .then((response) => {
+        if (response) {
+          this.handleNotificationClicked(response);
+        }
+      })
+      .catch(() => { });
   }
 
   /**
@@ -427,12 +554,19 @@ export class PushNotificationService {
    * Gère un clic sur une notification
    */
   private handleNotificationClicked(response: Notifications.NotificationResponse): void {
-    const { title, body, data } = response.notification.request.content;
-    
-    console.log('👆 Notification cliquée:', title);
-    console.log('👆 Contenu notification:', body);
-    console.log('👆 Données notification:', JSON.stringify(data, null, 2));
-    
+    // Dédup : le cold start (getLastNotificationResponseAsync) et le listener peuvent
+    // délivrer le même tap ; getLastNotificationResponseAsync renvoie aussi toujours la
+    // même réponse à chaque ré-init → on ne traite chaque tap qu'une seule fois.
+    const identifier = response.notification.request.identifier;
+    if (identifier) {
+      if (this.handledResponseIds.has(identifier)) {
+        return;
+      }
+      this.handledResponseIds.add(identifier);
+    }
+
+    const { data } = response.notification.request.content;
+
     // Navigation selon le type de notification
     this.handleNotificationNavigation(data as PushNotificationData);
   }
@@ -451,45 +585,44 @@ export class PushNotificationService {
 
     // Import dynamique pour éviter les dépendances circulaires
     import('expo-router').then(({ router }) => {
+      // On utilise router.navigate (et non push) : ça réutilise l'écran de session s'il
+      // est déjà affiché au lieu d'empiler un doublon → retour propre.
+      const sessionId = data.session_id || data.sessionId;
+
       switch (data.type) {
+        // Toutes les notifications liées à une session mènent à l'écran de la session
         case 'session_invitation':
-          const sessionIdInvitation = data.session_id || data.sessionId;
-          if (sessionIdInvitation) {
-            console.log('📍 Redirection vers session (invitation):', sessionIdInvitation);
-            router.push(`/session/${sessionIdInvitation}`);
-          } else {
-            console.log('❌ session_id manquant pour invitation');
-          }
-          break;
         case 'session_update':
-          const sessionIdUpdate = data.session_id || data.sessionId;
-          if (sessionIdUpdate) {
-            console.log('📍 Redirection vers session (update):', sessionIdUpdate);
-            router.push(`/session/${sessionIdUpdate}`);
+        case 'session_cancelled':
+        case 'session_organizer_changed':
+        case 'reminder':
+          if (sessionId) {
+            router.navigate(`/session/${sessionId}`);
           } else {
-            console.log('❌ session_id manquant pour update');
+            router.navigate('/(tabs)');
           }
           break;
-        case 'friend_request':
-          console.log('📍 Redirection vers amis');
-          router.push('/friends');
-          break;
+
         case 'comment':
-          const sessionIdComment = data.session_id || data.sessionId;
-          if (sessionIdComment) {
-            console.log('📍 Redirection vers session (commentaire):', sessionIdComment);
-            // Passer un paramètre pour ouvrir automatiquement la modal de commentaires
-            router.push(`/session/${sessionIdComment}?openComments=true`);
+          if (sessionId) {
+            // Ouvre directement la modal de commentaires
+            router.navigate(`/session/${sessionId}?openComments=true`);
           } else {
-            console.log('❌ session_id manquant pour commentaire - données:', JSON.stringify(data, null, 2));
-            // Fallback vers la liste des sessions si pas de session_id
-            console.log('📍 Fallback vers liste des sessions');
-            router.push('/(tabs)');
+            router.navigate('/(tabs)');
           }
           break;
-        case 'general':
+
+        case 'friend_request':
+          // Écran dédié où l'on accepte/refuse la demande
+          router.navigate('/friend-requests');
+          break;
+
         default:
-          console.log('📍 Notification générale - pas de navigation');
+          // Type inconnu : si un session_id est présent, on tente quand même la session
+          // (robuste aux futurs types portant un session_id), sinon on ne fait rien.
+          if (sessionId) {
+            router.navigate(`/session/${sessionId}`);
+          }
           break;
       }
     }).catch(error => {

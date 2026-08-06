@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "316069961366",
+    "project_id": "sue-app-74bc1",
+    "storage_bucket": "sue-app-74bc1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:316069961366:android:f0d68e3787af00852aacb7",
+        "android_client_info": {
+          "package_name": "com.alliancetech.com"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyATQzWyDjFASN4Q0rNK0W3TCDYlYGlbTQ0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

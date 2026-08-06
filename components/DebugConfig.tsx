@@ -10,7 +10,7 @@ export default function DebugConfig() {
   const { user, isAuthenticated, signOut, checkTokenValidity, refreshAuth } = useAuth();
   const [storageData, setStorageData] = useState<any>(null);
   const [tokenStatus, setTokenStatus] = useState<string>('Non vérifié');
-  const { token: expoPushToken, initialize: initPush, isInitializing: isInitPush, isInitialized: pushReady, sendTestNotification } = usePushNotifications();
+  const { token: expoPushToken, initialize: initPush, isInitializing: isInitPush, isInitialized: pushReady, sendTestNotification, sendLocalNotification } = usePushNotifications();
 
   const loadStorageData = async () => {
     try {
@@ -124,7 +124,30 @@ export default function DebugConfig() {
           onPress={() => sendTestNotification(user?.id)}
           disabled={!pushReady}
         >
-          <Text style={styles.buttonText}>Envoyer notification de test</Text>
+          <Text style={styles.buttonText}>Envoyer notification push (backend)</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.button}
+          onPress={async () => {
+            try {
+              await sendLocalNotification({
+                title: '🔔 Test Notification Locale',
+                body: 'Ceci est une notification locale de test. Fonctionne sur simulateurs !',
+                data: {
+                  type: 'test',
+                  session_id: 'test-123',
+                  notification_id: `test-${Date.now()}`,
+                },
+              });
+              Alert.alert('Succès', 'Notification locale envoyée !');
+            } catch (error) {
+              Alert.alert('Erreur', 'Impossible d\'envoyer la notification locale');
+              console.error('Erreur notification locale:', error);
+            }
+          }}
+        >
+          <Text style={styles.buttonText}>📱 Test Notification Locale (Simulateur)</Text>
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.button} onPress={loadStorageData}>

@@ -15,7 +15,6 @@ export function useGetFriendRequests() {
 
     try {
       if (ENV.USE_MOCKS) {
-        // Utiliser les mocks de demandes d'ami prédéfinis
         const mockRequests: FriendRequest[] = [
           {
             id: '5',
@@ -35,7 +34,8 @@ export function useGetFriendRequests() {
             },
             status: 'pending',
             createdAt: new Date().toISOString(),
-            mutualFriends: 3, // Ajouté
+            mutualFriends: 3,
+            sessionsTogether: 3,
           },
           {
             id: '6',
@@ -55,7 +55,8 @@ export function useGetFriendRequests() {
             },
             status: 'pending',
             createdAt: new Date().toISOString(),
-            mutualFriends: 7, // Ajouté
+            mutualFriends: 7,
+            sessionsTogether: 5,
           },
           {
             id: '7',
@@ -75,7 +76,8 @@ export function useGetFriendRequests() {
             },
             status: 'pending',
             createdAt: new Date().toISOString(),
-            mutualFriends: 2, // Ajouté
+            mutualFriends: 2,
+            sessionsTogether: 1,
           },
         ];
         setData(mockRequests);

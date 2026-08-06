@@ -3588,6 +3588,11 @@ expo-constants@~17.1.7:
     "@expo/config" "~11.0.13"
     "@expo/env" "~1.0.7"
 
+expo-contacts@~14.2.5:
+  version "14.2.5"
+  resolved "https://registry.yarnpkg.com/expo-contacts/-/expo-contacts-14.2.5.tgz#fe2d933ff425c2c5e3377d53853f4ed7906ef974"
+  integrity sha512-yiVmXrLKBCcBkwsaHFlbs0f7UwE2t7Aa1NBOK4Y06ya0Y5WyE6I/P5ZAtWNjXnKmbV7iNKAiPUzqVaNazhCtWA==
+
 expo-dev-client@~5.2.4:
   version "5.2.4"
   resolved "https://registry.yarnpkg.com/expo-dev-client/-/expo-dev-client-5.2.4.tgz#cdffaea81841b2903cb9585bdd1566dea275a097"
@@ -3748,6 +3753,11 @@ expo-secure-store@~14.2.4:
   version "14.2.4"
   resolved "https://registry.yarnpkg.com/expo-secure-store/-/expo-secure-store-14.2.4.tgz#673743567a6459fb4b5f9406d57d9a3b16bca69f"
   integrity sha512-ePaz4fnTitJJZjAiybaVYGfLWWyaEtepZC+vs9ZBMhQMfG5HUotIcVsDaSo3FnwpHmgwsLVPY2qFeryI6AtULw==
+
+expo-sms@~13.1.4:
+  version "13.1.4"
+  resolved "https://registry.yarnpkg.com/expo-sms/-/expo-sms-13.1.4.tgz#729b1b8840e589fb30fc07c8a7c97ad0fa8b4067"
+  integrity sha512-yt8htaS/aOWAXn2YpLfoeSIxpLFqnt9E3lx6IGKll9/5wAh8BdQvKzzzFamJIvlyCaC24orqcXfhQxpboBd3DA==
 
 expo-splash-screen@0.30.10:
   version "0.30.10"

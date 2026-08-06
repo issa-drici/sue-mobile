@@ -9,6 +9,7 @@ export interface RegisterData {
   firstname: string;
   lastname: string;
   email: string;
+  phone: string;
   password: string;
   password_confirmation: string;
   device_name: string;
@@ -16,9 +17,9 @@ export interface RegisterData {
 
 export interface AuthUser {
   id: string;
-  email: string;
-  firstname: string;
   lastname: string;
+  email: string;
+  phone?: string;
   role?: string;
   full_name?: string | null;
   avatar?: string;
@@ -45,4 +46,32 @@ export interface AuthResponse {
 export interface RefreshTokenResponse {
   token: string;
   refresh_token?: string;
+}
+
+// --- Auth par téléphone + OTP ---
+
+export interface PhoneAuthUser {
+  id: string;
+  phone: string;
+  firstname: string;
+  lastname: string;
+  email?: string | null;
+  role?: string;
+}
+
+export interface SendOtpResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface VerifyOtpResponse {
+  isRegistered: boolean;
+  message?: string;
+  token?: string;
+  user?: PhoneAuthUser;
+}
+
+export interface PhoneRegisterResponse {
+  token: string;
+  user: PhoneAuthUser;
 } 

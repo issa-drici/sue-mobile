@@ -4,7 +4,6 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import OnboardingProgress from '../../components/OnboardingProgress';
 import { ScreenLayout } from '../../components/ui/ScreenLayout';
 import { DesignTokens } from '../../constants/DesignSystem';
-import { pushNotificationService } from '../../services/notifications/pushNotifications';
 import { useAuth } from '../context/auth';
 
 
@@ -26,24 +25,10 @@ export default function NotificationsScreen() {
     
     console.log('🔄 Redirection vers login...');
     router.replace('/(auth)/login');
-    
-    // Initialiser les notifications en arrière-plan (non bloquant pour la navigation)
-    // La permission est déjà accordée, donc cela devrait être rapide
-    (async () => {
-      try {
-        console.log('🔔 Vérification et initialisation des notifications (en arrière-plan)...');
-        const hasPermission = await pushNotificationService.requestPermissions();
 
-        if (hasPermission) {
-          await pushNotificationService.initialize();
-          console.log('✅ Notifications activées et token stocké localement');
-        } else {
-          console.log('⚠️ Permissions de notifications non accordées');
-        }
-      } catch (error) {
-        console.error('❌ Erreur lors de l\'activation des notifications:', error);
-      }
-    })();
+    // NOTE: la demande de permission notifications a été DÉPLACÉE hors de l'onboarding.
+    // Elle est désormais affichée (bottom sheet) après que l'utilisateur rejoint une
+    // session, sur l'écran de détail de session. Voir NotificationPermissionSheet.
   };
 
 
