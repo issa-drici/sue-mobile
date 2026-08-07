@@ -17,6 +17,7 @@ expo-env.d.ts
 *.p12
 *.key
 *.mobileprovision
+google-services.json
 
 # EAS build artifacts (téléchargés localement, déjà hébergés sur EAS)
 *.aab
