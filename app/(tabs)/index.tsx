@@ -474,8 +474,17 @@ export default function HomeScreen() {
             ListEmptyComponent={
               !isFirstLoading ? (
                 <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyTitle}>AUCUNE SESSION</Text>
-                  <Text style={styles.emptySubtitle}>SOIS LE PREMIER À LANCER LE MOUVEMENT</Text>
+                  {nextSession ? (
+                    <>
+                      <Text style={styles.emptyTitle}>ANTICIPE LA SUITE</Text>
+                      <Text style={styles.emptySubtitle}>PLANIFIE DÉJÀ TA PROCHAINE SESSION</Text>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={styles.emptyTitle}>AUCUNE SESSION</Text>
+                      <Text style={styles.emptySubtitle}>SOIS LE PREMIER À LANCER LE MOUVEMENT</Text>
+                    </>
+                  )}
                   <TouchableOpacity
                     style={styles.emptyButton}
                     onPress={() => router.push('/create-session')}

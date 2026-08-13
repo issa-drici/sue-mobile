@@ -51,6 +51,7 @@ import { pushNotificationService } from '../../services/notifications/pushNotifi
 import { useGetUserProfile } from '../../services/users/getUserProfile';
 import { getSportEmoji } from '../../utils';
 import { formatDate } from '../../utils/dateHelpers';
+import { buildSessionInviteMessage } from '../../utils/inviteMessage';
 import { isSessionFinished } from '../../utils/timeHelpers';
 import { useAuth } from '../context/auth';
 
@@ -571,9 +572,20 @@ export default function SessionDetailsScreen() {
     return `${countText} ${sportPart} du ${dateStr}`;
   };
 
+  const buildShareMessage = (contactName?: string) => {
+    if (!session) return sessionUrl;
+    return buildSessionInviteMessage({
+      sport: session.sport,
+      date: session.date,
+      startTime: session.startTime,
+      sessionUrl,
+      contactName,
+    });
+  };
+
   const shareWhatsApp = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const message = `Rejoins ma session de ${session?.sport || 'sport'} sur SUE ! ⚽️\n${sessionUrl}`;
+    const message = buildShareMessage();
     const url = `whatsapp://send?text=${encodeURIComponent(message)}`;
     try {
       const supported = await Linking.canOpenURL(url);
@@ -595,14 +607,12 @@ export default function SessionDetailsScreen() {
 
   const shareGeneral = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const message = `Rejoins ma session de ${session?.sport || 'sport'} sur SUE ! ⚽\n${sessionUrl}`;
-    await Share.share({ message });
+    await Share.share({ message: buildShareMessage() });
   };
 
   const inviteContact = async (contactName: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const message = `Salut ${contactName}, rejoins ma session de ${session?.sport || 'sport'} sur SUE ! ⚽\n${sessionUrl}`;
-    await Share.share({ message });
+    await Share.share({ message: buildShareMessage(contactName) });
   };
 
   if (isLoading) {
