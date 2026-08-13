@@ -201,20 +201,31 @@ export default function HomeScreen() {
     );
   };
 
+  const isPendingInvite = React.useCallback((session: SportSession) => {
+    return session.participants?.some(p => p.id === user?.id && p.status === 'pending') ?? false;
+  }, [user]);
+
   const renderUpcomingSessionItem = ({ item, index }: { item: SportSession; index: number }) => {
     const acceptedParticipants = item.participants.filter(p => p.status === 'accepted');
     const maxParticipants = item.maxParticipants;
     const isFull = maxParticipants ? acceptedParticipants.length >= maxParticipants : false;
     const missingCount = maxParticipants ? maxParticipants - acceptedParticipants.length : 0;
     const sportConfig = getSportConfig(item.sport);
+    const pending = isPendingInvite(item);
 
     return (
       <View style={styles.upcomingCardContainer}>
         <TouchableOpacity
           activeOpacity={0.95}
           onPress={() => handleSessionPress(item.id)}
-          style={styles.upcomingCard}
+          style={[styles.upcomingCard, pending && styles.upcomingCardPending]}
         >
+          {pending && (
+            <View style={styles.pendingBadge}>
+              <Ionicons name="mail-unread-outline" size={11} color="#000" />
+              <Text style={styles.pendingBadgeText}>Invitation à confirmer</Text>
+            </View>
+          )}
           <View style={styles.upcomingRow}>
             {/* Icône du sport */}
             <View style={[styles.sportIconCircleSmall, { backgroundColor: sportConfig.color }]}>
@@ -280,6 +291,7 @@ export default function HomeScreen() {
     const maxParticipants = nextSession.maxParticipants;
     const isFull = maxParticipants ? acceptedParticipants.length >= maxParticipants : false;
     const missingCount = maxParticipants ? maxParticipants - acceptedParticipants.length : 0;
+    const pending = isPendingInvite(nextSession);
 
     return (
       <View style={styles.fixedTopSection}>
@@ -287,7 +299,13 @@ export default function HomeScreen() {
         <Text style={styles.sectionHeader}>PROCHAINE SESSION</Text>
 
         {/* Carte Prochaine Session */}
-        <View style={styles.nextSessionCard}>
+        <View style={[styles.nextSessionCard, pending && styles.nextSessionCardPending]}>
+          {pending && (
+            <View style={[styles.pendingBadge, { marginBottom: 12 }]}>
+              <Ionicons name="mail-unread-outline" size={11} color="#000" />
+              <Text style={styles.pendingBadgeText}>Invitation à confirmer</Text>
+            </View>
+          )}
           <View style={styles.nextSessionTopRow}>
             {/* Cercle Icône sport */}
             <View style={[styles.sportIconCircle, { backgroundColor: getSportConfig(nextSession.sport).color }]}>
@@ -594,6 +612,28 @@ const styles = StyleSheet.create({
     elevation: 2,
     marginBottom: 16,
   },
+  nextSessionCardPending: {
+    borderColor: BrandColors.primary,
+    borderWidth: 1.5,
+  },
+  pendingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: BrandColors.primary,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    gap: 4,
+    marginBottom: 8,
+  },
+  pendingBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#000',
+    letterSpacing: 0.2,
+    textTransform: 'uppercase',
+  },
   nextSessionTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -749,6 +789,10 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: 1,
     borderColor: '#F5F5F5',
+  },
+  upcomingCardPending: {
+    borderColor: BrandColors.primary,
+    borderWidth: 1.5,
   },
   upcomingRow: {
     flexDirection: 'row',
