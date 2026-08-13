@@ -75,6 +75,16 @@ export default function JoinSessionScreen() {
       try {
         const data = await SessionsApi.resolveShareToken(token, from);
         if (cancelled) return;
+
+        // Déjà organisateur ou participant accepté : on saute l'aperçu et on
+        // ouvre directement la session, sans garder cet écran dans l'historique
+        // (retour = écran des sessions, pas l'écran d'invitation).
+        if (data.sessionId) {
+          router.replace('/(tabs)');
+          router.push(`/session/${data.sessionId}`);
+          return;
+        }
+
         setPreview(data);
         setState('preview');
       } catch {

@@ -109,55 +109,37 @@ export default function AddFriendScreen() {
   const loadContacts = async () => {
     try {
       setLoadingContacts(true);
-      console.log('🔄 [loadContacts] Début du chargement des contacts...');
 
       const localContacts = await contactsService.getAllContacts();
-      console.log('📱 [loadContacts] Contacts locaux récupérés:', localContacts.length);
 
       const phoneNumbers = localContacts
         .flatMap(c => c.phoneNumbers)
         .filter((p): p is string => !!p);
-      console.log('📞 [loadContacts] Numéros de téléphone extraits:', phoneNumbers.length);
 
       if (phoneNumbers.length === 0) {
-        console.log('⚠️ [loadContacts] Aucun numéro de téléphone trouvé, affichage des contacts à inviter uniquement');
         setContactsToInvite(localContacts);
         return;
       }
 
-      console.log('🚀 [loadContacts] Appel API checkContacts avec', phoneNumbers.length, 'numéros');
       const response = await UsersApi.checkContacts(phoneNumbers);
-      console.log('📥 [loadContacts] Réponse API brute:', JSON.stringify(response, null, 2));
 
       // Gérer différentes structures de réponse API
       // La réponse peut être response.found, response.data, ou directement un tableau
       let allResults: any[] = [];
       if (Array.isArray(response)) {
-        console.log('✅ [loadContacts] Réponse est un tableau direct');
         allResults = response;
       } else if (response?.found && Array.isArray(response.found)) {
-        console.log('✅ [loadContacts] Réponse dans response.found');
         allResults = response.found;
       } else if (response?.data && Array.isArray(response.data)) {
-        console.log('✅ [loadContacts] Réponse dans response.data');
         allResults = response.data;
-      } else {
-        console.warn('⚠️ [loadContacts] Format de réponse inattendu:', response);
       }
-
-      console.log('📊 [loadContacts] Total résultats API:', allResults.length);
 
       // Filtrer uniquement les utilisateurs enregistrés (avec user ou isRegistered: true)
       // La réponse peut contenir tous les numéros (enregistrés et non enregistrés)
       const foundUsers = allResults.filter((item: any) => {
         // Un utilisateur est enregistré s'il a user OU isRegistered: true
-        const isRegistered = (item.isRegistered === true || item.user) && item.user;
-        if (!isRegistered) {
-          console.log('❌ [loadContacts] Item filtré (non enregistré):', item);
-        }
-        return isRegistered;
+        return (item.isRegistered === true || item.user) && item.user;
       });
-      console.log('👥 [loadContacts] Utilisateurs trouvés sur Sue:', foundUsers.length);
 
       // Fonction pour normaliser un numéro de téléphone pour la comparaison
       const normalizePhoneForComparison = (phone: string): string => {
@@ -229,21 +211,14 @@ export default function AddFriendScreen() {
         return !hasRegisteredNumber;
       });
 
-      console.log('✅ [loadContacts] Contacts sur Sue:', enrichedFoundUsers.length);
-      console.log('✅ [loadContacts] Contacts à inviter:', contactsNotOnSue.length);
-      
       setContactsOnSue(enrichedFoundUsers);
       setContactsToInvite(contactsNotOnSue);
-      
-      console.log('✅ [loadContacts] État mis à jour avec succès');
     } catch (error) {
       console.error('❌ [loadContacts] Erreur lors du chargement:', error);
-      console.error('❌ [loadContacts] Stack:', error instanceof Error ? error.stack : 'N/A');
       // Afficher les contacts locaux même en cas d'erreur API
       try {
         const localContacts = await contactsService.getAllContacts();
         setContactsToInvite(localContacts);
-        console.log('✅ [loadContacts] Contacts locaux affichés malgré l\'erreur API');
       } catch (localError) {
         console.error('❌ [loadContacts] Impossible de charger les contacts locaux:', localError);
       }
@@ -602,42 +577,22 @@ export default function AddFriendScreen() {
     const filteredBackendResults = searchResults.filter((item: any) => {
       const user = item.user || item;
       const userId = item.user?.id || user.id || item.id;
-      const isInContacts = userId && contactUserIds.has(userId);
-
-      if (isInContacts) {
-        console.log('🔍 [sections] Résultat backend filtré (déjà dans contacts):', userId);
-      }
-
-      return !isInContacts;
+      return !(userId && contactUserIds.has(userId));
     });
-
-    console.log('📋 [sections] searchQuery:', searchQuery);
-    console.log('📋 [sections] filteredContactsOnSue.length:', filteredContactsOnSue.length);
-    console.log('📋 [sections] filteredContactsToInvite.length:', filteredContactsToInvite.length);
-    console.log('📋 [sections] searchResults.length (brut):', searchResults.length);
-    console.log('📋 [sections] filteredBackendResults.length (filtré):', filteredBackendResults.length);
 
     // Afficher les contacts sur Sue
     if (filteredContactsOnSue.length > 0) {
-      console.log('✅ [sections] Ajout section MES CONTACTS (sur Sue) avec', filteredContactsOnSue.length, 'contacts');
       sections.push({ title: 'MES CONTACTS', data: filteredContactsOnSue, type: 'sue_users' });
     }
 
     // Afficher les contacts à inviter (pas sur Sue)
     if (filteredContactsToInvite.length > 0) {
-      console.log('✅ [sections] Ajout section MES CONTACTS (à inviter) avec', filteredContactsToInvite.length, 'contacts');
       sections.push({ title: 'MES CONTACTS', data: filteredContactsToInvite, type: 'contacts' });
     }
 
     // Afficher les résultats backend
     if (filteredBackendResults.length > 0) {
-      console.log('✅ [sections] Ajout section RÉSULTATS DE RECHERCHE avec', filteredBackendResults.length, 'résultats');
       sections.push({ title: 'RÉSULTATS DE RECHERCHE', data: filteredBackendResults, type: 'sue_users' });
-    } else {
-      console.log('⚠️ [sections] Aucun résultat de recherche backend à afficher (filtré ou vide)');
-      if (searchResults.length > 0) {
-        console.log('⚠️ [sections] Tous les résultats backend ont été filtrés car présents dans les contacts');
-      }
     }
   } else {
     // Mode "suggestions" (contact list)

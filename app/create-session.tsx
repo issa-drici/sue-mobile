@@ -26,6 +26,7 @@ import { BrandColors } from '../constants/Colors';
 import { useCreateSession } from '../services';
 import { SportsApi } from '../services/api/sportsApi';
 import { getDefaultEndTime, getSportEmoji, isValidEndTime, roundToNextHalfHour, SPORTS_LIST } from '../utils';
+import { matchesSearch } from '../utils/search';
 
 // Configuration fixe des sports principaux par défaut (pour correspondre à la maquette)
 const SPORT_PRESETS: Record<string, { label: string; emoji: string; color: string }> = {
@@ -183,9 +184,7 @@ export default function CreateSessionScreen() {
 
   const getFilteredSports = () => {
     if (!searchQuery.trim()) return allSports;
-    return allSports.filter((sport) =>
-      sport.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    return allSports.filter((sport) => matchesSearch(sport, searchQuery));
   };
 
   const formatDateLabel = (d: Date) => {

@@ -58,6 +58,11 @@ export interface SessionSharePreview {
     fullName: string;
     avatarUrl?: string | null;
   };
+  // Présents seulement si le viewer authentifié est déjà organisateur ou
+  // participant accepté : permet à l'app de sauter l'écran d'aperçu et
+  // d'ouvrir directement la session.
+  sessionId?: string;
+  viewerRelationship?: 'organizer' | 'participant';
   participants?: {
     id: string;
     fullName: string;

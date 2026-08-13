@@ -56,6 +56,10 @@ import { useAuth } from '../context/auth';
 
 const { width } = Dimensions.get('window');
 
+// Taille de page pour l'affichage progressif des contacts locaux dans le
+// modal d'invitation (cf. searchFilteredLocalContacts / handleInviteScroll).
+const LOCAL_CONTACTS_PAGE_SIZE = 60;
+
 // Config des sports pour les icônes et couleurs correspondantes (identique à l'accueil)
 const SPORT_CONFIGS: Record<string, { icon: string; color: string }> = {
   football: { icon: 'football-sharp', color: '#70A831' }, // Vert sport
@@ -97,6 +101,7 @@ export default function SessionDetailsScreen() {
   const [showPermissionIntro, setShowPermissionIntro] = useState(false);
   const [contactsPermissionStatus, setContactsPermissionStatus] = useState<string>('checking');
   const [isFriendsExpanded, setIsFriendsExpanded] = useState(false);
+  const [localContactsRenderLimit, setLocalContactsRenderLimit] = useState(LOCAL_CONTACTS_PAGE_SIZE);
 
   // Hooks
   const { data: profile, isLoading: isLoadingProfile } = useGetUserProfile();
@@ -208,6 +213,22 @@ export default function SessionDetailsScreen() {
       inviteScrollRef.current.scrollTo({ y: 0, animated: true });
     }
   }, [inviteSearchQuery]);
+
+  React.useEffect(() => {
+    if (!isInviteModalVisible) {
+      setLocalContactsRenderLimit(LOCAL_CONTACTS_PAGE_SIZE);
+    }
+  }, [isInviteModalVisible]);
+
+  // Charge la page suivante de contacts locaux quand on approche du bas du
+  // scroll (liste non virtualisée, cf. searchFilteredLocalContacts).
+  const handleInviteScroll = (event: any) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    const distanceToBottom = contentSize.height - layoutMeasurement.height - contentOffset.y;
+    if (distanceToBottom < 200) {
+      setLocalContactsRenderLimit(prev => prev + LOCAL_CONTACTS_PAGE_SIZE);
+    }
+  };
 
   React.useEffect(() => {
     const checkContactsPermission = async () => {
@@ -428,7 +449,7 @@ export default function SessionDetailsScreen() {
     );
   }, [filteredFriends, inviteSearchQuery]);
 
-  const searchFilteredLocalContacts = React.useMemo(() => {
+  const allSearchFilteredLocalContacts = React.useMemo(() => {
     const friendNames = new Set(filteredFriends.map(f => `${f.firstname} ${f.lastname}`.toLowerCase().trim()));
     return localContacts.filter(c => {
       const nameMatch = c.name.toLowerCase().includes(inviteSearchQuery.toLowerCase());
@@ -436,6 +457,16 @@ export default function SessionDetailsScreen() {
       return nameMatch && !isAlreadyFriend;
     });
   }, [localContacts, inviteSearchQuery, filteredFriends]);
+
+  // Ces lignes sont rendues avec un .map() non virtualisé (dans un ScrollView,
+  // pas une FlatList) : avec des milliers de contacts, un rendu non borné
+  // gèle l'app le temps de monter toutes les lignes. On affiche donc par
+  // pages, la page suivante se chargeant quand on approche du bas du scroll
+  // (cf. handleInviteScroll).
+  const searchFilteredLocalContacts = React.useMemo(() => {
+    if (inviteSearchQuery.trim()) return allSearchFilteredLocalContacts;
+    return allSearchFilteredLocalContacts.slice(0, localContactsRenderLimit);
+  }, [allSearchFilteredLocalContacts, inviteSearchQuery, localContactsRenderLimit]);
 
   const userPhase = React.useMemo(() => {
     const sessions = profile?.stats?.sessionsCreated || 0;
@@ -1047,10 +1078,12 @@ export default function SessionDetailsScreen() {
               </View>
 
               {/* Scrollable Player Lists */}
-              <ScrollView 
+              <ScrollView
                 ref={inviteScrollRef}
-                contentContainerStyle={styles.inviteScrollContent} 
+                contentContainerStyle={styles.inviteScrollContent}
                 showsVerticalScrollIndicator={false}
+                onScroll={handleInviteScroll}
+                scrollEventThrottle={200}
               >
                 {/* List 1: AMIS SUE */}
                 {isLoadingFriends ? (
@@ -1166,6 +1199,9 @@ export default function SessionDetailsScreen() {
                             </View>
                           );
                         })}
+                        {!inviteSearchQuery.trim() && allSearchFilteredLocalContacts.length > localContactsRenderLimit && (
+                          <Text style={styles.inviteEmptyText}>Fais défiler pour voir plus de contacts…</Text>
+                        )}
                       </View>
                     ) : (
                       <Text style={styles.inviteEmptyText}>Aucun contact local trouvé.</Text>
