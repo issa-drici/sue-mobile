@@ -67,14 +67,18 @@ function toMidSentenceLabel(label: string): string {
   return label.charAt(0).toLowerCase() + label.slice(1);
 }
 
-// "mardi" si la session a lieu dans moins de 7 jours, sinon date complète
-// ("mardi 2 septembre") pour éviter l'ambiguïté sur la semaine.
+// "" si la session est aujourd'hui (l'heure seule suffit), "mardi" si elle a
+// lieu dans moins de 7 jours, sinon date complète ("mardi 2 septembre") pour
+// éviter l'ambiguïté sur la semaine.
 function formatInviteDayLabel(dateStr: string): string {
   const sessionDate = new Date(`${dateStr}T00:00:00`);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const diffDays = Math.round((sessionDate.getTime() - today.getTime()) / 86_400_000);
 
+  if (diffDays === 0) {
+    return '';
+  }
   if (diffDays < 7) {
     return sessionDate.toLocaleDateString('fr-FR', { weekday: 'long' });
   }
@@ -104,6 +108,7 @@ export function buildSessionInviteMessage(params: {
   const timeLabel = formatInviteTime(startTime);
 
   const intro = contactName ? `Salut ${contactName}, ${phrase}` : phrase;
+  const whenLabel = dayLabel ? `${dayLabel} à ${timeLabel}` : `à ${timeLabel}`;
 
-  return `${intro} ${dayLabel} à ${timeLabel} ? Confirme ici\n${sessionUrl}`;
+  return `${intro} ${whenLabel} ? Confirme ici\n${sessionUrl}`;
 }

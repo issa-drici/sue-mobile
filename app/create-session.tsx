@@ -93,6 +93,12 @@ export default function CreateSessionScreen() {
   const [pricePerPerson, setPricePerPerson] = useState<string>('');
   const [location, setLocation] = useState<string>('');
 
+  // Champs requis en erreur (bordure rouge), après une tentative de validation ratée
+  const [fieldErrors, setFieldErrors] = useState<{ sport: boolean; location: boolean }>({
+    sport: false,
+    location: false,
+  });
+
   // Modals et sélecteurs
   const [showSportsModal, setShowSportsModal] = useState(false);
   const [showDatePickerModal, setShowDatePickerModal] = useState(false);
@@ -180,6 +186,14 @@ export default function CreateSessionScreen() {
     setSelectedSport(sport);
     setShowSportsModal(false);
     setSearchQuery('');
+    setFieldErrors((prev) => ({ ...prev, sport: false }));
+  };
+
+  const handleLocationChange = (text: string) => {
+    setLocation(text);
+    if (text.trim()) {
+      setFieldErrors((prev) => ({ ...prev, location: false }));
+    }
   };
 
   const getFilteredSports = () => {
@@ -241,7 +255,11 @@ export default function CreateSessionScreen() {
 
   // Validation et envoi
   const handleCreateSession = async () => {
-    if (!selectedSport || !location.trim()) {
+    const sportMissing = !selectedSport;
+    const locationMissing = !location.trim();
+
+    if (sportMissing || locationMissing) {
+      setFieldErrors({ sport: sportMissing, location: locationMissing });
       Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires (sport, lieu)');
       return;
     }
@@ -324,7 +342,7 @@ export default function CreateSessionScreen() {
               {/* Section Sport */}
               <Animated.View entering={FadeInDown.delay(50).springify()} style={styles.section}>
                 <Text style={styles.sectionLabel}>SPORT*</Text>
-                <View style={styles.sportsHorizontalRow}>
+                <View style={[styles.sportsHorizontalRow, fieldErrors.sport && styles.inputCardRowError]}>
                   {/* Accès rapides : défilent horizontalement si nombreux */}
                   <ScrollView
                     horizontal
@@ -459,14 +477,14 @@ export default function CreateSessionScreen() {
               {/* Section Lieu */}
               <Animated.View entering={FadeInDown.delay(300).springify()} style={styles.section}>
                 <Text style={styles.sectionLabel}>LIEU*</Text>
-                <View style={styles.inputCardRow}>
+                <View style={[styles.inputCardRow, fieldErrors.location && styles.inputCardRowError]}>
                   <Ionicons name="location-outline" size={18} color="#8E8E93" style={styles.cardIcon} />
                   <TextInput
                     style={styles.textInputRow}
                     placeholder="Entrer le lieu..."
                     placeholderTextColor="#CCCCCC"
                     value={location}
-                    onChangeText={setLocation}
+                    onChangeText={handleLocationChange}
                     onFocus={() => {
                       setTimeout(() => {
                         formScrollViewRef.current?.scrollToEnd({ animated: true });
@@ -978,6 +996,10 @@ const styles = StyleSheet.create({
   },
   cardIcon: {
     marginRight: 12,
+  },
+  inputCardRowError: {
+    borderColor: '#FF3B30',
+    borderWidth: 1.5,
   },
   cardValueText: {
     flex: 1,
