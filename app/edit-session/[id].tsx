@@ -18,6 +18,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { SportIcon, hasSportImage } from '../../components/atoms/SportIcon';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -390,10 +391,10 @@ export default function EditSessionScreen() {
                             >
                               <View style={[
                                 styles.sportIconCircle,
-                                { backgroundColor: details.color },
+                                { backgroundColor: hasSportImage(sportKey) ? '#FFF' : details.color },
                                 isSelected && styles.sportIconCircleSelected
                               ]}>
-                                <Text style={styles.sportEmojiText}>{details.emoji}</Text>
+                                <SportIcon sport={sportKey} size={34}><Text style={styles.sportEmojiText}>{details.emoji}</Text></SportIcon>
                               </View>
                               <Text style={[styles.sportLabelText, isSelected && styles.sportLabelTextSelected]}>
                                 {details.label}
@@ -585,8 +586,8 @@ export default function EditSessionScreen() {
                   onPress={() => handleSportSelection(item)}
                 >
                   <View style={styles.sportListLeft}>
-                    <View style={[styles.sportListCircleIcon, { backgroundColor: details.color }]}>
-                      <Text style={{ fontSize: 18 }}>{details.emoji}</Text>
+                    <View style={[styles.sportListCircleIcon, { backgroundColor: hasSportImage(item) ? '#FFF' : details.color }]}>
+                      <SportIcon sport={item} size={30}><Text style={{ fontSize: 18 }}>{details.emoji}</Text></SportIcon>
                     </View>
                     <Text style={styles.sportListNameText}>{details.label}</Text>
                   </View>

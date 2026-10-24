@@ -1,0 +1,33 @@
+import React from 'react';
+import { Image, ImageSourcePropType, StyleProp, View, ViewStyle } from 'react-native';
+
+// Icônes 3D des sports (kit Sue). Un sport sans image garde son affichage actuel (children).
+const SPORT_IMAGES: Record<string, ImageSourcePropType> = {
+  basketball: require('../../../assets/images/sports/basketball.png'),
+  football: require('../../../assets/images/sports/football.png'),
+  handball: require('../../../assets/images/sports/handball.png'),
+  padel: require('../../../assets/images/sports/padel.png'),
+  tennis: require('../../../assets/images/sports/tennis.png'),
+  volleyball: require('../../../assets/images/sports/volleyball.png'),
+};
+
+export const hasSportImage = (sport?: string | null) => !!sport && sport.toLowerCase() in SPORT_IMAGES;
+
+interface SportIconProps {
+  sport: string;
+  size: number;
+  // Contenu affiché si le sport n'a pas encore d'image (l'icône actuelle)
+  children?: React.ReactNode;
+  // Fond neutre derrière l'image (pastilles de choix du sport)
+  containerStyle?: StyleProp<ViewStyle>;
+}
+
+export function SportIcon({ sport, size, children, containerStyle }: SportIconProps) {
+  const source = SPORT_IMAGES[(sport || '').toLowerCase()];
+  if (!source) {
+    return <>{children}</>;
+  }
+
+  const image = <Image source={source} style={{ width: size, height: size }} resizeMode="contain" />;
+  return containerStyle ? <View style={containerStyle}>{image}</View> : image;
+}

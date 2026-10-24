@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { SportIcon } from '../../components/atoms/SportIcon';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -240,9 +241,11 @@ export default function HomeScreen() {
           )}
           <View style={styles.upcomingRow}>
             {/* Icône du sport */}
-            <View style={[styles.sportIconCircleSmall, { backgroundColor: sportConfig.color }]}>
-              <Ionicons name={sportConfig.icon as any} size={15} color="#FFF" />
-            </View>
+            <SportIcon sport={item.sport} size={34}>
+              <View style={[styles.sportIconCircleSmall, { backgroundColor: sportConfig.color }]}>
+                <Ionicons name={sportConfig.icon as any} size={15} color="#FFF" />
+              </View>
+            </SportIcon>
             
             {/* Détails */}
             <View style={styles.upcomingDetails}>
@@ -321,9 +324,11 @@ export default function HomeScreen() {
           </View>
         )}
         <View style={styles.upcomingRow}>
-          <View style={[styles.sportIconCircleSmall, { backgroundColor: sportConfig.color }]}>
-            <Ionicons name={sportConfig.icon as any} size={15} color="#FFF" />
-          </View>
+          <SportIcon sport={item.sport} size={34}>
+            <View style={[styles.sportIconCircleSmall, { backgroundColor: sportConfig.color }]}>
+              <Ionicons name={sportConfig.icon as any} size={15} color="#FFF" />
+            </View>
+          </SportIcon>
           <View style={styles.upcomingDetails}>
             <Text style={styles.upcomingSportName}>
               {item.sport.charAt(0).toUpperCase() + item.sport.slice(1)}
@@ -397,9 +402,11 @@ export default function HomeScreen() {
           )}
           <View style={styles.nextSessionTopRow}>
             {/* Cercle Icône sport */}
-            <View style={[styles.sportIconCircle, { backgroundColor: getSportConfig(nextSession.sport).color }]}>
-              <Ionicons name={getSportConfig(nextSession.sport).icon as any} size={24} color="#FFF" />
-            </View>
+            <SportIcon sport={nextSession.sport} size={44}>
+              <View style={[styles.sportIconCircle, { backgroundColor: getSportConfig(nextSession.sport).color }]}>
+                <Ionicons name={getSportConfig(nextSession.sport).icon as any} size={24} color="#FFF" />
+              </View>
+            </SportIcon>
 
             {/* Détails textuels */}
             <View style={styles.nextSessionDetails}>

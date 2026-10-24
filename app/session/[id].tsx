@@ -22,6 +22,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { SportIcon } from '../../components/atoms/SportIcon';
 import Animated, {
   FadeInDown,
   FadeInUp
@@ -836,9 +837,11 @@ export default function SessionDetailsScreen() {
           
           {/* Titre Sport et Icône */}
           <Animated.View entering={FadeInDown.delay(50).springify()} style={styles.sportTitleSection}>
-            <View style={[styles.sportIconCircleLarge, { backgroundColor: getSportConfig(session.sport).color }]}>
-              <Ionicons name={getSportConfig(session.sport).icon as any} size={30} color="#FFF" />
-            </View>
+            <SportIcon sport={session.sport} size={58}>
+              <View style={[styles.sportIconCircleLarge, { backgroundColor: getSportConfig(session.sport).color }]}>
+                <Ionicons name={getSportConfig(session.sport).icon as any} size={30} color="#FFF" />
+              </View>
+            </SportIcon>
             <Text style={styles.sportTitleText}>
               {session.sport.charAt(0).toUpperCase() + session.sport.slice(1)}
             </Text>
