@@ -117,8 +117,10 @@ export default function SessionDetailsScreen() {
   const { cancelParticipation, isLoading: isCancelling } = useCancelParticipation();
   const { cancelSession } = useCancelSession();
 
-  // Demande "soft" de notifications : affichée une fois, après que l'utilisateur
-  // participe à une session (typiquement juste après le flow de join).
+  // Demande "soft" de notifications : affichée une fois, dès que l'utilisateur
+  // est concerné par une session (organisateur, invité ou inscrit).
+  // Un invité à une session "à organiser" reste en attente jusqu'à la confirmation :
+  // sans ça il ne serait jamais prévenu du créneau retenu.
   const [showNotifSheet, setShowNotifSheet] = useState(false);
   const notifPromptCheckedRef = useRef(false);
 
@@ -126,11 +128,11 @@ export default function SessionDetailsScreen() {
     if (notifPromptCheckedRef.current) return;
     if (!session || !user) return;
 
-    // L'utilisateur doit participer (statut accepté) à cette session
-    const isAcceptedParticipant = session.participants?.some(
-      (p: any) => p.id === user.id && p.status === 'accepted'
+    // L'utilisateur doit être organisateur ou invité (pas décliné) à cette session
+    const isConcerned = session.organizer?.id === user.id || session.participants?.some(
+      (p: any) => p.id === user.id && p.status !== 'declined'
     );
-    if (!isAcceptedParticipant) return;
+    if (!isConcerned) return;
 
     // On ne vérifie qu'une fois par montage
     notifPromptCheckedRef.current = true;

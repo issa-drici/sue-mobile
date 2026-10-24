@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Application from 'expo-application';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
-import React, { useRef, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -10,6 +11,7 @@ import {
   Easing,
   Image,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   ScrollView,
@@ -28,12 +30,34 @@ import { ENV } from '../../config/env';
 import { useDevMode } from '../../hooks/useDevMode';
 import { useGetUserProfile, useUpdateUser } from '../../services';
 import { useAuth } from '../context/auth';
+import { pushNotificationService } from '../../services/notifications/pushNotifications';
 
 const SUE_GREEN = '#70A831'; // SUE primary icon green
 const VOLT_COLOR = '#D4FC79'; // Electric Volt for buttons
 
 export default function ProfileScreen() {
   const router = useRouter();
+
+  // Statut des notifications : permet d'activer, ou de rouvrir les réglages iOS après un refus
+  const [notifStatus, setNotifStatus] = useState<string>('unknown');
+  useFocusEffect(
+    useCallback(() => {
+      pushNotificationService.getPermissions().then(({ status }) => setNotifStatus(status));
+    }, [])
+  );
+
+  const handleNotificationsPress = async () => {
+    Haptics.selectionAsync();
+    if (notifStatus === 'undetermined') {
+      await pushNotificationService.activateFromPrompt();
+      await pushNotificationService.markSoftPromptHandled();
+      const { status } = await pushNotificationService.getPermissions();
+      setNotifStatus(status);
+    } else if (notifStatus !== 'granted') {
+      // Refusées : iOS ne permet plus de redemander, seul l'écran Réglages peut les réactiver
+      Linking.openSettings();
+    }
+  };
   const insets = useSafeAreaInsets();
   const { user, signOut, refreshUser } = useAuth();
   const { data: userProfile, isLoading, error, refetch } = useGetUserProfile();
@@ -266,6 +290,38 @@ export default function ProfileScreen() {
           <Ionicons name="chevron-forward" size={18} color="#C7C7CC" />
         </TouchableOpacity>
 
+        {/* NOTIFICATIONS */}
+        <Text style={styles.sectionHeader}>NOTIFICATIONS</Text>
+
+        <TouchableOpacity
+          activeOpacity={notifStatus === 'granted' ? 1 : 0.8}
+          style={styles.menuCardBtn}
+          onPress={handleNotificationsPress}
+          disabled={notifStatus === 'granted'}
+        >
+          <View style={styles.menuCardLeft}>
+            <Ionicons
+              name={notifStatus === 'granted' ? 'notifications-outline' : 'notifications-off-outline'}
+              size={22}
+              color={notifStatus === 'granted' ? SUE_GREEN : '#FF9500'}
+            />
+            <Text style={styles.menuCardText}>
+              {notifStatus === 'granted'
+                ? 'Notifications activées'
+                : notifStatus === 'undetermined'
+                  ? 'Activer les notifications'
+                  : 'Notifications désactivées'}
+            </Text>
+          </View>
+          {notifStatus === 'granted' ? (
+            <Ionicons name="checkmark-circle" size={20} color={SUE_GREEN} />
+          ) : (
+            <Text style={styles.menuCardAction}>
+              {notifStatus === 'undetermined' ? 'Activer' : 'Réglages'}
+            </Text>
+          )}
+        </TouchableOpacity>
+
         {/* CONFIDENTIALITÉ */}
         <Text style={styles.sectionHeader}>CONFIDENTIALITÉ</Text>
         
@@ -312,7 +368,7 @@ export default function ProfileScreen() {
         )}
 
         {/* Version */}
-        <Text style={styles.versionText}>Version 1.0.0</Text>
+        <Text style={styles.versionText}>Version {Application.nativeApplicationVersion ?? ''}</Text>
       </ScrollView>
 
       {/* Edit Profile Modal Bottom Sheet */}
@@ -481,6 +537,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#000',
+  },
+  menuCardAction: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: SUE_GREEN,
   },
   sectionHeader: {
     fontSize: 11,
