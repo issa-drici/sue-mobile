@@ -24,6 +24,7 @@ import { InlineLoading } from '../../components/OptimizedLoading';
 import { MainScreenLayout } from '../../components/ui/ScreenLayout';
 import { useGetSessions } from '../../services';
 import { HomeEmptyState } from '../../components/organisms/HomeEmptyState';
+import { BadgeCelebration } from '../../components/organisms/Badges';
 import { SportSession } from '../../types/sport';
 import { useAuth } from '../context/auth';
 import { useGlobalNotifications } from '../../context/globalNotifications';
@@ -60,12 +61,16 @@ export default function HomeScreen() {
   const listScrollY = React.useRef(new RNAnimated.Value(0)).current;
   const topShadowOpacity = listScrollY.interpolate({ inputRange: [0, 24], outputRange: [0, 1], extrapolate: 'clamp' });
 
+  // Badges débloqués à célébrer : vérifiés à chaque retour sur l'accueil
+  const [badgeCheck, setBadgeCheck] = React.useState(0);
+
   // Recharge sur focus (quand l'utilisateur revient sur l'accueil).
   // Les sessions se rechargent déjà toutes seules au focus (useApiRequest) : les relancer ici
   // les chargeait deux fois et faisait clignoter l'accueil.
   useFocusEffect(
     React.useCallback(() => {
       refetchFriendRequests();
+      setBadgeCheck((n) => n + 1);
     }, [refetchFriendRequests])
   );
 
@@ -646,6 +651,7 @@ export default function HomeScreen() {
           />
         </View>
       </View>
+      <BadgeCelebration checkKey={badgeCheck} />
     </MainScreenLayout>
   );
 }

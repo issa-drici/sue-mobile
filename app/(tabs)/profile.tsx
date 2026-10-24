@@ -28,12 +28,19 @@ import { ENV } from '../../config/env';
 import { useDevMode } from '../../hooks/useDevMode';
 import { useGetUserProfile, useUpdateUser } from '../../services';
 import { useAuth } from '../context/auth';
+import { BadgeGrid } from '../../components/organisms/Badges';
+import { useBadges } from '../../services/badges';
+import { useFocusEffect } from 'expo-router';
 
 const SUE_GREEN = '#70A831'; // SUE primary icon green
 const VOLT_COLOR = '#D4FC79'; // Electric Volt for buttons
 
 export default function ProfileScreen() {
   const router = useRouter();
+  // Badges rechargés à chaque retour sur le profil
+  const [badgesRefresh, setBadgesRefresh] = useState(0);
+  useFocusEffect(React.useCallback(() => setBadgesRefresh((n) => n + 1), []));
+  const { badges } = useBadges(undefined, badgesRefresh);
   const insets = useSafeAreaInsets();
   const { user, signOut, refreshUser } = useAuth();
   const { data: userProfile, isLoading, error, refetch } = useGetUserProfile();
@@ -264,6 +271,12 @@ export default function ProfileScreen() {
           <Ionicons name="chevron-forward" size={18} color="#C7C7CC" />
         </TouchableOpacity>
 
+        {/* BADGES */}
+        <Text style={styles.sectionHeader}>MES BADGES</Text>
+        <View style={styles.badgesCard}>
+          {badges ? <BadgeGrid badges={badges} isMe /> : <ActivityIndicator color="#000" />}
+        </View>
+
         {/* CONFIDENTIALITÉ */}
         <Text style={styles.sectionHeader}>CONFIDENTIALITÉ</Text>
         
@@ -474,6 +487,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+  },
+  badgesCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#EFEFEF',
+    padding: 16,
+    marginBottom: 8,
   },
   menuCardText: {
     fontSize: 15,

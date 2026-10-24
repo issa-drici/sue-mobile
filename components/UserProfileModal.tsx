@@ -18,6 +18,8 @@ import { useCancelFriendRequest, useGetUserById, useSendFriendRequest } from '..
 import { SessionsApi } from '../services/api/sessionsApi';
 import { InlineLoading } from './OptimizedLoading';
 import { BrandColors } from '../constants/Colors';
+import { BadgeGrid } from './organisms/Badges';
+import { useBadges } from '../services/badges';
 
 interface UserProfileModalProps {
   visible: boolean;
@@ -50,6 +52,8 @@ export default function UserProfileModal({
   const { sendFriendRequest, isLoading: isSendingRequest } = useSendFriendRequest();
   const { cancelFriendRequest, isLoading: isCancellingRequest } = useCancelFriendRequest();
   const { user: currentUser } = useAuth();
+
+  const { badges } = useBadges(visible && userId ? userId : undefined, visible);
 
   useEffect(() => {
     if (visible && userId) {
@@ -210,6 +214,13 @@ export default function UserProfileModal({
           </View>
         ) : null}
 
+        {/* Badges du joueur */}
+        {badges && badges.length > 0 ? (
+          <View style={styles.badgesBlock}>
+            <BadgeGrid badges={badges} isMe={isMe} />
+          </View>
+        ) : null}
+
         {/* Actions de répertoire */}
         <View style={styles.actionContainer}>
           {!isMe ? (
@@ -286,6 +297,11 @@ export default function UserProfileModal({
 }
 
 const styles = StyleSheet.create({
+  badgesBlock: {
+    width: '100%',
+    marginTop: 16,
+    marginBottom: 4,
+  },
   container: {
     flex: 1,
     backgroundColor: '#FFF',
