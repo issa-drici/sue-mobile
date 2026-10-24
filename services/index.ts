@@ -14,6 +14,7 @@ export {
     useGetSessions,
     useInviteFriends,
     useRespondToInvitation,
+    useSlotFinding,
     useUpdateSession
 } from './sessions';
 

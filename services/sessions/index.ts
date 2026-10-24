@@ -7,5 +7,6 @@ export { useGetSessionById } from './getSessionById';
 export { useGetSessions } from './getSessions';
 export { useInviteFriends } from './inviteFriends';
 export { useRespondToInvitation } from './respondToInvitation';
+export { useSlotFinding } from './slotFinding';
 export { useUpdateSession } from './updateSession';
 

@@ -314,11 +314,11 @@ export default function EditSessionScreen() {
       const localDay = String(date.getDate()).padStart(2, '0');
       const finalDate = `${localYear}-${localMonth}-${localDay}`;
 
+      // Créneau à définir : la date se fixe en confirmant un créneau, pas ici
+      const isFindingSlot = session?.scheduling === 'finding_slot';
       const sessionData = {
         sport: selectedSport,
-        date: finalDate,
-        startTime: finalStartTime,
-        endTime: finalEndTime,
+        ...(!isFindingSlot && { date: finalDate, startTime: finalStartTime, endTime: finalEndTime }),
         location: location,
         maxParticipants: maxParticipants,
         pricePerPerson: pricePerPerson ? parseFloat(pricePerPerson.replace(',', '.')) : null,
@@ -419,36 +419,48 @@ export default function EditSessionScreen() {
                   </View>
                 </Animated.View>
 
-                {/* Section Date */}
-                <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.section}>
-                  <Text style={styles.sectionLabel}>DATE*</Text>
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    style={styles.inputCardRow}
-                    onPress={handleDatePickerPress}
-                  >
-                    <Ionicons name="calendar-outline" size={18} color="#8E8E93" style={styles.cardIcon} />
-                    <Text style={styles.cardValueText}>{formatDateLabel(date)}</Text>
-                    <Ionicons name="chevron-forward" size={16} color="#CCCCCC" />
-                  </TouchableOpacity>
-                </Animated.View>
-
-                {/* Section Heure */}
-                <Animated.View entering={FadeInDown.delay(150).springify()} style={styles.section}>
-                  <Text style={styles.sectionLabel}>HEURE*</Text>
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    style={styles.inputCardRow}
-                    onPress={handleTimePickerPress}
-                  >
-                    <Ionicons name="time-outline" size={18} color="#8E8E93" style={styles.cardIcon} />
-                    <View style={styles.timeDisplayBlock}>
-                      <Text style={styles.timeValueText}>{formatTimeLabel(startTime)}</Text>
-                      <Ionicons name="arrow-forward-outline" size={14} color="#8E8E93" style={{ marginHorizontal: 12 }} />
-                      <Text style={styles.timeValueText}>{formatTimeLabel(endTime)}</Text>
+                {session.scheduling === 'finding_slot' ? (
+                  <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.section}>
+                    <Text style={styles.sectionLabel}>DATE</Text>
+                    <View style={styles.inputCardRow}>
+                      <Ionicons name="calendar-outline" size={18} color="#8E8E93" style={styles.cardIcon} />
+                      <Text style={styles.cardValueText}>À définir : confirme un créneau depuis la session</Text>
                     </View>
-                  </TouchableOpacity>
-                </Animated.View>
+                  </Animated.View>
+                ) : (
+                  <>
+                  {/* Section Date */}
+                  <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.section}>
+                    <Text style={styles.sectionLabel}>DATE*</Text>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      style={styles.inputCardRow}
+                      onPress={handleDatePickerPress}
+                    >
+                      <Ionicons name="calendar-outline" size={18} color="#8E8E93" style={styles.cardIcon} />
+                      <Text style={styles.cardValueText}>{formatDateLabel(date)}</Text>
+                      <Ionicons name="chevron-forward" size={16} color="#CCCCCC" />
+                    </TouchableOpacity>
+                  </Animated.View>
+
+                  {/* Section Heure */}
+                  <Animated.View entering={FadeInDown.delay(150).springify()} style={styles.section}>
+                    <Text style={styles.sectionLabel}>HEURE*</Text>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      style={styles.inputCardRow}
+                      onPress={handleTimePickerPress}
+                    >
+                      <Ionicons name="time-outline" size={18} color="#8E8E93" style={styles.cardIcon} />
+                      <View style={styles.timeDisplayBlock}>
+                        <Text style={styles.timeValueText}>{formatTimeLabel(startTime)}</Text>
+                        <Ionicons name="arrow-forward-outline" size={14} color="#8E8E93" style={{ marginHorizontal: 12 }} />
+                        <Text style={styles.timeValueText}>{formatTimeLabel(endTime)}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  </Animated.View>
+                  </>
+                )}
 
                 {/* Section Joueurs Max */}
                 <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.section}>

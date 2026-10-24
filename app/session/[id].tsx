@@ -44,8 +44,11 @@ import {
   useGetFriends,
   useGetSessionById,
   useInviteFriends,
-  useRespondToInvitation
+  useRespondToInvitation,
+  useSlotFinding
 } from '../../services';
+import { SlotAvailabilityCard, SlotConfirmCard, formatSlotDay } from '../../components/organisms/SlotFinding';
+import { SlotProposal } from '../../types/sport';
 import { contactsService, NormalizedContact } from '../../services/friends/contactsService';
 import { pushNotificationService } from '../../services/notifications/pushNotifications';
 import { useGetUserProfile } from '../../services/users/getUserProfile';
@@ -110,6 +113,7 @@ export default function SessionDetailsScreen() {
   const { data: friends, isLoading: isLoadingFriends } = useGetFriends();
   const { inviteFriends } = useInviteFriends();
   const { respondToInvitation, isLoading: isResponding } = useRespondToInvitation();
+  const { setAvailability, confirmSlot, isLoading: isSlotActionLoading } = useSlotFinding();
   const { cancelParticipation, isLoading: isCancelling } = useCancelParticipation();
   const { cancelSession } = useCancelSession();
 
@@ -328,7 +332,43 @@ export default function SessionDetailsScreen() {
   const missingCount = maxParticipants ? maxParticipants - acceptedParticipants.length : 0;
   // "Trouver un créneau" : la date n'est pas encore fixée, on affiche les créneaux proposés
   const isFindingSlot = session?.scheduling === 'finding_slot';
-  const capitalizeFirst = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+  const canGiveAvailability = isFindingSlot && !isOrganizer && isParticipant && !isFromHistory && session?.status !== 'cancelled';
+  const canConfirmSlot = isFindingSlot && isOrganizer && !isFromHistory && session?.status !== 'cancelled';
+
+  const handleSendAvailability = async (slotIds: string[]) => {
+    try {
+      await setAvailability(sessionId, slotIds);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      getSessionById(sessionId, false);
+    } catch (error) {
+      Alert.alert('Erreur', error instanceof Error ? error.message : "Impossible d'envoyer tes disponibilités");
+    }
+  };
+
+  const handleConfirmSlot = (slot: SlotProposal) => {
+    if (!slot.id) return;
+    const slotId = slot.id;
+    Alert.alert(
+      'Confirmer ce créneau ?',
+      `${formatSlotDay(slot)}, ${slot.startTime} - ${slot.endTime}.\nLes joueurs disponibles sont inscrits automatiquement, les autres sont prévenus.`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Confirmer',
+          onPress: async () => {
+            try {
+              await confirmSlot(sessionId, slotId);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              getSessionById(sessionId, false);
+              reloadComments();
+            } catch (error) {
+              Alert.alert('Erreur', error instanceof Error ? error.message : 'Impossible de confirmer le créneau');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   // Formatage de l'heure en français (ex: "18:00 - 19:00")
   const formatSessionTimeRange = (start?: string, end?: string) => {
@@ -757,20 +797,11 @@ export default function SessionDetailsScreen() {
           {/* Ligne des Détails de Session */}
           <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.detailsListBlock}>
             {isFindingSlot ? (
-              <View style={styles.slotsToDefineCard}>
-                <View style={styles.detailRow}>
-                  <Ionicons name="calendar-outline" size={16} color="#000" style={styles.detailIcon} />
-                  <Text style={styles.slotsToDefineTitle}>Créneau à définir</Text>
-                </View>
-                <Text style={styles.slotsToDefineHint}>
-                  {session.slotProposals?.length === 1 ? 'Créneau proposé' : 'Créneaux proposés'} :
+              <View style={styles.detailRow}>
+                <Ionicons name="calendar-outline" size={16} color="#000" style={styles.detailIcon} />
+                <Text style={styles.slotsToDefineTitle}>
+                  Créneau à définir · {session.slotProposals?.length ?? 0} proposé{(session.slotProposals?.length ?? 0) > 1 ? 's' : ''}
                 </Text>
-                {session.slotProposals?.map((slot) => (
-                  <View key={slot.id ?? `${slot.date}-${slot.startTime}`} style={styles.slotProposalRow}>
-                    <Text style={styles.slotProposalDay}>{capitalizeFirst(formatDate(slot.date))}</Text>
-                    <Text style={styles.slotProposalTime}>{formatSessionTimeRange(slot.startTime, slot.endTime)}</Text>
-                  </View>
-                ))}
               </View>
             ) : (
               <>
@@ -798,8 +829,30 @@ export default function SessionDetailsScreen() {
             </View>
           </Animated.View>
 
+          {/* Trouver un créneau : dispos de l'invité / confirmation par l'organisateur */}
+          {canGiveAvailability && user ? (
+            <Animated.View entering={FadeInUp.delay(150).springify()}>
+              <SlotAvailabilityCard
+                session={session}
+                userId={user.id}
+                isSending={isSlotActionLoading}
+                onSend={handleSendAvailability}
+              />
+            </Animated.View>
+          ) : null}
+          {canConfirmSlot ? (
+            <Animated.View entering={FadeInUp.delay(150).springify()}>
+              <SlotConfirmCard
+                session={session}
+                isConfirming={isSlotActionLoading}
+                onConfirm={handleConfirmSlot}
+                onInvite={() => setIsInviteModalVisible(true)}
+              />
+            </Animated.View>
+          ) : null}
+
           {/* Section d'inscription en attente/invitation (si concerné) */}
-          {!isFromHistory && session.status !== 'cancelled' && canActuallyRespond ? (
+          {!isFromHistory && session.status !== 'cancelled' && canActuallyRespond && !isFindingSlot ? (
             <Animated.View entering={FadeInUp.delay(150).springify()} style={styles.respondContainer}>
               <Text style={styles.respondTitle}>Tu participes ?</Text>
               <Text style={styles.respondSubtitle}>Ta réponse sera visible par les autres joueurs.</Text>
@@ -1460,42 +1513,10 @@ const styles = StyleSheet.create({
     color: '#555',
     fontWeight: '500',
   },
-  slotsToDefineCard: {
-    backgroundColor: '#FFF',
-    borderWidth: 1,
-    borderColor: '#F0F0F2',
-    borderRadius: 16,
-    padding: 14,
-    gap: 6,
-  },
   slotsToDefineTitle: {
     fontSize: 15,
     color: '#000',
     fontWeight: '700',
-  },
-  slotsToDefineHint: {
-    fontSize: 13,
-    color: '#8E8E93',
-    fontWeight: '500',
-    marginTop: 2,
-  },
-  slotProposalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 6,
-    borderTopWidth: 1,
-    borderTopColor: '#F5F5F7',
-  },
-  slotProposalDay: {
-    fontSize: 14,
-    color: '#000',
-    fontWeight: '500',
-  },
-  slotProposalTime: {
-    fontSize: 14,
-    color: '#555',
-    fontWeight: '500',
   },
 
   // Section Invitation/Repondre

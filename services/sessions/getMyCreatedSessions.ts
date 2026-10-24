@@ -28,6 +28,7 @@ function convertToSportSession(session: any): SportSession {
       firstname: participantNames.firstname,
       lastname: participantNames.lastname,
       status: participant.status || 'pending',
+      hasGivenAvailability: !!participant.hasGivenAvailability,
       avatar: participant.avatar || participant.avatarUrl || null,
     };
   });
@@ -41,6 +42,8 @@ function convertToSportSession(session: any): SportSession {
     location: session.location,
     maxParticipants: session.maxParticipants,
     pricePerPerson: session.pricePerPerson,
+    scheduling: session.scheduling,
+    slotProposals: session.slotProposals || [],
     organizer: {
       id: session.organizer?.id || '',
       firstname: organizerNames.firstname,

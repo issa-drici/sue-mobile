@@ -21,6 +21,7 @@ function convertToSportSession(session: any): SportSession {
       firstname: nameParts[0] || '',
       lastname: nameParts.slice(1).join(' ') || '',
       status: participant.status || 'pending',
+      hasGivenAvailability: !!participant.hasGivenAvailability,
       avatar: participant.avatar || participant.avatarUrl || null,
     };
   });
@@ -34,6 +35,8 @@ function convertToSportSession(session: any): SportSession {
     location: session.location,
     maxParticipants: session.maxParticipants,
     pricePerPerson: session.pricePerPerson,
+    scheduling: session.scheduling,
+    slotProposals: session.slotProposals || [],
     status: session.status, // Ajouter le champ status
     organizer: {
       id: session.organizer?.id || '',

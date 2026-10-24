@@ -121,6 +121,7 @@ export interface SportSession {
     lastname: string;
     status: SessionStatus;
     avatar?: string | null;
+    hasGivenAvailability?: boolean; // "Trouver un créneau" : a répondu (même "aucun créneau")
   }[];
   comments: {
     id: string;

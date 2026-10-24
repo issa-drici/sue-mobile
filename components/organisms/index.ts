@@ -3,3 +3,4 @@ export * from './SectionList';
 export * from './FriendsList';
 export * from './SessionsList';
 export * from './SlotPicker';
+export * from './SlotFinding';

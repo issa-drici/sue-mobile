@@ -109,11 +109,17 @@ export default function HomeScreen() {
     }
   };
 
-  // Tri des sessions réelles de l'API
+  // "Trouver un créneau" : sessions dont la date n'est pas encore fixée (section "À ORGANISER")
+  const sessionsToOrganize = React.useMemo(
+    () => (sessions || []).filter(s => s.scheduling === 'finding_slot' && s.status !== 'cancelled'),
+    [sessions]
+  );
+
+  // Tri des sessions réelles de l'API (hors sessions à organiser)
   const displaySessions = React.useMemo(() => {
     if (!sessions) return [];
     
-    return [...sessions].sort((a, b) => {
+    return sessions.filter(s => s.scheduling !== 'finding_slot').sort((a, b) => {
       const dateTimeA = new Date(`${a.date}T${a.startTime || '00:00'}`);
       const dateTimeB = new Date(`${b.date}T${b.startTime || '00:00'}`);
       return dateTimeA.getTime() - dateTimeB.getTime();
@@ -285,6 +291,71 @@ export default function HomeScreen() {
     );
   };
 
+  const renderToOrganizeItem = (item: SportSession) => {
+    const sportConfig = getSportConfig(item.sport);
+    const isMine = item.organizer?.id === user?.id;
+    const invitees = item.participants.filter(p => p.id !== item.organizer?.id && p.status !== 'declined');
+    const respondedCount = invitees.filter(p => p.hasGivenAvailability).length;
+    const me = item.participants.find(p => p.id === user?.id);
+    const needsMyAnswer = !isMine && !!me && me.status !== 'declined' && !me.hasGivenAvailability;
+    const slotsCount = item.slotProposals?.length ?? 0;
+
+    return (
+      <TouchableOpacity
+        key={item.id}
+        activeOpacity={0.95}
+        onPress={() => handleSessionPress(item.id)}
+        style={[styles.upcomingCard, styles.toOrganizeCard, needsMyAnswer && styles.upcomingCardPending]}
+      >
+        <View style={styles.upcomingRow}>
+          <View style={[styles.sportIconCircleSmall, { backgroundColor: sportConfig.color }]}>
+            <Ionicons name={sportConfig.icon as any} size={15} color="#FFF" />
+          </View>
+          <View style={styles.upcomingDetails}>
+            <Text style={styles.upcomingSportName}>
+              {item.sport.charAt(0).toUpperCase() + item.sport.slice(1)}
+            </Text>
+            <Text style={styles.upcomingDateText}>
+              Créneau à définir · {slotsCount} proposé{slotsCount > 1 ? 's' : ''}
+            </Text>
+            <View style={styles.upcomingLocationRow}>
+              <Ionicons name="location-sharp" size={11} color="#999" />
+              <Text style={styles.upcomingLocationText} numberOfLines={1}>
+                {item.location}
+              </Text>
+            </View>
+          </View>
+          {needsMyAnswer ? (
+            <View style={styles.toOrganizeAnswerBtn}>
+              <Text style={styles.toOrganizeAnswerText}>Répondre</Text>
+            </View>
+          ) : (
+            <View style={styles.upcomingRatioAndArrow}>
+              <Text style={styles.toOrganizeStatusText}>
+                {isMine
+                  ? `${respondedCount}/${invitees.length} réponse${respondedCount > 1 ? 's' : ''}`
+                  : 'Répondu'}
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color="#CCCCCC" />
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderListHeader = () => (
+    <>
+      {sessionsToOrganize.length > 0 ? (
+        <View style={styles.toOrganizeSection}>
+          <Text style={styles.sectionHeader}>À ORGANISER</Text>
+          {sessionsToOrganize.map(renderToOrganizeItem)}
+        </View>
+      ) : null}
+      <Text style={styles.sectionHeader}>À VENIR</Text>
+    </>
+  );
+
   const renderFixedTopSection = () => {
     if (!nextSession) return null;
     const acceptedParticipants = nextSession.participants.filter(p => p.status === 'accepted');
@@ -451,9 +522,9 @@ export default function HomeScreen() {
 
         {/* Scrollable "À VENIR" Section */}
         <View style={styles.upcomingContainer}>
-          <Text style={styles.sectionHeader}>À VENIR</Text>
           <FlatList
             data={upcomingSessions}
+            ListHeaderComponent={renderListHeader}
             renderItem={renderUpcomingSessionItem}
             keyExtractor={(item) => item.id}
             contentContainerStyle={[
@@ -798,6 +869,29 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: 1,
     borderColor: '#F5F5F5',
+  },
+  toOrganizeSection: {
+    marginBottom: 8,
+  },
+  toOrganizeCard: {
+    marginBottom: 10,
+  },
+  toOrganizeAnswerBtn: {
+    backgroundColor: BrandColors.primary,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  toOrganizeAnswerText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#000',
+  },
+  toOrganizeStatusText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#555',
+    marginRight: 2,
   },
   upcomingCardPending: {
     borderColor: BrandColors.primary,

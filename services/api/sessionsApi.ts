@@ -203,6 +203,24 @@ export class SessionsApi {
     return response.data;
   }
 
+  // Trouver un créneau : l'invité indique les créneaux où il peut jouer (liste vide = aucun)
+  static async setSlotAvailability(sessionId: string, slotIds: string[]): Promise<Session> {
+    const response = await baseApiService.put<LaravelResponse<Session>>(
+      SESSIONS_ENDPOINTS.SLOT_AVAILABILITY(sessionId),
+      { slotIds }
+    );
+    return response.data;
+  }
+
+  // Trouver un créneau : l'organisateur confirme le créneau retenu
+  static async confirmSlot(sessionId: string, slotId: string): Promise<Session> {
+    const response = await baseApiService.post<LaravelResponse<Session>>(
+      SESSIONS_ENDPOINTS.CONFIRM_SLOT(sessionId),
+      { slotId }
+    );
+    return response.data;
+  }
+
   // Changer l'organisateur
   static async changeOrganizer(sessionId: string, newOrganizerId: string): Promise<Session> {
     const response = await baseApiService.patch<LaravelResponse<Session>>(

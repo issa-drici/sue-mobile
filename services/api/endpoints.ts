@@ -40,6 +40,9 @@ export const SESSIONS_ENDPOINTS = {
   PRESENCE_TYPING: (sessionId: string) => `/sessions/${sessionId}/presence/typing`,
   PRESENCE_USERS: (sessionId: string) => `/sessions/${sessionId}/presence/users`,
   CHANGE_ORGANIZER: (sessionId: string) => `/sessions/${sessionId}/change-organizer`,
+  // Trouver un créneau
+  SLOT_AVAILABILITY: (sessionId: string) => `/sessions/${sessionId}/availability`,
+  CONFIRM_SLOT: (sessionId: string) => `/sessions/${sessionId}/confirm-slot`,
 } as const;
 
 // Endpoints de partage / Universal Links (/join/{token})
