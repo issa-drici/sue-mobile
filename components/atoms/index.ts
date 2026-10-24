@@ -10,4 +10,3 @@ export * from './Input';
 export * from './Avatar';
 export * from './Spinner';
 export * from './SportIcon';
-export * from './SportSurface';
