@@ -13,7 +13,9 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import { SportIcon } from '../../components/atoms/SportIcon';
+import { SportIcon, hasSportImage } from '../../components/atoms/SportIcon';
+import { LinearGradient } from 'expo-linear-gradient';
+import { getSportTint } from '../../constants/sportTints';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -241,7 +243,7 @@ export default function HomeScreen() {
           )}
           <View style={styles.upcomingRow}>
             {/* Icône du sport */}
-            <SportIcon sport={item.sport} size={34}>
+            <SportIcon sport={item.sport} size={34} containerStyle={[styles.sportIconTile, { backgroundColor: getSportTint(item.sport) }]}>
               <View style={[styles.sportIconCircleSmall, { backgroundColor: sportConfig.color }]}>
                 <Ionicons name={sportConfig.icon as any} size={15} color="#FFF" />
               </View>
@@ -324,7 +326,7 @@ export default function HomeScreen() {
           </View>
         )}
         <View style={styles.upcomingRow}>
-          <SportIcon sport={item.sport} size={34}>
+          <SportIcon sport={item.sport} size={34} containerStyle={[styles.sportIconTile, { backgroundColor: getSportTint(item.sport) }]}>
             <View style={[styles.sportIconCircleSmall, { backgroundColor: sportConfig.color }]}>
               <Ionicons name={sportConfig.icon as any} size={15} color="#FFF" />
             </View>
@@ -386,6 +388,8 @@ export default function HomeScreen() {
     const isFull = maxParticipants ? acceptedParticipants.length >= maxParticipants : false;
     const missingCount = maxParticipants ? maxParticipants - acceptedParticipants.length : 0;
     const pending = isPendingInvite(nextSession);
+    // Habillage : dégradé dans la teinte du sport + grand objet 3D qui dépasse du coin
+    const hasImage = hasSportImage(nextSession.sport);
 
     return (
       <View style={styles.fixedTopSection}>
@@ -394,6 +398,19 @@ export default function HomeScreen() {
 
         {/* Carte Prochaine Session */}
         <View style={[styles.nextSessionCard, pending && styles.nextSessionCardPending]}>
+          {hasImage && (
+            <>
+              <LinearGradient
+                colors={[getSportTint(nextSession.sport), '#FFFFFF']}
+                start={{ x: 1, y: 0 }}
+                end={{ x: 0.25, y: 0.85 }}
+                style={[StyleSheet.absoluteFill, styles.nextSessionGradient]}
+              />
+              <View style={styles.nextSessionHeroIcon} pointerEvents="none">
+                <SportIcon sport={nextSession.sport} size={116} />
+              </View>
+            </>
+          )}
           {pending && (
             <View style={[styles.pendingBadge, { marginBottom: 12 }]}>
               <Ionicons name="mail-unread-outline" size={11} color="#000" />
@@ -401,15 +418,15 @@ export default function HomeScreen() {
             </View>
           )}
           <View style={styles.nextSessionTopRow}>
-            {/* Cercle Icône sport */}
-            <SportIcon sport={nextSession.sport} size={44}>
+            {/* Cercle Icône sport (sports sans icône 3D seulement) */}
+            {!hasImage && (
               <View style={[styles.sportIconCircle, { backgroundColor: getSportConfig(nextSession.sport).color }]}>
                 <Ionicons name={getSportConfig(nextSession.sport).icon as any} size={24} color="#FFF" />
               </View>
-            </SportIcon>
+            )}
 
             {/* Détails textuels */}
-            <View style={styles.nextSessionDetails}>
+            <View style={[styles.nextSessionDetails, hasImage && styles.nextSessionDetailsWithHero]}>
               <Text style={styles.nextSessionSportTitle}>
                 {nextSession.sport.charAt(0).toUpperCase() + nextSession.sport.slice(1)}
               </Text>
@@ -429,7 +446,8 @@ export default function HomeScreen() {
               </View>
             </View>
 
-            {/* Ratio Joueurs */}
+            {/* Ratio Joueurs (sous l'objet 3D quand il y en a un : dans la ligne des avatars) */}
+            {!hasImage && (
             <View style={styles.nextSessionRatioContainer}>
               <Text style={styles.nextSessionRatioText}>
                 <Text style={styles.nextSessionRatioLarge}>{acceptedParticipants.length}</Text>
@@ -439,11 +457,20 @@ export default function HomeScreen() {
               </Text>
               <Text style={styles.nextSessionRatioLabel}>joueur{acceptedParticipants.length > 1 ? 's' : ''}</Text>
             </View>
+            )}
           </View>
 
           {/* Ligne médiane: Avatars et Manque X joueurs */}
           <View style={styles.nextSessionMiddleRow}>
-            {renderOverlappingAvatars(nextSession.participants)}
+            <View style={styles.nextSessionPlayersGroup}>
+              {renderOverlappingAvatars(nextSession.participants)}
+              {hasImage && (
+                <Text style={styles.nextSessionInlineRatio}>
+                  <Text style={styles.nextSessionInlineRatioBold}>{acceptedParticipants.length}</Text>
+                  {maxParticipants ? ` / ${maxParticipants}` : ''} joueur{acceptedParticipants.length > 1 ? 's' : ''}
+                </Text>
+              )}
+            </View>
             
             <View style={styles.completenessStatusRow}>
               {maxParticipants ? (
@@ -707,6 +734,7 @@ const styles = StyleSheet.create({
   // Carte Prochaine Session
   nextSessionCard: {
     backgroundColor: '#FFF',
+    overflow: 'hidden',
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
@@ -754,6 +782,42 @@ const styles = StyleSheet.create({
   nextSessionDetails: {
     flex: 1,
     marginLeft: 12,
+  },
+  nextSessionDetailsWithHero: {
+    marginLeft: 0,
+    paddingRight: 96, // place laissée à l'objet 3D
+  },
+  nextSessionHeroIcon: {
+    position: 'absolute',
+    top: -14,
+    right: -16,
+    zIndex: 1, // au-dessus du trait de séparation
+    transform: [{ rotate: '12deg' }],
+  },
+  nextSessionGradient: {
+    borderRadius: 20,
+  },
+  sportIconTile: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nextSessionPlayersGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  nextSessionInlineRatio: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#555',
+  },
+  nextSessionInlineRatioBold: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#000',
   },
   nextSessionSportTitle: {
     fontSize: 18,
