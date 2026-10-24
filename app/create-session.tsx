@@ -702,10 +702,9 @@ export default function CreateSessionScreen() {
         >
           <View style={styles.successContentInner}>
             <View style={{ alignItems: 'center', width: '100%' }}>
-              <Animated.View entering={FadeInUp.delay(50).springify()} style={styles.successIconOuterCircle}>
-                <View style={styles.successIconInnerCircle}>
-                  <Ionicons name="checkmark" size={36} color="#70A831" />
-                </View>
+              {/* Prochaine étape : inviter -> avion en papier du kit Sue */}
+              <Animated.View entering={FadeInUp.delay(50).springify()}>
+                <Image source={require('../assets/images/brand/invite.webp')} style={styles.successImage} resizeMode="contain" />
               </Animated.View>
 
               <Animated.Text entering={FadeInUp.delay(100).springify()} style={styles.successTitleText}>
@@ -1182,6 +1181,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#000',
+  },
+  successImage: {
+    width: 132,
+    height: 132,
+    marginBottom: 12,
   },
   whenChoiceImage: {
     width: 40,
