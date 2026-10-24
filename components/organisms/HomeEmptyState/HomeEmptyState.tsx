@@ -2,11 +2,11 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { BrandColors } from '../../../constants/Colors';
 
-// Accueil sans aucune session : on propose directement les deux façons de lancer un match.
+// Accueil sans aucune session : on propose directement les deux façons de lancer une session.
 
 const CHOICES = [
   {
@@ -23,7 +23,7 @@ const CHOICES = [
   },
 ];
 
-const STEPS = ['Crée', 'Partage le lien', 'Joue'];
+const STEPS = ['Crée', 'Partage le lien', "C'est parti"];
 
 export function HomeEmptyState() {
   const router = useRouter();
@@ -31,19 +31,15 @@ export function HomeEmptyState() {
   return (
     <View style={styles.container}>
       <Animated.View entering={FadeInDown.delay(50).springify()} style={styles.hero}>
-        <View style={styles.heroCircle}>
-          <Ionicons name="football" size={44} color="#000" />
-        </View>
-        <View style={[styles.heroBubble, styles.heroBubbleLeft]}>
-          <Ionicons name="tennisball" size={20} color="#000" />
-        </View>
-        <View style={[styles.heroBubble, styles.heroBubbleRight]}>
-          <Ionicons name="basketball" size={20} color="#000" />
-        </View>
+        <Image
+          source={require('../../../assets/images/home-empty-hero.png')}
+          style={styles.heroImage}
+          resizeMode="contain"
+        />
       </Animated.View>
 
       <Animated.View entering={FadeInDown.delay(100).springify()}>
-        <Text style={styles.title}>Ton prochain match{'\n'}commence ici</Text>
+        <Text style={styles.title}>Ta prochaine session{'\n'}commence ici</Text>
         <Text style={styles.subtitle}>Crée une session en 30 secondes, tes potes répondent en un tap.</Text>
       </Animated.View>
 
@@ -87,45 +83,20 @@ export function HomeEmptyState() {
 
 const styles = StyleSheet.create({
   container: {
-    paddingTop: 12,
+    paddingTop: 0,
     paddingBottom: 40,
   },
   hero: {
-    height: 150,
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 8,
   },
-  heroCircle: {
-    width: 112,
-    height: 112,
-    borderRadius: 56,
-    backgroundColor: BrandColors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroBubble: {
-    position: 'absolute',
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFF',
-    borderWidth: 1,
-    borderColor: '#EFEFEF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroBubbleLeft: {
-    top: 12,
-    left: '22%',
-  },
-  heroBubbleRight: {
-    bottom: 10,
-    right: '22%',
+  heroImage: {
+    width: 210,
+    height: 206, // ratio de l'image 840x824
   },
   title: {
-    fontSize: 30,
-    lineHeight: 34,
+    fontSize: 28,
+    lineHeight: 32,
     fontFamily: 'Outfit-Bold',
     fontWeight: '800',
     color: '#000',
@@ -138,8 +109,8 @@ const styles = StyleSheet.create({
     color: '#8E8E93',
     fontWeight: '500',
     textAlign: 'center',
-    marginTop: 10,
-    marginBottom: 24,
+    marginTop: 8,
+    marginBottom: 20,
     paddingHorizontal: 12,
   },
   choices: {
@@ -188,7 +159,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 28,
+    marginTop: 20,
   },
   step: {
     alignItems: 'center',
