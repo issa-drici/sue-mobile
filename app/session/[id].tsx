@@ -846,6 +846,7 @@ export default function SessionDetailsScreen() {
           {heroDark && <SportSurface sport={session.sport} borderRadius={20} />}
           {heroDark && (
             <View style={styles.sessionHeroIcon} pointerEvents="none">
+              <Image source={require('../../assets/images/icon-glow.webp')} style={styles.sessionHeroGlow} />
               <SportIcon sport={session.sport} size={72} />
             </View>
           )}
@@ -1596,6 +1597,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 14,
     right: 14,
+  },
+  sessionHeroGlow: {
+    position: 'absolute',
+    left: -30,
+    top: -30,
+    width: 132,
+    height: 132,
   },
   sessionHeroTitle: {
     color: '#FFF',

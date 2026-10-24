@@ -40,6 +40,9 @@ const SPORT_CONFIGS: Record<string, { icon: string; color: string }> = {
   running: { icon: 'walk-sharp', color: '#00796B' },
 };
 
+// Halo radial clair sous les icônes 3D posées sur un terrain
+const ICON_GLOW = require('../../assets/images/icon-glow.webp');
+
 const getSportConfig = (sportName: string) => {
   const normalized = (sportName || '').toLowerCase();
   return SPORT_CONFIGS[normalized] || { icon: 'trophy-sharp', color: '#616161' };
@@ -250,6 +253,7 @@ export default function HomeScreen() {
           )}
           <View style={styles.upcomingRow}>
             {/* Icône du sport */}
+            {hasSportSurface(item.sport) && <Image source={ICON_GLOW} style={styles.iconGlowSmall} />}
             <SportIcon sport={item.sport} size={44} containerStyle={hasSportSurface(item.sport) ? styles.sportIconBare : [styles.sportIconTile, { backgroundColor: getSportTint(item.sport) }]}>
               <View style={[styles.sportIconCircleSmall, { backgroundColor: sportConfig.color }]}>
                 <Ionicons name={sportConfig.icon as any} size={15} color="#FFF" />
@@ -335,7 +339,8 @@ export default function HomeScreen() {
           </View>
         )}
         <View style={styles.upcomingRow}>
-          <SportIcon sport={item.sport} size={44} containerStyle={hasSportSurface(item.sport) ? styles.sportIconBare : [styles.sportIconTile, { backgroundColor: getSportTint(item.sport) }]}>
+          {hasSportSurface(item.sport) && <Image source={ICON_GLOW} style={styles.iconGlowSmall} />}
+            <SportIcon sport={item.sport} size={44} containerStyle={hasSportSurface(item.sport) ? styles.sportIconBare : [styles.sportIconTile, { backgroundColor: getSportTint(item.sport) }]}>
             <View style={[styles.sportIconCircleSmall, { backgroundColor: sportConfig.color }]}>
               <Ionicons name={sportConfig.icon as any} size={15} color="#FFF" />
             </View>
@@ -419,6 +424,7 @@ export default function HomeScreen() {
                 style={[StyleSheet.absoluteFill, styles.nextSessionGradient]}
               />}
               <View style={dark ? styles.nextSessionIconInside : styles.nextSessionHeroIcon} pointerEvents="none">
+                {dark && <Image source={ICON_GLOW} style={styles.iconGlowLarge} />}
                 <SportIcon sport={nextSession.sport} size={dark ? 76 : 116} />
               </View>
             </>
@@ -832,6 +838,21 @@ const styles = StyleSheet.create({
   },
   nextSessionGradient: {
     borderRadius: 20,
+  },
+  iconGlowSmall: {
+    position: 'absolute',
+    left: -14,
+    top: '50%',
+    marginTop: -36,
+    width: 72,
+    height: 72,
+  },
+  iconGlowLarge: {
+    position: 'absolute',
+    left: -30,
+    top: -30,
+    width: 136,
+    height: 136,
   },
   // Sur fond terrain : icône seule, sans tuile
   sportIconBare: {
