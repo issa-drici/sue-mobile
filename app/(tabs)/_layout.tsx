@@ -1,8 +1,7 @@
-import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { Tabs, useRouter } from 'expo-router';
 import React, { useEffect } from 'react';
-import { ActivityIndicator, Dimensions, Platform, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Image, ImageSourcePropType, Platform, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGlobalFriendRequests } from '../../context/globalFriendRequests';
 import { useGlobalNotifications } from '../../context/globalNotifications';
@@ -14,28 +13,23 @@ const INACTIVE_TAB_COLOR = '#000000ff'; // Noir d'origine
 
 const BOTTOM_MARGIN = 20;
 
-// Composant pour l'icône de l'onglet avec un fond actif ("Liquid Bar")
-const TabIcon = ({
-  focused,
-  color,
-  iconName,
-  focusedIconName
-}: {
-  focused: boolean;
-  color: string;
-  iconName: React.ComponentProps<typeof Ionicons>['name'];
-  focusedIconName: React.ComponentProps<typeof Ionicons>['name'];
-}) => {
+// Icônes 2,5D du kit Sue. L'onglet actif garde son fond volt ("Liquid Bar"), l'inactif est atténué.
+const TAB_ICONS = {
+  sessions: require('../../assets/images/brand/tab-sessions.webp'),
+  profile: require('../../assets/images/brand/tab-profile.webp'),
+};
+
+const TabIcon = ({ focused, source }: { focused: boolean; source: ImageSourcePropType }) => {
   return (
     <View style={{
       backgroundColor: focused ? ACTIVE_TAB_COLOR : 'transparent',
-      width: 36,
-      height: 36,
-      borderRadius: 18,
+      width: 40,
+      height: 40,
+      borderRadius: 20,
       alignItems: 'center',
       justifyContent: 'center',
     }}>
-      <Ionicons name={focused ? focusedIconName : iconName} size={22} color={focused ? "#000" : color} />
+      <Image source={source} style={{ width: 32, height: 32, opacity: focused ? 1 : 0.6 }} resizeMode="contain" />
     </View>
   );
 };
@@ -146,7 +140,7 @@ function TabLayoutContent() {
         options={{
           title: 'Sessions',
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon focused={focused} color={color} iconName="calendar-outline" focusedIconName="calendar" />
+            <TabIcon focused={focused} source={TAB_ICONS.sessions} />
           ),
         }}
       />
@@ -173,7 +167,7 @@ function TabLayoutContent() {
         options={{
           title: 'Profil',
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon focused={focused} color={color} iconName="person-outline" focusedIconName="person" />
+            <TabIcon focused={focused} source={TAB_ICONS.profile} />
           ),
         }}
       />

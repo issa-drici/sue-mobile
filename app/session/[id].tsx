@@ -1161,9 +1161,7 @@ export default function SessionDetailsScreen() {
                 >
                   {/* Header Row: icon and texts */}
                   <View style={styles.bigShareHeader}>
-                    <View style={styles.bigShareIconCircle}>
-                      <Ionicons name="people-sharp" size={22} color="#1E3A1E" />
-                    </View>
+                    <Image source={require('../../assets/images/brand/invite.webp')} style={styles.bigShareImage} resizeMode="contain" />
                     <View style={styles.bigShareTextContainer}>
                       <Text style={styles.bigShareTitle}>Partagez cette session ✨</Text>
                       <Text style={styles.bigShareSubtitle}>
@@ -1955,6 +1953,11 @@ const styles = StyleSheet.create({
   },
   inviteScrollContent: {
     paddingBottom: 120,
+  },
+  bigShareImage: {
+    width: 56,
+    height: 56,
+    marginRight: 12,
   },
   bigShareCard: {
     marginHorizontal: 20,

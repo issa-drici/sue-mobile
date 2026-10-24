@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
+  Image,
   Modal,
   Pressable,
   StyleSheet,
@@ -153,9 +154,7 @@ export default function NotificationPermissionSheet({ visible, onDismiss, varian
       >
         <View style={styles.handle} />
 
-        <View style={styles.bellCircle}>
-          <Ionicons name="notifications" size={32} color={GREEN_ICON} />
-        </View>
+        <Image source={require('../assets/images/brand/notifications.webp')} style={styles.bellImage} resizeMode="contain" />
 
         <Text style={styles.title}>{copy.title}</Text>
         <Text style={styles.subtitle}>{copy.subtitle}</Text>
@@ -227,14 +226,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#D9D9D9',
     marginBottom: 20,
   },
-  bellCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: LIGHT_GREEN,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
+  bellImage: {
+    width: 96,
+    height: 96,
+    marginBottom: 12,
   },
   title: {
     fontSize: 20,

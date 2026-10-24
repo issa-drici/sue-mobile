@@ -11,13 +11,13 @@ import { BrandColors } from '../../../constants/Colors';
 const CHOICES = [
   {
     href: '/create-session',
-    icon: 'calendar-outline' as const,
+    image: require('../../../assets/images/brand/date.webp'),
     title: "J'ai une date",
     hint: 'Choisis le jour, invite, c’est parti.',
   },
   {
     href: '/create-session?mode=find-slot',
-    icon: 'people-outline' as const,
+    image: require('../../../assets/images/brand/find-slot.webp'),
     title: 'Trouver un créneau',
     hint: 'Tes potes disent quand ils sont dispos.',
   },
@@ -55,7 +55,7 @@ export function HomeEmptyState() {
             }}
           >
             <View style={[styles.choiceIcon, index === 0 && styles.choiceIconPrimary]}>
-              <Ionicons name={choice.icon} size={20} color="#000" />
+              <Image source={choice.image} style={styles.choiceImage} resizeMode="contain" />
             </View>
             <View style={styles.choiceTexts}>
               <Text style={styles.choiceTitle}>{choice.title}</Text>
@@ -131,12 +131,16 @@ const styles = StyleSheet.create({
     borderColor: BrandColors.primary,
   },
   choiceIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 52,
+    height: 52,
+    borderRadius: 16,
     backgroundColor: '#F5F5F7',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  choiceImage: {
+    width: 46,
+    height: 46,
   },
   choiceIconPrimary: {
     backgroundColor: 'rgba(255,255,255,0.6)',

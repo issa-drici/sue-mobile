@@ -4,6 +4,8 @@ import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
+  ImageSourcePropType,
+  Image,
   Alert,
   FlatList,
   Keyboard,
@@ -33,9 +35,9 @@ import { Sport } from '../types/sport';
 
 type WhenMode = 'known-date' | 'find-slot';
 
-const WHEN_OPTIONS: { value: WhenMode; label: string; icon: keyof typeof Ionicons.glyphMap; hint: string }[] = [
-  { value: 'known-date', label: "J'ai une date", icon: 'calendar-outline', hint: "Tu choisis la date et l'heure à l'étape suivante." },
-  { value: 'find-slot', label: 'Trouver un créneau', icon: 'people-outline', hint: 'Tes joueurs indiqueront quand ils peuvent jouer.' },
+const WHEN_OPTIONS: { value: WhenMode; label: string; image: ImageSourcePropType; hint: string }[] = [
+  { value: 'known-date', label: "J'ai une date", image: require('../assets/images/brand/date.webp'), hint: "Tu choisis la date et l'heure à l'étape suivante." },
+  { value: 'find-slot', label: 'Trouver un créneau', image: require('../assets/images/brand/find-slot.webp'), hint: 'Tes joueurs indiqueront quand ils peuvent jouer.' },
 ];
 
 // Configuration fixe des sports principaux par défaut (pour correspondre à la maquette)
@@ -451,7 +453,7 @@ export default function CreateSessionScreen() {
                 setWhenMode(option.value);
               }}
             >
-              <Ionicons name={option.icon} size={20} color={isSelected ? BrandColors.success : '#8E8E93'} />
+              <Image source={option.image} style={[styles.whenChoiceImage, !isSelected && styles.whenChoiceImageIdle]} resizeMode="contain" />
               <Text style={[styles.whenChoiceText, isSelected && styles.whenChoiceTextSelected]}>
                 {option.label}
               </Text>
@@ -1180,6 +1182,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#000',
+  },
+  whenChoiceImage: {
+    width: 40,
+    height: 40,
+  },
+  whenChoiceImageIdle: {
+    opacity: 0.55,
   },
   inputCardRowError: {
     borderColor: '#FF3B30',
