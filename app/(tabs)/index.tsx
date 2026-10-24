@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
-  FlatList,
+  Animated as RNAnimated,
   Image,
   Platform,
   RefreshControl,
@@ -53,6 +53,9 @@ export default function HomeScreen() {
   const { unreadCount } = useGlobalNotifications();
   const { friendRequestsCount, refetch: refetchFriendRequests } = useGlobalFriendRequests();
   const [refreshing, setRefreshing] = React.useState(false);
+  // Ombre sous le bloc du haut : apparaît progressivement dès qu'on fait défiler la liste
+  const listScrollY = React.useRef(new RNAnimated.Value(0)).current;
+  const topShadowOpacity = listScrollY.interpolate({ inputRange: [0, 24], outputRange: [0, 1], extrapolate: 'clamp' });
 
   // Recharge sur focus (quand l'utilisateur revient sur l'accueil).
   // Les sessions se rechargent déjà toutes seules au focus (useApiRequest) : les relancer ici
@@ -288,14 +291,14 @@ export default function HomeScreen() {
                 <View style={styles.upcomingStatusContainer}>
                   {maxParticipants ? (
                     isFull ? (
-                      <Text style={[styles.upcomingStatusFull, dark && styles.onDarkStatus]}>Complet</Text>
+                      <Text style={[styles.upcomingStatusFull, dark && styles.statusBadge]}>Complet</Text>
                     ) : (
-                      <Text style={[styles.upcomingStatusMissing, dark && styles.onDarkStatus]}>
+                      <Text style={[styles.upcomingStatusMissing, dark && styles.statusBadge]}>
                         Il manque {missingCount} joueur{missingCount > 1 ? 's' : ''}
                       </Text>
                     )
                   ) : (
-                    <Text style={[styles.upcomingStatusOpen, dark && styles.onDarkStatus]}>Session ouverte</Text>
+                    <Text style={[styles.upcomingStatusOpen, dark && styles.statusBadge]}>Session ouverte</Text>
                   )}
                 </View>
               </View>
@@ -359,7 +362,7 @@ export default function HomeScreen() {
             </View>
           ) : (
             <View style={styles.upcomingRatioAndArrow}>
-              <Text style={[styles.toOrganizeStatusText, dark && styles.onDark]}>
+              <Text style={[styles.toOrganizeStatusText, dark && styles.statusBadge]}>
                 {isMine
                   ? `${respondedCount}/${invitees.length} réponse${respondedCount > 1 ? 's' : ''}`
                   : 'Répondu'}
@@ -481,17 +484,17 @@ export default function HomeScreen() {
               )}
             </View>
             
-            <View style={styles.completenessStatusRow}>
+            <View style={[styles.completenessStatusRow, dark && styles.statusBadgeRow]}>
               {maxParticipants ? (
                 isFull ? (
                   <>
                     <View style={[styles.statusDot, { backgroundColor: '#70A831' }]} />
-                    <Text style={[styles.statusText, { color: dark ? BrandColors.primary : '#70A831' }]}>Complet</Text>
+                    <Text style={[styles.statusText, { color: '#70A831' }]}>Complet</Text>
                   </>
                 ) : (
                   <>
                     <View style={[styles.statusDot, { backgroundColor: '#F59223' }]} />
-                    <Text style={[styles.statusText, dark && styles.onDark]}>
+                    <Text style={styles.statusText}>
                       Il manque {missingCount} joueur{missingCount > 1 ? 's' : ''}
                     </Text>
                   </>
@@ -499,7 +502,7 @@ export default function HomeScreen() {
               ) : (
                 <>
                   <View style={[styles.statusDot, { backgroundColor: '#70A831' }]} />
-                  <Text style={[styles.statusText, { color: dark ? BrandColors.primary : '#70A831' }]}>Session ouverte</Text>
+                  <Text style={[styles.statusText, { color: '#70A831' }]}>Session ouverte</Text>
                 </>
               )}
             </View>
@@ -583,8 +586,13 @@ export default function HomeScreen() {
 
         {/* Scrollable "À VENIR" Section */}
         <View style={styles.upcomingContainer}>
-          <FlatList
+          <RNAnimated.View pointerEvents="none" style={[styles.topShadow, { opacity: topShadowOpacity }]}>
+            <LinearGradient colors={['rgba(0,0,0,0.08)', 'rgba(0,0,0,0)']} style={StyleSheet.absoluteFill} />
+          </RNAnimated.View>
+          <RNAnimated.FlatList
             data={upcomingSessions}
+            onScroll={RNAnimated.event([{ nativeEvent: { contentOffset: { y: listScrollY } } }], { useNativeDriver: true })}
+            scrollEventThrottle={16}
             // Élément (pas une fonction) : sinon l'en-tête est remonté à chaque rendu et ses animations rejouent
             ListHeaderComponent={renderListHeader()}
             renderItem={renderUpcomingSessionItem}
@@ -727,6 +735,14 @@ const styles = StyleSheet.create({
   upcomingContainer: {
     flex: 1,
     marginTop: 8,
+  },
+  topShadow: {
+    position: 'absolute',
+    top: 0,
+    left: -20,
+    right: -20,
+    height: 10,
+    zIndex: 2,
   },
   listContent: {
     paddingBottom: 40,
@@ -991,8 +1007,19 @@ const styles = StyleSheet.create({
   nextSessionMiddleRowOnDark: {
     borderTopColor: 'rgba(255,255,255,0.25)',
   },
-  onDarkStatus: {
-    color: BrandColors.primary,
+  // Statut sur fond terrain : mini badge blanc, sans agrandir la carte
+  statusBadge: {
+    backgroundColor: '#FFF',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    overflow: 'hidden',
+  },
+  statusBadgeRow: {
+    backgroundColor: '#FFF',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
   },
   toOrganizeSection: {
     marginBottom: 8,

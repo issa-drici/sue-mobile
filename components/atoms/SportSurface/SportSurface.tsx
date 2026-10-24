@@ -11,6 +11,8 @@ const SURFACES: Record<string, ImageSourcePropType> = {
   clay: require('../../../assets/images/surfaces/clay.webp'),
   'parquet-basket': require('../../../assets/images/surfaces/parquet-basket.webp'),
   'parquet-multisport': require('../../../assets/images/surfaces/parquet-multisport.webp'),
+  padel: require('../../../assets/images/surfaces/padel.webp'),
+  'ping-pong': require('../../../assets/images/surfaces/ping-pong.webp'),
 };
 
 const SPORT_SURFACES: Record<string, keyof typeof SURFACES> = {
@@ -23,6 +25,8 @@ const SPORT_SURFACES: Record<string, keyof typeof SURFACES> = {
   volleyball: 'parquet-multisport',
   badminton: 'parquet-multisport',
   squash: 'parquet-multisport',
+  padel: 'padel',
+  'ping-pong': 'ping-pong',
 };
 
 // Format réel de chaque texture (elles n'ont pas toutes exactement la même hauteur)
