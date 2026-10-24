@@ -188,13 +188,13 @@ export function SlotConfirmCard({ session, isConfirming, onConfirm, onInvite, on
 
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>Disponibilités</Text>
+      <Text style={styles.title}>Choisis le créneau</Text>
       <Text style={styles.subtitle}>
         {rankedSlots.length === 0
           ? "Aucun créneau à venir : les créneaux proposés sont passés. Ajoutes-en de nouveaux."
           : invitees.length === 0
           ? 'Invite des joueurs pour récolter leurs disponibilités.'
-          : `${responded.length}/${invitees.length} ${responded.length > 1 ? 'ont' : 'a'} répondu · pas besoin d'attendre tout le monde`}
+          : `${responded.length}/${invitees.length} ${responded.length > 1 ? 'ont' : 'a'} répondu`}
       </Text>
 
       <View style={styles.slotList}>

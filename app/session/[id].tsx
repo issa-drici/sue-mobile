@@ -806,7 +806,8 @@ export default function SessionDetailsScreen() {
         </TouchableOpacity>
         
         <View style={styles.headerRightContainer}>
-          {/* Icône Discussion Vestiaire */}
+          {/* Icône Discussion Vestiaire : masquée tant que le chat n'est pas disponible */}
+          {false && (
           <TouchableOpacity 
             disabled={true} 
             onPress={() => setShowComments(true)} 
@@ -821,6 +822,8 @@ export default function SessionDetailsScreen() {
               </View>
             ) : null}
           </TouchableOpacity>
+
+          )}
 
           {/* Bouton Plus Options */}
           <TouchableOpacity onPress={handleMoreOptions} style={styles.headerMoreButton}>
@@ -947,7 +950,8 @@ export default function SessionDetailsScreen() {
             </Animated.View>
           ) : null}
 
-          {/* Carte Résumé Joueurs */}
+          {/* Carte Résumé Joueurs (masquée tant que le créneau n'est pas choisi : la carte des dispos suffit) */}
+          {!isFindingSlot && (
           <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.summaryCard}>
             <View style={styles.summaryCardLeft}>
               <Ionicons name="people-outline" size={28} color="#70A831" />
@@ -978,17 +982,18 @@ export default function SessionDetailsScreen() {
               )}
             </View>
           </Animated.View>
+          )}
 
-          {/* Bouton Inviter des joueurs */}
+          {/* Bouton Inviter des joueurs (secondaire pendant la recherche de créneau : un seul bouton fort à l'écran) */}
           {session.status !== 'cancelled' ? (
             <Animated.View entering={FadeInDown.delay(250).springify()}>
               <TouchableOpacity
                 activeOpacity={0.8}
-                style={styles.inviteActionButton}
+                style={[styles.inviteActionButton, isFindingSlot && styles.inviteActionButtonSecondary]}
                 onPress={() => setIsInviteModalVisible(true)}
               >
                 <Ionicons name="person-add" size={16} color="#000" style={{ marginRight: 8 }} />
-                <Text style={styles.inviteActionButtonText}>Inviter des joueurs</Text>
+                <Text style={styles.inviteActionButtonText}>{isFindingSlot ? "Inviter d'autres joueurs" : 'Inviter des joueurs'}</Text>
               </TouchableOpacity>
             </Animated.View>
           ) : null}
@@ -1840,6 +1845,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
+  },
+  inviteActionButtonSecondary: {
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#EFEFEF',
   },
   inviteActionButtonText: {
     fontSize: 14,
