@@ -82,6 +82,19 @@ export interface ApiSportSession {
   }[];
 }
 
+// Créneau proposé par l'organisateur quand la date n'est pas encore fixée ("Trouver un créneau")
+export interface SlotProposal {
+  id?: string;
+  date: string; // YYYY-MM-DD (heure de Paris)
+  startTime: string; // HH:mm
+  endTime: string; // HH:mm
+  availableUserIds?: string[];
+  availabilityCount?: number;
+}
+
+// 'finding_slot' : date à définir parmi slotProposals ; date/startTime/endTime ne sont alors qu'une plage
+export type SessionScheduling = 'scheduled' | 'finding_slot';
+
 // Type pour le frontend (utilise firstname/lastname)
 export interface SportSession {
   id: string;
@@ -94,6 +107,8 @@ export interface SportSession {
   pricePerPerson?: number | null;
   status?: SessionStatusType;
   shareToken?: string | null;
+  scheduling?: SessionScheduling;
+  slotProposals?: SlotProposal[];
   organizer: {
     id: string;
     firstname: string;

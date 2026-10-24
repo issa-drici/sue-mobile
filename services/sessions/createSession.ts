@@ -28,6 +28,10 @@ function convertToCreateSessionData(
     maxParticipants: sessionData.maxParticipants ?? null,
     pricePerPerson: sessionData.pricePerPerson ?? null,
     participantIds: participantIds, // ✅ Ajouter les IDs des participants
+    ...(sessionData.scheduling === 'finding_slot' && {
+      scheduling: sessionData.scheduling,
+      slotProposals: (sessionData.slotProposals || []).map(({ date, startTime, endTime }) => ({ date, startTime, endTime })),
+    }),
   };
 
   console.log('🕐 [CONVERT] Données converties (CreateSessionData):');
@@ -54,6 +58,8 @@ function convertToSportSession(session: any): SportSession {
     location: session.location,
     maxParticipants: session.maxParticipants,
     pricePerPerson: session.pricePerPerson,
+    scheduling: session.scheduling,
+    slotProposals: session.slotProposals || [],
     organizer: {
       id: session.organizer?.id || "",
       firstname: nameParts[0] || "",

@@ -21,13 +21,14 @@ import {
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ProposedSlot, SlotPicker } from '../components/organisms/SlotPicker';
+import { ProposedSlot, SlotPicker, slotEndTime } from '../components/organisms/SlotPicker';
 import { MainScreenLayout } from '../components/ui/ScreenLayout';
 import { BrandColors } from '../constants/Colors';
 import { useCreateSession } from '../services';
 import { SportsApi } from '../services/api/sportsApi';
 import { getDefaultEndTime, getSportEmoji, isValidEndTime, roundToNextHalfHour, SPORTS_LIST } from '../utils';
 import { matchesSearch } from '../utils/search';
+import { Sport } from '../types/sport';
 
 type WhenMode = 'known-date' | 'find-slot';
 
@@ -287,11 +288,34 @@ export default function CreateSessionScreen() {
     setStep(whenMode === 'known-date' ? 'schedule' : 'slots');
   };
 
-  const handleSlotsContinue = () => {
-    if (proposedSlots.length === 0) return;
-    Haptics.selectionAsync();
-    // TODO(find-time-slot) : créer la session "à organiser" et inviter (US-003)
-    Alert.alert('Prochaine étape', "L'invitation des joueurs arrive à la prochaine itération.");
+  // "Trouver un créneau" : crée la session sans date fixée, puis ouvre l'invitation des joueurs
+  const handleSlotsContinue = async () => {
+    if (proposedSlots.length === 0 || !validateRequiredFields()) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    try {
+      const newSession = await createSession({
+        sport: selectedSport as Sport,
+        location,
+        maxParticipants,
+        pricePerPerson: pricePerPerson ? parseFloat(pricePerPerson.replace(',', '.')) : null,
+        participants: [],
+        scheduling: 'finding_slot',
+        slotProposals: proposedSlots.map((slot) => ({
+          date: slot.date,
+          startTime: slot.startTime,
+          endTime: slotEndTime(slot),
+        })),
+      });
+
+      if (newSession?.id) {
+        router.replace(`/session/${newSession.id}?openInvite=true`);
+      } else {
+        router.replace('/');
+      }
+    } catch (error) {
+      Alert.alert('Erreur', error instanceof Error ? error.message : 'Une erreur est survenue');
+    }
   };
 
   // Validation et envoi
@@ -553,7 +577,7 @@ export default function CreateSessionScreen() {
     const ctaLabel = isScheduleStep
       ? (isCreating ? 'CRÉATION...' : 'CRÉER LA SESSION')
       : isSlotsStep
-        ? 'CONTINUER →'
+        ? (isCreating ? 'CRÉATION...' : 'INVITER DES JOUEURS →')
         : (whenMode === 'known-date' ? 'CONTINUER →' : 'CHOISIR LES CRÉNEAUX →');
     const onCtaPress = isScheduleStep ? handleCreateSession : isSlotsStep ? handleSlotsContinue : handleContinue;
     const isCtaDisabled = isCreating || (isSlotsStep && proposedSlots.length === 0);

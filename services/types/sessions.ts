@@ -1,4 +1,4 @@
-import { SessionStatus, Sport } from '../../types/sport';
+import { SessionScheduling, SessionStatus, SlotProposal, Sport } from '../../types/sport';
 
 // Types pour les sessions
 export interface Session {
@@ -82,6 +82,8 @@ export interface CreateSessionData {
   maxParticipants?: number | null;
   pricePerPerson?: number | null;
   participantIds?: string[]; // ✅ IDs des participants à inviter
+  scheduling?: SessionScheduling;
+  slotProposals?: Pick<SlotProposal, 'date' | 'startTime' | 'endTime'>[];
 }
 
 export type UpdateSessionData = Partial<CreateSessionData>;

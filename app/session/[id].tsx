@@ -326,6 +326,9 @@ export default function SessionDetailsScreen() {
   const isLimitReached = maxParticipants ? acceptedParticipants.length >= maxParticipants : false;
   const canActuallyRespond = canRespond && !isLimitReached;
   const missingCount = maxParticipants ? maxParticipants - acceptedParticipants.length : 0;
+  // "Trouver un créneau" : la date n'est pas encore fixée, on affiche les créneaux proposés
+  const isFindingSlot = session?.scheduling === 'finding_slot';
+  const capitalizeFirst = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
   // Formatage de l'heure en français (ex: "18:00 - 19:00")
   const formatSessionTimeRange = (start?: string, end?: string) => {
@@ -569,7 +572,7 @@ export default function SessionDetailsScreen() {
       }
     }
     
-    return `${countText} ${sportPart} du ${dateStr}`;
+    return isFindingSlot ? `${countText} ${sportPart}` : `${countText} ${sportPart} du ${dateStr}`;
   };
 
   const buildShareMessage = (contactName?: string) => {
@@ -580,6 +583,7 @@ export default function SessionDetailsScreen() {
       startTime: session.startTime,
       sessionUrl,
       contactName,
+      findingSlot: isFindingSlot,
     });
   };
 
@@ -752,19 +756,39 @@ export default function SessionDetailsScreen() {
 
           {/* Ligne des Détails de Session */}
           <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.detailsListBlock}>
-            <View style={styles.detailRow}>
-              <Ionicons name="calendar-outline" size={16} color="#8E8E93" style={styles.detailIcon} />
-              <Text style={styles.detailText}>
-                {formatDate(session.date)}
-              </Text>
-            </View>
+            {isFindingSlot ? (
+              <View style={styles.slotsToDefineCard}>
+                <View style={styles.detailRow}>
+                  <Ionicons name="calendar-outline" size={16} color="#000" style={styles.detailIcon} />
+                  <Text style={styles.slotsToDefineTitle}>Créneau à définir</Text>
+                </View>
+                <Text style={styles.slotsToDefineHint}>
+                  {session.slotProposals?.length === 1 ? 'Créneau proposé' : 'Créneaux proposés'} :
+                </Text>
+                {session.slotProposals?.map((slot) => (
+                  <View key={slot.id ?? `${slot.date}-${slot.startTime}`} style={styles.slotProposalRow}>
+                    <Text style={styles.slotProposalDay}>{capitalizeFirst(formatDate(slot.date))}</Text>
+                    <Text style={styles.slotProposalTime}>{formatSessionTimeRange(slot.startTime, slot.endTime)}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <>
+                <View style={styles.detailRow}>
+                  <Ionicons name="calendar-outline" size={16} color="#8E8E93" style={styles.detailIcon} />
+                  <Text style={styles.detailText}>
+                    {formatDate(session.date)}
+                  </Text>
+                </View>
 
-            <View style={styles.detailRow}>
-              <Ionicons name="time-outline" size={16} color="#8E8E93" style={styles.detailIcon} />
-              <Text style={styles.detailText}>
-                {formatSessionTimeRange(session.startTime, session.endTime)}
-              </Text>
-            </View>
+                <View style={styles.detailRow}>
+                  <Ionicons name="time-outline" size={16} color="#8E8E93" style={styles.detailIcon} />
+                  <Text style={styles.detailText}>
+                    {formatSessionTimeRange(session.startTime, session.endTime)}
+                  </Text>
+                </View>
+              </>
+            )}
 
             <View style={styles.detailRow}>
               <Ionicons name="location-outline" size={16} color="#8E8E93" style={styles.detailIcon} />
@@ -1011,7 +1035,7 @@ export default function SessionDetailsScreen() {
                 <View style={styles.inviteHeaderCenter}>
                   <Text style={styles.inviteHeaderTitle}>Inviter des joueurs</Text>
                   <Text style={styles.inviteHeaderSubtitle}>
-                    {getSportDetails(session.sport).emoji} {getSportDetails(session.sport).label}  •  {formatSessionDate(session.date)}  •  {session.startTime.slice(0, 5)}
+                    {getSportDetails(session.sport).emoji} {getSportDetails(session.sport).label}  •  {isFindingSlot ? 'Date à définir' : `${formatSessionDate(session.date)}  •  ${session.startTime.slice(0, 5)}`}
                   </Text>
                 </View>
                 <View style={{ width: 36 }} />
@@ -1432,6 +1456,43 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   detailText: {
+    fontSize: 14,
+    color: '#555',
+    fontWeight: '500',
+  },
+  slotsToDefineCard: {
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#F0F0F2',
+    borderRadius: 16,
+    padding: 14,
+    gap: 6,
+  },
+  slotsToDefineTitle: {
+    fontSize: 15,
+    color: '#000',
+    fontWeight: '700',
+  },
+  slotsToDefineHint: {
+    fontSize: 13,
+    color: '#8E8E93',
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  slotProposalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#F5F5F7',
+  },
+  slotProposalDay: {
+    fontSize: 14,
+    color: '#000',
+    fontWeight: '500',
+  },
+  slotProposalTime: {
     fontSize: 14,
     color: '#555',
     fontWeight: '500',

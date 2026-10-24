@@ -99,11 +99,17 @@ export function buildSessionInviteMessage(params: {
   startTime: string;
   sessionUrl: string;
   contactName?: string;
+  /** Créneau à définir : on demande les dispos au lieu d'annoncer une date */
+  findingSlot?: boolean;
 }): string {
-  const { sport, date, startTime, sessionUrl, contactName } = params;
+  const { sport, date, startTime, sessionUrl, contactName, findingSlot } = params;
 
   const label = getSportShareLabel(sport);
   const phrase = contactName ? toMidSentenceLabel(label) : label;
+  if (findingSlot) {
+    const intro = contactName ? `Salut ${contactName}, ${phrase}` : phrase;
+    return `${intro} ? Dis-moi quand tu es dispo\n${sessionUrl}`;
+  }
   const dayLabel = formatInviteDayLabel(date);
   const timeLabel = formatInviteTime(startTime);
 

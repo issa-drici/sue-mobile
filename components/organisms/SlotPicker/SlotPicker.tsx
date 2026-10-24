@@ -29,6 +29,10 @@ const slotStart = (slot: Pick<ProposedSlot, 'date' | 'startTime'>) => {
   return new Date(y, mo - 1, d, h, mi);
 };
 
+/** Heure de fin "HH:mm" d'un créneau (même jour : validateDraft refuse un créneau qui passe minuit). */
+export const slotEndTime = (slot: ProposedSlot) =>
+  toTimeKey(new Date(slotStart(slot).getTime() + slot.durationMinutes * 60000));
+
 export const formatDuration = (minutes: number) => {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
@@ -91,6 +95,11 @@ export function SlotPicker({ slots, onChange }: SlotPickerProps) {
     }
     const date = toDateKey(draftStart);
     const startTime = toTimeKey(draftStart);
+    const draftEnd = new Date(draftStart.getTime() + draftDuration * 60000);
+    if (toDateKey(draftEnd) !== date) {
+      Alert.alert('Trop tard', 'Le créneau doit se terminer avant minuit.');
+      return;
+    }
     const isDuplicate = slots.some((s) => s.id !== editingId && s.date === date && s.startTime === startTime);
     if (isDuplicate) {
       Alert.alert('Déjà proposé', 'Tu as déjà proposé ce créneau.');

@@ -46,6 +46,8 @@ function convertToSportSession(session: any): SportSession {
     pricePerPerson: session.pricePerPerson,
     status: session.status, // Ajouter le champ status
     shareToken: session.shareToken, // Token de partage (Universal Links)
+    scheduling: session.scheduling,
+    slotProposals: session.slotProposals || [],
     organizer: {
       id: session.organizer?.id || '',
       firstname: organizerNames.firstname,
