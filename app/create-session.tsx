@@ -28,6 +28,13 @@ import { SportsApi } from '../services/api/sportsApi';
 import { getDefaultEndTime, getSportEmoji, isValidEndTime, roundToNextHalfHour, SPORTS_LIST } from '../utils';
 import { matchesSearch } from '../utils/search';
 
+type WhenMode = 'known-date' | 'find-slot';
+
+const WHEN_OPTIONS: { value: WhenMode; label: string; icon: keyof typeof Ionicons.glyphMap; hint: string }[] = [
+  { value: 'known-date', label: "J'ai une date", icon: 'calendar-outline', hint: "Tu choisis la date et l'heure à l'étape suivante." },
+  { value: 'find-slot', label: 'Trouver un créneau', icon: 'people-outline', hint: 'Tes joueurs indiqueront quand ils peuvent jouer.' },
+];
+
 // Configuration fixe des sports principaux par défaut (pour correspondre à la maquette)
 const SPORT_PRESETS: Record<string, { label: string; emoji: string; color: string }> = {
   football: { label: 'Football', emoji: '⚽', color: '#EAF6DD' },
@@ -98,6 +105,11 @@ export default function CreateSessionScreen() {
     sport: false,
     location: false,
   });
+
+  // Choix "Quand ?" fait à l'étape 1 : il décide de l'étape suivante (date et
+  // heure, ou recherche de créneau avec les joueurs).
+  const [whenMode, setWhenMode] = useState<WhenMode>('known-date');
+  const [step, setStep] = useState<'details' | 'schedule'>('details');
 
   // Modals et sélecteurs
   const [showSportsModal, setShowSportsModal] = useState(false);
@@ -253,16 +265,32 @@ export default function CreateSessionScreen() {
     }
   };
 
-  // Validation et envoi
-  const handleCreateSession = async () => {
+  const validateRequiredFields = (): boolean => {
     const sportMissing = !selectedSport;
     const locationMissing = !location.trim();
 
     if (sportMissing || locationMissing) {
       setFieldErrors({ sport: sportMissing, location: locationMissing });
       Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires (sport, lieu)');
+      return false;
+    }
+    return true;
+  };
+
+  const handleContinue = () => {
+    if (!validateRequiredFields()) return;
+    Haptics.selectionAsync();
+    if (whenMode === 'known-date') {
+      setStep('schedule');
       return;
     }
+    // TODO(find-time-slot) : naviguer vers l'écran de définition des créneaux (US-002)
+    Alert.alert('Prochaine étape', "L'écran de choix des créneaux arrive à la prochaine itération.");
+  };
+
+  // Validation et envoi
+  const handleCreateSession = async () => {
+    if (!validateRequiredFields()) return;
 
     if (!isValidEndTime(startTime, endTime)) {
       Alert.alert('Erreur', "L'heure de fin doit être après l'heure de début");
@@ -314,7 +342,208 @@ export default function CreateSessionScreen() {
   };
 
   // Render du formulaire de création
+  // Étape 1 "details" : sport, quand (choix), joueurs, prix, lieu.
+  // Étape 2 "schedule" (si "J'ai une date") : date + heure, puis création.
+  const renderSportSection = () => (
+    <Animated.View entering={FadeInDown.delay(50).springify()} style={styles.section}>
+      <Text style={styles.sectionLabel}>SPORT*</Text>
+      <View style={[styles.sportsHorizontalRow, fieldErrors.sport && styles.inputCardRowError]}>
+        {/* Accès rapides : défilent horizontalement si nombreux */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.badgesScroll}
+          contentContainerStyle={styles.badgesScrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          {quickSports.length === 0 ? (
+            <Text style={styles.badgesEmptyHint}>Choisis ton sport</Text>
+          ) : (
+            quickSports.map((sportKey) => {
+              const details = getSportDetails(sportKey);
+              const isSelected = selectedSport === sportKey;
+              return (
+                <TouchableOpacity
+                  key={sportKey}
+                  style={styles.sportBadgeItem}
+                  onPress={() => handleSportSelection(sportKey)}
+                >
+                  <View style={[
+                    styles.sportIconCircle,
+                    { backgroundColor: details.color },
+                    isSelected && styles.sportIconCircleSelected
+                  ]}>
+                    <Text style={styles.sportEmojiText}>{details.emoji}</Text>
+                  </View>
+                  <Text style={[styles.sportLabelText, isSelected && styles.sportLabelTextSelected]}>
+                    {details.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })
+          )}
+        </ScrollView>
+
+        {/* Bouton "Plus" fixe à droite (ne défile pas) */}
+        <TouchableOpacity
+          style={[styles.sportBadgeItem, styles.plusBadge]}
+          onPress={() => {
+            Haptics.selectionAsync();
+            setShowSportsModal(true);
+          }}
+        >
+          <View style={styles.sportIconCircleAdd}>
+            <Ionicons name="add" size={20} color="#8E8E93" />
+          </View>
+          <Text style={styles.sportLabelText}>Plus</Text>
+        </TouchableOpacity>
+      </View>
+    </Animated.View>
+  );
+
+  const renderWhenChoice = () => (
+    <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.section}>
+      <Text style={styles.sectionLabel}>QUAND ?*</Text>
+      <View style={styles.whenChoiceRow}>
+        {WHEN_OPTIONS.map((option) => {
+          const isSelected = whenMode === option.value;
+          return (
+            <TouchableOpacity
+              key={option.value}
+              activeOpacity={0.8}
+              style={[styles.whenChoice, isSelected && styles.whenChoiceSelected]}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setWhenMode(option.value);
+              }}
+            >
+              <Ionicons name={option.icon} size={20} color={isSelected ? BrandColors.success : '#8E8E93'} />
+              <Text style={[styles.whenChoiceText, isSelected && styles.whenChoiceTextSelected]}>
+                {option.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+      <Text style={styles.whenChoiceHint}>
+        {WHEN_OPTIONS.find((option) => option.value === whenMode)?.hint}
+      </Text>
+    </Animated.View>
+  );
+
+  const renderDetailsSections = () => (
+    <>
+      {/* Section Joueurs Max (Illimité par défaut) */}
+      <Animated.View entering={FadeInDown.delay(150).springify()} style={styles.section}>
+        <Text style={styles.sectionLabel}>JOUEURS MAX</Text>
+        <View style={styles.inputCardRow}>
+          <Ionicons name="people-outline" size={18} color="#8E8E93" style={styles.cardIcon} />
+          <View style={styles.stepperContainer}>
+            <TouchableOpacity
+              onPress={decrementMax}
+              style={[styles.stepperButton, maxParticipants === null && styles.stepperButtonDisabled]}
+              disabled={maxParticipants === null}
+            >
+              <Ionicons name="remove" size={16} color={maxParticipants === null ? '#CCCCCC' : '#000'} />
+            </TouchableOpacity>
+            <Text style={[styles.stepperValueText, maxParticipants === null && styles.stepperValueTextUncapped]}>
+              {maxParticipants === null ? 'Session ouverte (illimité)' : `${maxParticipants} joueur${maxParticipants > 1 ? 's' : ''}`}
+            </Text>
+            <TouchableOpacity
+              onPress={incrementMax}
+              style={styles.stepperButton}
+            >
+              <Ionicons name="add" size={16} color="#000" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Animated.View>
+
+      {/* Section Prix par joueur */}
+      <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.section}>
+        <Text style={styles.sectionLabel}>PRIX PAR JOUEUR</Text>
+        <View style={styles.inputCardRow}>
+          <Ionicons name="pricetag-outline" size={18} color="#8E8E93" style={styles.cardIcon} />
+          <TextInput
+            style={styles.textInputRow}
+            placeholder="Optionnel"
+            placeholderTextColor="#CCCCCC"
+            value={pricePerPerson}
+            onChangeText={setPricePerPerson}
+            keyboardType="numeric"
+            onFocus={() => {
+              setTimeout(() => {
+                formScrollViewRef.current?.scrollToEnd({ animated: true });
+              }, 100);
+            }}
+          />
+          <Text style={styles.currencySuffixText}>€</Text>
+        </View>
+      </Animated.View>
+
+      {/* Section Lieu */}
+      <Animated.View entering={FadeInDown.delay(250).springify()} style={styles.section}>
+        <Text style={styles.sectionLabel}>LIEU*</Text>
+        <View style={[styles.inputCardRow, fieldErrors.location && styles.inputCardRowError]}>
+          <Ionicons name="location-outline" size={18} color="#8E8E93" style={styles.cardIcon} />
+          <TextInput
+            style={styles.textInputRow}
+            placeholder="Entrer le lieu..."
+            placeholderTextColor="#CCCCCC"
+            value={location}
+            onChangeText={handleLocationChange}
+            onFocus={() => {
+              setTimeout(() => {
+                formScrollViewRef.current?.scrollToEnd({ animated: true });
+              }, 100);
+            }}
+          />
+        </View>
+      </Animated.View>
+    </>
+  );
+
+  const renderScheduleSections = () => (
+    <>
+      {/* Section Date */}
+      <Animated.View entering={FadeInDown.delay(50).springify()} style={styles.section}>
+        <Text style={styles.sectionLabel}>DATE*</Text>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={styles.inputCardRow}
+          onPress={handleDatePickerPress}
+        >
+          <Ionicons name="calendar-outline" size={18} color="#8E8E93" style={styles.cardIcon} />
+          <Text style={styles.cardValueText}>{formatDateLabel(date)}</Text>
+          <Ionicons name="chevron-forward" size={16} color="#CCCCCC" />
+        </TouchableOpacity>
+      </Animated.View>
+
+      {/* Section Heure */}
+      <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.section}>
+        <Text style={styles.sectionLabel}>HEURE*</Text>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={styles.inputCardRow}
+          onPress={handleTimePickerPress}
+        >
+          <Ionicons name="time-outline" size={18} color="#8E8E93" style={styles.cardIcon} />
+          <View style={styles.timeDisplayBlock}>
+            <Text style={styles.timeValueText}>{formatTimeLabel(startTime)}</Text>
+            <Ionicons name="arrow-forward-outline" size={14} color="#8E8E93" style={{ marginHorizontal: 12 }} />
+            <Text style={styles.timeValueText}>{formatTimeLabel(endTime)}</Text>
+          </View>
+        </TouchableOpacity>
+      </Animated.View>
+    </>
+  );
+
   const renderForm = () => {
+    const isScheduleStep = step === 'schedule';
+    const ctaLabel = isScheduleStep
+      ? (isCreating ? 'CRÉATION...' : 'CRÉER LA SESSION')
+      : (whenMode === 'known-date' ? 'CONTINUER →' : 'CHOISIR LES CRÉNEAUX →');
+
     return (
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -322,196 +551,51 @@ export default function CreateSessionScreen() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
       >
         <View style={styles.formContainer}>
-        {/* Header */}
-        <View style={[styles.header, Platform.OS === 'android' && { paddingTop: Math.max(insets.top, 16) }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.closeHeaderBtn}>
-            <Ionicons name="close" size={24} color="#000" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>NOUVELLE SESSION</Text>
-          <View style={{ width: 36 }} />
-        </View>
-
-        <ScrollView 
-          ref={formScrollViewRef}
-          contentContainerStyle={styles.scrollContent} 
-          showsVerticalScrollIndicator={false}
-          bounces={false}
-        >
-          <View style={styles.formContentInner}>
-            <View>
-              {/* Section Sport */}
-              <Animated.View entering={FadeInDown.delay(50).springify()} style={styles.section}>
-                <Text style={styles.sectionLabel}>SPORT*</Text>
-                <View style={[styles.sportsHorizontalRow, fieldErrors.sport && styles.inputCardRowError]}>
-                  {/* Accès rapides : défilent horizontalement si nombreux */}
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={styles.badgesScroll}
-                    contentContainerStyle={styles.badgesScrollContent}
-                    keyboardShouldPersistTaps="handled"
-                  >
-                    {quickSports.length === 0 ? (
-                      <Text style={styles.badgesEmptyHint}>Choisis ton sport</Text>
-                    ) : (
-                      quickSports.map((sportKey) => {
-                        const details = getSportDetails(sportKey);
-                        const isSelected = selectedSport === sportKey;
-                        return (
-                          <TouchableOpacity
-                            key={sportKey}
-                            style={styles.sportBadgeItem}
-                            onPress={() => handleSportSelection(sportKey)}
-                          >
-                            <View style={[
-                              styles.sportIconCircle,
-                              { backgroundColor: details.color },
-                              isSelected && styles.sportIconCircleSelected
-                            ]}>
-                              <Text style={styles.sportEmojiText}>{details.emoji}</Text>
-                            </View>
-                            <Text style={[styles.sportLabelText, isSelected && styles.sportLabelTextSelected]}>
-                              {details.label}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })
-                    )}
-                  </ScrollView>
-
-                  {/* Bouton "Plus" fixe à droite (ne défile pas) */}
-                  <TouchableOpacity
-                    style={[styles.sportBadgeItem, styles.plusBadge]}
-                    onPress={() => {
-                      Haptics.selectionAsync();
-                      setShowSportsModal(true);
-                    }}
-                  >
-                    <View style={styles.sportIconCircleAdd}>
-                      <Ionicons name="add" size={20} color="#8E8E93" />
-                    </View>
-                    <Text style={styles.sportLabelText}>Plus</Text>
-                  </TouchableOpacity>
-                </View>
-              </Animated.View>
-
-              {/* Section Date */}
-              <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.section}>
-                <Text style={styles.sectionLabel}>DATE*</Text>
-                <TouchableOpacity 
-                  activeOpacity={0.8}
-                  style={styles.inputCardRow}
-                  onPress={handleDatePickerPress}
-                >
-                  <Ionicons name="calendar-outline" size={18} color="#8E8E93" style={styles.cardIcon} />
-                  <Text style={styles.cardValueText}>{formatDateLabel(date)}</Text>
-                  <Ionicons name="chevron-forward" size={16} color="#CCCCCC" />
-                </TouchableOpacity>
-              </Animated.View>
-
-              {/* Section Heure */}
-              <Animated.View entering={FadeInDown.delay(150).springify()} style={styles.section}>
-                <Text style={styles.sectionLabel}>HEURE*</Text>
-                <TouchableOpacity 
-                  activeOpacity={0.8}
-                  style={styles.inputCardRow}
-                  onPress={handleTimePickerPress}
-                >
-                  <Ionicons name="time-outline" size={18} color="#8E8E93" style={styles.cardIcon} />
-                  <View style={styles.timeDisplayBlock}>
-                    <Text style={styles.timeValueText}>{formatTimeLabel(startTime)}</Text>
-                    <Ionicons name="arrow-forward-outline" size={14} color="#8E8E93" style={{ marginHorizontal: 12 }} />
-                    <Text style={styles.timeValueText}>{formatTimeLabel(endTime)}</Text>
-                  </View>
-                </TouchableOpacity>
-              </Animated.View>
-
-              {/* Section Joueurs Max (Illimité par défaut) */}
-              <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.section}>
-                <Text style={styles.sectionLabel}>JOUEURS MAX</Text>
-                <View style={styles.inputCardRow}>
-                  <Ionicons name="people-outline" size={18} color="#8E8E93" style={styles.cardIcon} />
-                  <View style={styles.stepperContainer}>
-                    <TouchableOpacity 
-                      onPress={decrementMax}
-                      style={[styles.stepperButton, maxParticipants === null && styles.stepperButtonDisabled]}
-                      disabled={maxParticipants === null}
-                    >
-                      <Ionicons name="remove" size={16} color={maxParticipants === null ? '#CCCCCC' : '#000'} />
-                    </TouchableOpacity>
-                    <Text style={[styles.stepperValueText, maxParticipants === null && styles.stepperValueTextUncapped]}>
-                      {maxParticipants === null ? 'Session ouverte (illimité)' : `${maxParticipants} joueur${maxParticipants > 1 ? 's' : ''}`}
-                    </Text>
-                    <TouchableOpacity 
-                      onPress={incrementMax}
-                      style={styles.stepperButton}
-                    >
-                      <Ionicons name="add" size={16} color="#000" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </Animated.View>
-
-              {/* Section Prix par joueur */}
-              <Animated.View entering={FadeInDown.delay(250).springify()} style={styles.section}>
-                <Text style={styles.sectionLabel}>PRIX PAR JOUEUR</Text>
-                <View style={styles.inputCardRow}>
-                  <Ionicons name="pricetag-outline" size={18} color="#8E8E93" style={styles.cardIcon} />
-                  <TextInput
-                    style={styles.textInputRow}
-                    placeholder="Optionnel"
-                    placeholderTextColor="#CCCCCC"
-                    value={pricePerPerson}
-                    onChangeText={setPricePerPerson}
-                    keyboardType="numeric"
-                    onFocus={() => {
-                      setTimeout(() => {
-                        formScrollViewRef.current?.scrollToEnd({ animated: true });
-                      }, 100);
-                    }}
-                  />
-                  <Text style={styles.currencySuffixText}>€</Text>
-                </View>
-              </Animated.View>
-
-              {/* Section Lieu */}
-              <Animated.View entering={FadeInDown.delay(300).springify()} style={styles.section}>
-                <Text style={styles.sectionLabel}>LIEU*</Text>
-                <View style={[styles.inputCardRow, fieldErrors.location && styles.inputCardRowError]}>
-                  <Ionicons name="location-outline" size={18} color="#8E8E93" style={styles.cardIcon} />
-                  <TextInput
-                    style={styles.textInputRow}
-                    placeholder="Entrer le lieu..."
-                    placeholderTextColor="#CCCCCC"
-                    value={location}
-                    onChangeText={handleLocationChange}
-                    onFocus={() => {
-                      setTimeout(() => {
-                        formScrollViewRef.current?.scrollToEnd({ animated: true });
-                      }, 100);
-                    }}
-                  />
-                </View>
-              </Animated.View>
-            </View>
-
-            {/* Bouton CONTINUER intégré */}
-            <View style={styles.formFooterWrapper}>
-              <TouchableOpacity
-                activeOpacity={0.8}
-                style={[styles.primaryActionBtn, isCreating && styles.btnDisabled]}
-                onPress={handleCreateSession}
-                disabled={isCreating}
-              >
-                <Text style={styles.primaryActionBtnText}>
-                  {isCreating ? 'CREATION...' : 'CONTINUER →'}
-                </Text>
-              </TouchableOpacity>
-            </View>
+          {/* Header */}
+          <View style={[styles.header, Platform.OS === 'android' && { paddingTop: Math.max(insets.top, 16) }]}>
+            <TouchableOpacity
+              onPress={() => (isScheduleStep ? setStep('details') : router.back())}
+              style={styles.closeHeaderBtn}
+            >
+              <Ionicons name={isScheduleStep ? 'chevron-back' : 'close'} size={24} color="#000" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>{isScheduleStep ? 'DATE ET HEURE' : 'NOUVELLE SESSION'}</Text>
+            <View style={{ width: 36 }} />
           </View>
-        </ScrollView>
-      </View>
-    </KeyboardAvoidingView>
+
+          <ScrollView
+            ref={formScrollViewRef}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
+            <View style={styles.formContentInner}>
+              <View>
+                {isScheduleStep ? (
+                  renderScheduleSections()
+                ) : (
+                  <>
+                    {renderSportSection()}
+                    {renderWhenChoice()}
+                    {renderDetailsSections()}
+                  </>
+                )}
+              </View>
+
+              <View style={styles.formFooterWrapper}>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={[styles.primaryActionBtn, isCreating && styles.btnDisabled]}
+                  onPress={isScheduleStep ? handleCreateSession : handleContinue}
+                  disabled={isCreating}
+                >
+                  <Text style={styles.primaryActionBtnText}>{ctaLabel}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
     );
   };
 
@@ -1000,6 +1084,42 @@ const styles = StyleSheet.create({
   inputCardRowError: {
     borderColor: '#FF3B30',
     borderWidth: 1.5,
+  },
+
+  // Choix "Quand ?" : date connue / créneau à trouver avec les joueurs
+  whenChoiceRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  whenChoice: {
+    flex: 1,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#EFEFEF',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    gap: 8,
+  },
+  whenChoiceSelected: {
+    borderWidth: 2,
+    borderColor: BrandColors.success,
+    backgroundColor: '#F6FBEE',
+  },
+  whenChoiceText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#8E8E93',
+  },
+  whenChoiceTextSelected: {
+    color: '#000',
+    fontWeight: '700',
+  },
+  whenChoiceHint: {
+    marginTop: 10,
+    fontSize: 13,
+    color: '#8E8E93',
+    fontWeight: '500',
   },
   cardValueText: {
     flex: 1,
