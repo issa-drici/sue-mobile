@@ -21,6 +21,7 @@ import {
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { SlotPicker } from '../components/organisms/SlotPicker';
 import { MainScreenLayout } from '../components/ui/ScreenLayout';
 import { BrandColors } from '../constants/Colors';
 import { useCreateSession } from '../services';
@@ -109,7 +110,13 @@ export default function CreateSessionScreen() {
   // Choix "Quand ?" fait à l'étape 1 : il décide de l'étape suivante (date et
   // heure, ou recherche de créneau avec les joueurs).
   const [whenMode, setWhenMode] = useState<WhenMode>('known-date');
-  const [step, setStep] = useState<'details' | 'schedule'>('details');
+  const [step, setStep] = useState<'details' | 'schedule' | 'slots'>('details');
+
+  // Créneaux proposés par l'organisateur (mode "Trouver un créneau"), clés "YYYY-MM-DD|HH:mm"
+  const [slotDurationMinutes, setSlotDurationMinutes] = useState(60);
+  const [proposedSlots, setProposedSlots] = useState<string[]>([]);
+  const toggleProposedSlot = (key: string) =>
+    setProposedSlots((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
 
   // Modals et sélecteurs
   const [showSportsModal, setShowSportsModal] = useState(false);
@@ -280,12 +287,14 @@ export default function CreateSessionScreen() {
   const handleContinue = () => {
     if (!validateRequiredFields()) return;
     Haptics.selectionAsync();
-    if (whenMode === 'known-date') {
-      setStep('schedule');
-      return;
-    }
-    // TODO(find-time-slot) : naviguer vers l'écran de définition des créneaux (US-002)
-    Alert.alert('Prochaine étape', "L'écran de choix des créneaux arrive à la prochaine itération.");
+    setStep(whenMode === 'known-date' ? 'schedule' : 'slots');
+  };
+
+  const handleSlotsContinue = () => {
+    if (proposedSlots.length === 0) return;
+    Haptics.selectionAsync();
+    // TODO(find-time-slot) : créer la session "à organiser" et inviter (US-003)
+    Alert.alert('Prochaine étape', "L'invitation des joueurs arrive à la prochaine itération.");
   };
 
   // Validation et envoi
@@ -540,9 +549,17 @@ export default function CreateSessionScreen() {
 
   const renderForm = () => {
     const isScheduleStep = step === 'schedule';
+    const isSlotsStep = step === 'slots';
+    const isDetailsStep = step === 'details';
+
+    const headerTitle = isScheduleStep ? 'DATE ET HEURE' : isSlotsStep ? 'CRÉNEAUX POSSIBLES' : 'NOUVELLE SESSION';
     const ctaLabel = isScheduleStep
       ? (isCreating ? 'CRÉATION...' : 'CRÉER LA SESSION')
-      : (whenMode === 'known-date' ? 'CONTINUER →' : 'CHOISIR LES CRÉNEAUX →');
+      : isSlotsStep
+        ? 'CONTINUER →'
+        : (whenMode === 'known-date' ? 'CONTINUER →' : 'CHOISIR LES CRÉNEAUX →');
+    const onCtaPress = isScheduleStep ? handleCreateSession : isSlotsStep ? handleSlotsContinue : handleContinue;
+    const isCtaDisabled = isCreating || (isSlotsStep && proposedSlots.length === 0);
 
     return (
       <KeyboardAvoidingView
@@ -554,12 +571,12 @@ export default function CreateSessionScreen() {
           {/* Header */}
           <View style={[styles.header, Platform.OS === 'android' && { paddingTop: Math.max(insets.top, 16) }]}>
             <TouchableOpacity
-              onPress={() => (isScheduleStep ? setStep('details') : router.back())}
+              onPress={() => (isDetailsStep ? router.back() : setStep('details'))}
               style={styles.closeHeaderBtn}
             >
-              <Ionicons name={isScheduleStep ? 'chevron-back' : 'close'} size={24} color="#000" />
+              <Ionicons name={isDetailsStep ? 'close' : 'chevron-back'} size={24} color="#000" />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>{isScheduleStep ? 'DATE ET HEURE' : 'NOUVELLE SESSION'}</Text>
+            <Text style={styles.headerTitle}>{headerTitle}</Text>
             <View style={{ width: 36 }} />
           </View>
 
@@ -568,12 +585,20 @@ export default function CreateSessionScreen() {
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
             bounces={false}
+            keyboardShouldPersistTaps="handled"
           >
             <View style={styles.formContentInner}>
               <View>
-                {isScheduleStep ? (
-                  renderScheduleSections()
-                ) : (
+                {isScheduleStep && renderScheduleSections()}
+                {isSlotsStep && (
+                  <SlotPicker
+                    durationMinutes={slotDurationMinutes}
+                    onDurationChange={setSlotDurationMinutes}
+                    selectedSlots={proposedSlots}
+                    onToggleSlot={toggleProposedSlot}
+                  />
+                )}
+                {isDetailsStep && (
                   <>
                     {renderSportSection()}
                     {renderWhenChoice()}
@@ -583,11 +608,18 @@ export default function CreateSessionScreen() {
               </View>
 
               <View style={styles.formFooterWrapper}>
+                {isSlotsStep && (
+                  <Text style={styles.slotsCounter}>
+                    {proposedSlots.length === 0
+                      ? 'Coche au moins un créneau'
+                      : `${proposedSlots.length} créneau${proposedSlots.length > 1 ? 'x' : ''} sélectionné${proposedSlots.length > 1 ? 's' : ''}`}
+                  </Text>
+                )}
                 <TouchableOpacity
                   activeOpacity={0.8}
-                  style={[styles.primaryActionBtn, isCreating && styles.btnDisabled]}
-                  onPress={isScheduleStep ? handleCreateSession : handleContinue}
-                  disabled={isCreating}
+                  style={[styles.primaryActionBtn, isCtaDisabled && styles.btnDisabled]}
+                  onPress={onCtaPress}
+                  disabled={isCtaDisabled}
                 >
                   <Text style={styles.primaryActionBtnText}>{ctaLabel}</Text>
                 </TouchableOpacity>
@@ -1114,6 +1146,13 @@ const styles = StyleSheet.create({
   whenChoiceTextSelected: {
     color: '#000',
     fontWeight: '700',
+  },
+  slotsCounter: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#8E8E93',
+    textAlign: 'center',
+    marginBottom: 10,
   },
   whenChoiceHint: {
     marginTop: 10,
