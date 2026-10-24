@@ -14,6 +14,7 @@ import {
   View
 } from 'react-native';
 import { SportIcon, hasSportImage } from '../../components/atoms/SportIcon';
+import { SportSurface, hasSportSurface } from '../../components/atoms/SportSurface';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getSportTint } from '../../constants/sportTints';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -235,6 +236,7 @@ export default function HomeScreen() {
           onPress={() => handleSessionPress(item.id)}
           style={[styles.upcomingCard, pending && styles.upcomingCardPending]}
         >
+          <SportSurface sport={item.sport} textWidth={0.5} />
           {pending && (
             <View style={styles.pendingBadge}>
               <Ionicons name="mail-unread-outline" size={11} color="#000" />
@@ -266,7 +268,7 @@ export default function HomeScreen() {
             </View>
             
             {/* Section droite (Avatars, Statut et Ratio) */}
-            <View style={styles.upcomingRightColumn}>
+            <View style={[styles.upcomingRightColumn, hasSportSurface(item.sport) && styles.onSurfacePill]}>
               {/* Ratio et Chevron */}
               <View style={styles.upcomingRatioAndArrow}>
                 <Text style={styles.upcomingRatioText}>
@@ -319,6 +321,7 @@ export default function HomeScreen() {
         onPress={() => handleSessionPress(item.id)}
         style={[styles.upcomingCard, styles.toOrganizeCard, needsMyAnswer && styles.upcomingCardPending]}
       >
+        <SportSurface sport={item.sport} textWidth={0.5} />
         {hasNewSlot && (
           <View style={styles.pendingBadge}>
             <Ionicons name="sparkles-outline" size={11} color="#000" />
@@ -352,7 +355,7 @@ export default function HomeScreen() {
               <Text style={styles.toOrganizeAnswerText}>Répondre</Text>
             </View>
           ) : (
-            <View style={styles.upcomingRatioAndArrow}>
+            <View style={[styles.upcomingRatioAndArrow, hasSportSurface(item.sport) && styles.onSurfacePill]}>
               <Text style={styles.toOrganizeStatusText}>
                 {isMine
                   ? `${respondedCount}/${invitees.length} réponse${respondedCount > 1 ? 's' : ''}`
@@ -398,18 +401,20 @@ export default function HomeScreen() {
 
         {/* Carte Prochaine Session */}
         <View style={[styles.nextSessionCard, pending && styles.nextSessionCardPending]}>
-          {hasImage && (
-            <>
+          {hasSportSurface(nextSession.sport) ? (
+            <SportSurface sport={nextSession.sport} textWidth={0.35} borderRadius={19} />
+          ) : hasImage && (
               <LinearGradient
                 colors={[getSportTint(nextSession.sport), '#FFFFFF']}
                 start={{ x: 1, y: 0 }}
                 end={{ x: 0.25, y: 0.85 }}
                 style={[StyleSheet.absoluteFill, styles.nextSessionGradient]}
               />
+          )}
+          {hasImage && (
               <View style={styles.nextSessionHeroIcon} pointerEvents="none">
                 <SportIcon sport={nextSession.sport} size={116} />
               </View>
-            </>
           )}
           {pending && (
             <View style={[styles.pendingBadge, { marginBottom: 12 }]}>
@@ -472,7 +477,7 @@ export default function HomeScreen() {
               )}
             </View>
             
-            <View style={styles.completenessStatusRow}>
+            <View style={[styles.completenessStatusRow, hasSportSurface(nextSession.sport) && styles.onSurfacePill]}>
               {maxParticipants ? (
                 isFull ? (
                   <>
@@ -955,10 +960,18 @@ const styles = StyleSheet.create({
   },
   upcomingCard: {
     backgroundColor: '#FFF',
+    overflow: 'hidden',
     borderRadius: 16,
     padding: 12,
     borderWidth: 1,
     borderColor: '#F5F5F5',
+  },
+  // Texte posé sur le terrain : pastille blanche pour rester lisible
+  onSurfacePill: {
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
   toOrganizeSection: {
     marginBottom: 8,
