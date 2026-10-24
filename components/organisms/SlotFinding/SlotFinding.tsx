@@ -51,6 +51,8 @@ export function SlotAvailabilityCard({ session, userId, isSending, onSend }: Slo
   const slots = useMemo(() => session.slotProposals ?? [], [session.slotProposals]);
   const me = session.participants.find((p) => p.id === userId);
   const hasResponded = !!me?.hasGivenAvailability;
+  // Un créneau a été ajouté après sa réponse : il doit pouvoir revalider même sans rien changer
+  const hasNewSlots = !!me?.hasNewSlots;
 
   const savedSlotIds = useMemo(
     () => slots.filter((s) => s.availableUserIds?.includes(userId)).map(slotKey),
@@ -81,6 +83,13 @@ export function SlotAvailabilityCard({ session, userId, isSending, onSend }: Slo
         Coche tous les créneaux qui te vont. Si l'un d'eux est retenu, tu es inscrit automatiquement.
       </Text>
 
+      {hasNewSlots ? (
+        <View style={styles.newSlotBanner}>
+          <Ionicons name="sparkles-outline" size={16} color="#000" />
+          <Text style={styles.newSlotBannerText}>Nouveau créneau proposé : coche-le si tu es dispo.</Text>
+        </View>
+      ) : null}
+
       <View style={styles.slotList}>
         {slots.map((slot) => {
           const id = slotKey(slot);
@@ -106,7 +115,7 @@ export function SlotAvailabilityCard({ session, userId, isSending, onSend }: Slo
         })}
       </View>
 
-      {statusLine && !isDirty ? (
+      {statusLine && !isDirty && !hasNewSlots ? (
         <View style={styles.statusRow}>
           <Ionicons name="checkmark-circle" size={16} color={BrandColors.darkPink} />
           <Text style={styles.statusText}>{statusLine}</Text>
@@ -115,8 +124,8 @@ export function SlotAvailabilityCard({ session, userId, isSending, onSend }: Slo
 
       <TouchableOpacity
         activeOpacity={0.8}
-        style={[styles.primaryButton, (selected.length === 0 || isSending || (hasResponded && !isDirty)) && styles.buttonDisabled]}
-        disabled={selected.length === 0 || isSending || (hasResponded && !isDirty)}
+        style={[styles.primaryButton, (selected.length === 0 || isSending || (hasResponded && !isDirty && !hasNewSlots)) && styles.buttonDisabled]}
+        disabled={selected.length === 0 || isSending || (hasResponded && !isDirty && !hasNewSlots)}
         onPress={() => onSend(selected)}
       >
         {isSending ? (
@@ -151,13 +160,15 @@ interface SlotConfirmCardProps {
   isConfirming: boolean;
   onConfirm: (slot: SlotProposal) => void;
   onInvite: () => void;
+  onEditSlots: () => void;
 }
 
-export function SlotConfirmCard({ session, isConfirming, onConfirm, onInvite }: SlotConfirmCardProps) {
+export function SlotConfirmCard({ session, isConfirming, onConfirm, onInvite, onEditSlots }: SlotConfirmCardProps) {
   const organizerId = session.organizer.id;
   const invitees = session.participants.filter((p) => p.id !== organizerId && p.status !== 'declined');
-  const responded = invitees.filter((p) => p.hasGivenAvailability);
-  const waiting = invitees.filter((p) => !p.hasGivenAvailability);
+  // Un invité qui a répondu avant l'ajout d'un créneau n'a pas encore donné son avis dessus
+  const responded = invitees.filter((p) => p.hasGivenAvailability && !p.hasNewSlots);
+  const waiting = invitees.filter((p) => !p.hasGivenAvailability || p.hasNewSlots);
 
   // Plus de disponibles d'abord ; à égalité, le plus tôt
   const rankedSlots = useMemo(
@@ -179,7 +190,9 @@ export function SlotConfirmCard({ session, isConfirming, onConfirm, onInvite }: 
     <View style={styles.card}>
       <Text style={styles.title}>Disponibilités</Text>
       <Text style={styles.subtitle}>
-        {invitees.length === 0
+        {rankedSlots.length === 0
+          ? "Aucun créneau à venir : les créneaux proposés sont passés. Ajoutes-en de nouveaux."
+          : invitees.length === 0
           ? 'Invite des joueurs pour récolter leurs disponibilités.'
           : `${responded.length}/${invitees.length} ${responded.length > 1 ? 'ont' : 'a'} répondu · pas besoin d'attendre tout le monde`}
       </Text>
@@ -227,7 +240,11 @@ export function SlotConfirmCard({ session, isConfirming, onConfirm, onInvite }: 
         </Text>
       ) : null}
 
-      {invitees.length === 0 ? (
+      {rankedSlots.length === 0 ? (
+        <TouchableOpacity activeOpacity={0.8} style={styles.primaryButton} onPress={onEditSlots}>
+          <Text style={styles.primaryButtonText}>Ajouter des créneaux</Text>
+        </TouchableOpacity>
+      ) : invitees.length === 0 ? (
         <TouchableOpacity activeOpacity={0.8} style={styles.primaryButton} onPress={onInvite}>
           <Text style={styles.primaryButtonText}>Inviter des joueurs</Text>
         </TouchableOpacity>
@@ -243,6 +260,12 @@ export function SlotConfirmCard({ session, isConfirming, onConfirm, onInvite }: 
           ) : (
             <Text style={styles.primaryButtonText}>Confirmer {formatSlotShort(chosenSlot)}</Text>
           )}
+        </TouchableOpacity>
+      ) : null}
+
+      {rankedSlots.length > 0 ? (
+        <TouchableOpacity activeOpacity={0.7} style={styles.secondaryButton} onPress={onEditSlots}>
+          <Text style={styles.secondaryButtonText}>Modifier les créneaux</Text>
         </TouchableOpacity>
       ) : null}
     </View>
@@ -335,6 +358,22 @@ const styles = StyleSheet.create({
     color: '#8E8E93',
     fontWeight: '500',
     marginBottom: 12,
+  },
+  newSlotBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: BrandColors.primary,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 12,
+  },
+  newSlotBannerText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#000',
   },
   statusRow: {
     flexDirection: 'row',

@@ -110,9 +110,13 @@ export default function HomeScreen() {
   };
 
   // "Trouver un créneau" : sessions dont la date n'est pas encore fixée (section "À ORGANISER")
+  // Sans créneau à venir, seule l'organisateur la voit encore (pour en ajouter)
   const sessionsToOrganize = React.useMemo(
-    () => (sessions || []).filter(s => s.scheduling === 'finding_slot' && s.status !== 'cancelled'),
-    [sessions]
+    () => (sessions || []).filter(s =>
+      s.scheduling === 'finding_slot' && s.status !== 'cancelled'
+      && ((s.slotProposals?.length ?? 0) > 0 || s.organizer?.id === user?.id)
+    ),
+    [sessions, user]
   );
 
   // Tri des sessions réelles de l'API (hors sessions à organiser)
@@ -295,9 +299,10 @@ export default function HomeScreen() {
     const sportConfig = getSportConfig(item.sport);
     const isMine = item.organizer?.id === user?.id;
     const invitees = item.participants.filter(p => p.id !== item.organizer?.id && p.status !== 'declined');
-    const respondedCount = invitees.filter(p => p.hasGivenAvailability).length;
+    const respondedCount = invitees.filter(p => p.hasGivenAvailability && !p.hasNewSlots).length;
     const me = item.participants.find(p => p.id === user?.id);
-    const needsMyAnswer = !isMine && !!me && me.status !== 'declined' && !me.hasGivenAvailability;
+    const hasNewSlot = !isMine && !!me?.hasNewSlots;
+    const needsMyAnswer = !isMine && !!me && me.status !== 'declined' && (!me.hasGivenAvailability || hasNewSlot);
     const slotsCount = item.slotProposals?.length ?? 0;
 
     return (
@@ -307,6 +312,12 @@ export default function HomeScreen() {
         onPress={() => handleSessionPress(item.id)}
         style={[styles.upcomingCard, styles.toOrganizeCard, needsMyAnswer && styles.upcomingCardPending]}
       >
+        {hasNewSlot && (
+          <View style={styles.pendingBadge}>
+            <Ionicons name="sparkles-outline" size={11} color="#000" />
+            <Text style={styles.pendingBadgeText}>Nouveau créneau</Text>
+          </View>
+        )}
         <View style={styles.upcomingRow}>
           <View style={[styles.sportIconCircleSmall, { backgroundColor: sportConfig.color }]}>
             <Ionicons name={sportConfig.icon as any} size={15} color="#FFF" />
@@ -316,7 +327,9 @@ export default function HomeScreen() {
               {item.sport.charAt(0).toUpperCase() + item.sport.slice(1)}
             </Text>
             <Text style={styles.upcomingDateText}>
-              Créneau à définir · {slotsCount} proposé{slotsCount > 1 ? 's' : ''}
+              {slotsCount === 0
+                ? 'Aucun créneau à venir'
+                : `Créneau à définir · ${slotsCount} proposé${slotsCount > 1 ? 's' : ''}`}
             </Text>
             <View style={styles.upcomingLocationRow}>
               <Ionicons name="location-sharp" size={11} color="#999" />

@@ -597,6 +597,10 @@ export class PushNotificationService {
         case 'session_organizer_changed':
         case 'slot_availability': // Trouver un créneau : un invité a répondu
         case 'slot_confirmed': // Trouver un créneau : créneau confirmé
+        case 'slot_added':
+        case 'slot_removed':
+        case 'slot_reminder':
+        case 'slot_expired':
         case 'reminder':
           if (sessionId) {
             router.navigate(`/session/${sessionId}`);

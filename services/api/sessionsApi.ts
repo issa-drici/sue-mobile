@@ -221,6 +221,15 @@ export class SessionsApi {
     return response.data;
   }
 
+  // Trouver un créneau : l'organisateur remplace la liste des créneaux (id pour un existant, sans id pour un nouveau)
+  static async updateSlots(
+    sessionId: string,
+    slots: { id?: string; date: string; startTime: string; endTime: string }[]
+  ): Promise<Session> {
+    const response = await baseApiService.put<LaravelResponse<Session>>(SESSIONS_ENDPOINTS.SLOTS(sessionId), { slots });
+    return response.data;
+  }
+
   // Changer l'organisateur
   static async changeOrganizer(sessionId: string, newOrganizerId: string): Promise<Session> {
     const response = await baseApiService.patch<LaravelResponse<Session>>(

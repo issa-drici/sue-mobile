@@ -43,6 +43,7 @@ export const SESSIONS_ENDPOINTS = {
   // Trouver un créneau
   SLOT_AVAILABILITY: (sessionId: string) => `/sessions/${sessionId}/availability`,
   CONFIRM_SLOT: (sessionId: string) => `/sessions/${sessionId}/confirm-slot`,
+  SLOTS: (sessionId: string) => `/sessions/${sessionId}/slots`,
 } as const;
 
 // Endpoints de partage / Universal Links (/join/{token})

@@ -122,6 +122,7 @@ export interface SportSession {
     status: SessionStatus;
     avatar?: string | null;
     hasGivenAvailability?: boolean; // "Trouver un créneau" : a répondu (même "aucun créneau")
+    hasNewSlots?: boolean; // a répondu avant l'ajout d'un nouveau créneau
   }[];
   comments: {
     id: string;

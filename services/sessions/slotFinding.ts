@@ -26,5 +26,11 @@ export function useSlotFinding() {
     [run]
   );
 
-  return { isLoading, setAvailability, confirmSlot };
+  const updateSlots = useCallback(
+    (sessionId: string, slots: { id?: string; date: string; startTime: string; endTime: string }[]) =>
+      run(() => SessionsApi.updateSlots(sessionId, slots)),
+    [run]
+  );
+
+  return { isLoading, setAvailability, confirmSlot, updateSlots };
 }

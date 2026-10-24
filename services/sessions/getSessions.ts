@@ -32,6 +32,7 @@ function convertToSportSession(session: any): SportSession {
       lastname: participantNames.lastname,
       status: participant.status || 'pending',
       hasGivenAvailability: !!participant.hasGivenAvailability,
+      hasNewSlots: !!participant.hasNewSlots,
       avatar: formatAvatarUrl(participant.avatar || participant.avatarUrl) || null,
     };
   });

@@ -48,6 +48,7 @@ import {
   useSlotFinding
 } from '../../services';
 import { SlotAvailabilityCard, SlotConfirmCard, formatSlotDay } from '../../components/organisms/SlotFinding';
+import { ProposedSlot, SlotPicker, slotEndTime } from '../../components/organisms/SlotPicker';
 import { SlotProposal } from '../../types/sport';
 import { contactsService, NormalizedContact } from '../../services/friends/contactsService';
 import { pushNotificationService } from '../../services/notifications/pushNotifications';
@@ -113,7 +114,10 @@ export default function SessionDetailsScreen() {
   const { data: friends, isLoading: isLoadingFriends } = useGetFriends();
   const { inviteFriends } = useInviteFriends();
   const { respondToInvitation, isLoading: isResponding } = useRespondToInvitation();
-  const { setAvailability, confirmSlot, isLoading: isSlotActionLoading } = useSlotFinding();
+  const { setAvailability, confirmSlot, updateSlots, isLoading: isSlotActionLoading } = useSlotFinding();
+  // Modification des créneaux par l'organisateur (même écran qu'à la création)
+  const [isSlotsEditorVisible, setIsSlotsEditorVisible] = useState(false);
+  const [editedSlots, setEditedSlots] = useState<ProposedSlot[]>([]);
   const { cancelParticipation, isLoading: isCancelling } = useCancelParticipation();
   const { cancelSession } = useCancelSession();
 
@@ -333,7 +337,8 @@ export default function SessionDetailsScreen() {
   const missingCount = maxParticipants ? maxParticipants - acceptedParticipants.length : 0;
   // "Trouver un créneau" : la date n'est pas encore fixée, on affiche les créneaux proposés
   const isFindingSlot = session?.scheduling === 'finding_slot';
-  const canGiveAvailability = isFindingSlot && !isOrganizer && isParticipant && !isFromHistory && session?.status !== 'cancelled';
+  const canGiveAvailability = isFindingSlot && !isOrganizer && isParticipant && !isFromHistory && session?.status !== 'cancelled'
+    && (session?.slotProposals?.length ?? 0) > 0;
   const canConfirmSlot = isFindingSlot && isOrganizer && !isFromHistory && session?.status !== 'cancelled';
 
   const handleSendAvailability = async (slotIds: string[]) => {
@@ -348,6 +353,45 @@ export default function SessionDetailsScreen() {
       }
     } catch (error) {
       Alert.alert('Erreur', error instanceof Error ? error.message : "Impossible d'envoyer tes disponibilités");
+    }
+  };
+
+  const toMinutes = (time: string) => {
+    const [h, m] = time.split(':').map(Number);
+    return h * 60 + m;
+  };
+
+  const openSlotsEditor = () => {
+    Haptics.selectionAsync();
+    setEditedSlots(
+      (session?.slotProposals ?? []).map((slot) => ({
+        id: slot.id ?? `${slot.date}|${slot.startTime}`,
+        date: slot.date,
+        startTime: slot.startTime,
+        durationMinutes: toMinutes(slot.endTime) - toMinutes(slot.startTime),
+      }))
+    );
+    setIsSlotsEditorVisible(true);
+  };
+
+  const handleSaveSlots = async () => {
+    // Seuls les créneaux déjà en base gardent leur id ; les nouveaux (id local du SlotPicker) partent sans
+    const existingIds = new Set((session?.slotProposals ?? []).map((slot) => slot.id));
+    try {
+      await updateSlots(
+        sessionId,
+        editedSlots.map((slot) => ({
+          ...(existingIds.has(slot.id) && { id: slot.id }),
+          date: slot.date,
+          startTime: slot.startTime,
+          endTime: slotEndTime(slot),
+        }))
+      );
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setIsSlotsEditorVisible(false);
+      getSessionById(sessionId, false);
+    } catch (error) {
+      Alert.alert('Erreur', error instanceof Error ? error.message : 'Impossible de modifier les créneaux');
     }
   };
 
@@ -806,7 +850,9 @@ export default function SessionDetailsScreen() {
               <View style={styles.detailRow}>
                 <Ionicons name="calendar-outline" size={16} color="#000" style={styles.detailIcon} />
                 <Text style={styles.slotsToDefineTitle}>
-                  Créneau à définir · {session.slotProposals?.length ?? 0} proposé{(session.slotProposals?.length ?? 0) > 1 ? 's' : ''}
+                  {(session.slotProposals?.length ?? 0) === 0
+                    ? 'Créneau à définir · aucun créneau à venir'
+                    : `Créneau à définir · ${session.slotProposals?.length} proposé${(session.slotProposals?.length ?? 0) > 1 ? 's' : ''}`}
                 </Text>
               </View>
             ) : (
@@ -853,6 +899,7 @@ export default function SessionDetailsScreen() {
                 isConfirming={isSlotActionLoading}
                 onConfirm={handleConfirmSlot}
                 onInvite={() => setIsInviteModalVisible(true)}
+                onEditSlots={openSlotsEditor}
               />
             </Animated.View>
           ) : null}
@@ -1384,6 +1431,37 @@ export default function SessionDetailsScreen() {
         }}
       />
 
+      {/* Modification des créneaux proposés (organisateur, "Trouver un créneau") */}
+      <Modal
+        visible={isSlotsEditorVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setIsSlotsEditorVisible(false)}
+      >
+        <View style={styles.slotsEditorContainer}>
+          <View style={styles.slotsEditorHeader}>
+            <TouchableOpacity onPress={() => setIsSlotsEditorVisible(false)} style={styles.slotsEditorClose}>
+              <Ionicons name="close" size={24} color="#000" />
+            </TouchableOpacity>
+            <Text style={styles.slotsEditorTitle}>CRÉNEAUX POSSIBLES</Text>
+            <View style={{ width: 36 }} />
+          </View>
+          <ScrollView contentContainerStyle={styles.slotsEditorContent} keyboardShouldPersistTaps="handled">
+            <SlotPicker slots={editedSlots} onChange={setEditedSlots} />
+          </ScrollView>
+          <View style={[styles.slotsEditorFooter, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={[styles.slotsEditorSave, (editedSlots.length === 0 || isSlotActionLoading) && { opacity: 0.5 }]}
+              disabled={editedSlots.length === 0 || isSlotActionLoading}
+              onPress={handleSaveSlots}
+            >
+              <Text style={styles.slotsEditorSaveText}>{isSlotActionLoading ? 'ENREGISTREMENT...' : 'ENREGISTRER'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <NotificationPermissionSheet
         visible={showNotifSheet}
         variant={notifSheetVariant}
@@ -1519,6 +1597,52 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#555',
     fontWeight: '500',
+  },
+  slotsEditorContainer: {
+    flex: 1,
+    backgroundColor: '#FAFAFA',
+  },
+  slotsEditorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  slotsEditorClose: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  slotsEditorTitle: {
+    fontSize: 16,
+    fontFamily: 'Outfit-Bold',
+    fontWeight: '800',
+    color: '#000',
+    letterSpacing: 0.5,
+  },
+  slotsEditorContent: {
+    paddingTop: 8,
+    paddingBottom: 20,
+  },
+  slotsEditorFooter: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+  },
+  slotsEditorSave: {
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: BrandColors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  slotsEditorSaveText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#000',
+    letterSpacing: 0.5,
   },
   slotsToDefineTitle: {
     fontSize: 15,

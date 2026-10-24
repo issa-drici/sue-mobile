@@ -33,6 +33,7 @@ function convertToSportSession(session: any): SportSession {
       status: participant.status || 'pending',
       avatar: formatAvatarUrl(participant.avatar || participant.avatarUrl) || null,
       hasGivenAvailability: !!participant.hasGivenAvailability,
+      hasNewSlots: !!participant.hasNewSlots,
     };
   });
   
