@@ -3,6 +3,7 @@ import { Image, ImageSourcePropType, StyleProp, View, ViewStyle } from 'react-na
 
 // Icônes 3D des sports (kit Sue). Un sport sans image garde son affichage actuel (children).
 const SPORT_IMAGES: Record<string, ImageSourcePropType> = {
+  'aïkido': require('../../../assets/images/sports/aikido.png'),
   badminton: require('../../../assets/images/sports/badminton.png'),
   baseball: require('../../../assets/images/sports/baseball.png'),
   basketball: require('../../../assets/images/sports/basketball.png'),
@@ -12,8 +13,12 @@ const SPORT_IMAGES: Record<string, ImageSourcePropType> = {
   golf: require('../../../assets/images/sports/golf.png'),
   handball: require('../../../assets/images/sports/handball.png'),
   hockey: require('../../../assets/images/sports/hockey.png'),
+  'jiu-jitsu-brésilien': require('../../../assets/images/sports/jiu-jitsu-bresilien.png'),
   judo: require('../../../assets/images/sports/judo.png'),
+  'karaté': require('../../../assets/images/sports/karate.png'),
+  musculation: require('../../../assets/images/sports/musculation.png'),
   padel: require('../../../assets/images/sports/padel.png'),
+  pilates: require('../../../assets/images/sports/pilates.png'),
   'ping-pong': require('../../../assets/images/sports/ping-pong.png'),
   'pétanque': require('../../../assets/images/sports/petanque.png'),
   rugby: require('../../../assets/images/sports/rugby.png'),
@@ -21,6 +26,7 @@ const SPORT_IMAGES: Record<string, ImageSourcePropType> = {
   tennis: require('../../../assets/images/sports/tennis.png'),
   'tir-à-l-arc': require('../../../assets/images/sports/tir-a-l-arc.png'),
   volleyball: require('../../../assets/images/sports/volleyball.png'),
+  yoga: require('../../../assets/images/sports/yoga.png'),
 };
 
 export const hasSportImage = (sport?: string | null) => !!sport && sport.toLowerCase() in SPORT_IMAGES;
