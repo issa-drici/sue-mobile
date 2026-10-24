@@ -250,7 +250,7 @@ export default function HomeScreen() {
           )}
           <View style={styles.upcomingRow}>
             {/* Icône du sport */}
-            <SportIcon sport={item.sport} size={34} containerStyle={[styles.sportIconTile, { backgroundColor: getSportTint(item.sport) }]}>
+            <SportIcon sport={item.sport} size={44} containerStyle={hasSportSurface(item.sport) ? styles.sportIconBare : [styles.sportIconTile, { backgroundColor: getSportTint(item.sport) }]}>
               <View style={[styles.sportIconCircleSmall, { backgroundColor: sportConfig.color }]}>
                 <Ionicons name={sportConfig.icon as any} size={15} color="#FFF" />
               </View>
@@ -335,7 +335,7 @@ export default function HomeScreen() {
           </View>
         )}
         <View style={styles.upcomingRow}>
-          <SportIcon sport={item.sport} size={34} containerStyle={[styles.sportIconTile, { backgroundColor: getSportTint(item.sport) }]}>
+          <SportIcon sport={item.sport} size={44} containerStyle={hasSportSurface(item.sport) ? styles.sportIconBare : [styles.sportIconTile, { backgroundColor: getSportTint(item.sport) }]}>
             <View style={[styles.sportIconCircleSmall, { backgroundColor: sportConfig.color }]}>
               <Ionicons name={sportConfig.icon as any} size={15} color="#FFF" />
             </View>
@@ -832,6 +832,13 @@ const styles = StyleSheet.create({
   },
   nextSessionGradient: {
     borderRadius: 20,
+  },
+  // Sur fond terrain : icône seule, sans tuile
+  sportIconBare: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   sportIconTile: {
     width: 44,
