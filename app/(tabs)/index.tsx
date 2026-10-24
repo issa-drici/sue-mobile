@@ -407,16 +407,16 @@ export default function HomeScreen() {
         <View style={[styles.nextSessionCard, pending && styles.nextSessionCardPending]}>
           {hasSportSurface(nextSession.sport) && <SportSurface sport={nextSession.sport} borderRadius={19} />}
           {/* Sans terrain : dégradé teinté + grand objet 3D. Avec terrain, le terrain suffit */}
-          {hasImage && !hasSportSurface(nextSession.sport) && (
+          {hasImage && (
             <>
-              {<LinearGradient
+              {!dark && <LinearGradient
                 colors={[getSportTint(nextSession.sport), '#FFFFFF']}
                 start={{ x: 1, y: 0 }}
                 end={{ x: 0.25, y: 0.85 }}
                 style={[StyleSheet.absoluteFill, styles.nextSessionGradient]}
               />}
-              <View style={styles.nextSessionHeroIcon} pointerEvents="none">
-                <SportIcon sport={nextSession.sport} size={116} />
+              <View style={dark ? styles.nextSessionIconInside : styles.nextSessionHeroIcon} pointerEvents="none">
+                <SportIcon sport={nextSession.sport} size={dark ? 76 : 116} />
               </View>
             </>
           )}
@@ -435,7 +435,7 @@ export default function HomeScreen() {
             )}
 
             {/* Détails textuels */}
-            <View style={[styles.nextSessionDetails, hasImage && (dark ? { marginLeft: 0 } : styles.nextSessionDetailsWithHero)]}>
+            <View style={[styles.nextSessionDetails, hasImage && (dark ? styles.nextSessionDetailsWithIcon : styles.nextSessionDetailsWithHero)]}>
               <Text style={[styles.nextSessionSportTitle, dark && styles.onDark]}>
                 {nextSession.sport.charAt(0).toUpperCase() + nextSession.sport.slice(1)}
               </Text>
@@ -795,6 +795,17 @@ const styles = StyleSheet.create({
   nextSessionDetailsWithHero: {
     marginLeft: 0,
     paddingRight: 96, // place laissée à l'objet 3D
+  },
+  // Carte avec terrain : objet 3D entier, posé dans le coin (pas coupé)
+  nextSessionIconInside: {
+    position: 'absolute',
+    top: 14,
+    right: 14,
+    zIndex: 1,
+  },
+  nextSessionDetailsWithIcon: {
+    marginLeft: 0,
+    paddingRight: 80,
   },
   nextSessionHeroIcon: {
     position: 'absolute',

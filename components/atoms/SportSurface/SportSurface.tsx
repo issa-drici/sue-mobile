@@ -4,8 +4,8 @@ import { Image, ImageSourcePropType, StyleSheet, View } from 'react-native';
 
 // Fond "terrain" des cartes de session : la surface où se pratique le sport (gazon, terre battue...).
 // Image à 100 %, assombrie par un dégradé côté texte (à gauche) : le texte passe en blanc,
-// les marquages qui font reconnaître le terrain restent nets à droite, et un léger assombrissement
-// sur le bord droit encadre la carte.
+// les marquages qui font reconnaître le terrain restent nets à droite, et les 10 derniers %
+// sont assombris pour que le texte aligné à droite ressorte.
 const SURFACES: Record<string, ImageSourcePropType> = {
   grass: require('../../../assets/images/surfaces/grass.webp'),
   clay: require('../../../assets/images/surfaces/clay.webp'),
@@ -51,8 +51,8 @@ export function SportSurface({ sport, borderRadius = 16 }: SportSurfaceProps) {
         />
       )}
       <LinearGradient
-        colors={['rgba(0,0,0,0.62)', 'rgba(0,0,0,0.38)', 'rgba(0,0,0,0.08)', 'rgba(0,0,0,0.22)']}
-        locations={[0, 0.45, 0.75, 1]}
+        colors={['rgba(0,0,0,0.62)', 'rgba(0,0,0,0.38)', 'rgba(0,0,0,0.1)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.5)']}
+        locations={[0, 0.45, 0.72, 0.9, 1]}
         start={{ x: 0, y: 0.5 }}
         end={{ x: 1, y: 0.5 }}
         style={StyleSheet.absoluteFill}
