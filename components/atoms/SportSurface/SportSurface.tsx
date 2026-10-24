@@ -17,6 +17,8 @@ const SURFACES: Record<string, ImageSourcePropType> = {
   ring: require('../../../assets/images/surfaces/ring.webp'),
   'athletics-track': require('../../../assets/images/surfaces/athletics-track.webp'),
   trail: require('../../../assets/images/surfaces/trail.webp'),
+  'golf-green': require('../../../assets/images/surfaces/golf-green.webp'),
+  'rugby-pitch': require('../../../assets/images/surfaces/rugby-pitch.webp'),
   road: require('../../../assets/images/surfaces/road.webp'),
   'gym-floor': require('../../../assets/images/surfaces/gym-floor.webp'),
   studio: require('../../../assets/images/surfaces/studio.webp'),
@@ -35,8 +37,8 @@ const SURFACES: Record<string, ImageSourcePropType> = {
 
 const SPORT_SURFACES: Record<string, keyof typeof SURFACES> = {
   football: 'grass',
-  rugby: 'grass',
-  golf: 'grass',
+  rugby: 'rugby-pitch',
+  golf: 'golf-green',
   tennis: 'clay',
   basketball: 'parquet-basket',
   handball: 'parquet-multisport',
