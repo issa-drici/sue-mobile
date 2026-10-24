@@ -50,12 +50,13 @@ export default function HomeScreen() {
   const { friendRequestsCount, refetch: refetchFriendRequests } = useGlobalFriendRequests();
   const [refreshing, setRefreshing] = React.useState(false);
 
-  // Recharge sur focus (quand l'utilisateur revient sur l'accueil)
+  // Recharge sur focus (quand l'utilisateur revient sur l'accueil).
+  // Les sessions se rechargent déjà toutes seules au focus (useApiRequest) : les relancer ici
+  // les chargeait deux fois et faisait clignoter l'accueil.
   useFocusEffect(
     React.useCallback(() => {
-      refetch();
       refetchFriendRequests();
-    }, [refetch, refetchFriendRequests])
+    }, [refetchFriendRequests])
   );
 
   const onRefresh = React.useCallback(async () => {
@@ -541,7 +542,8 @@ export default function HomeScreen() {
         <View style={styles.upcomingContainer}>
           <FlatList
             data={upcomingSessions}
-            ListHeaderComponent={renderListHeader}
+            // Élément (pas une fonction) : sinon l'en-tête est remonté à chaque rendu et ses animations rejouent
+            ListHeaderComponent={renderListHeader()}
             renderItem={renderUpcomingSessionItem}
             keyExtractor={(item) => item.id}
             contentContainerStyle={[
