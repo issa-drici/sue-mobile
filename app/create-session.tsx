@@ -21,7 +21,7 @@ import {
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { SlotPicker } from '../components/organisms/SlotPicker';
+import { ProposedSlot, SlotPicker } from '../components/organisms/SlotPicker';
 import { MainScreenLayout } from '../components/ui/ScreenLayout';
 import { BrandColors } from '../constants/Colors';
 import { useCreateSession } from '../services';
@@ -112,11 +112,8 @@ export default function CreateSessionScreen() {
   const [whenMode, setWhenMode] = useState<WhenMode>('known-date');
   const [step, setStep] = useState<'details' | 'schedule' | 'slots'>('details');
 
-  // Créneaux proposés par l'organisateur (mode "Trouver un créneau"), clés "YYYY-MM-DD|HH:mm"
-  const [slotDurationMinutes, setSlotDurationMinutes] = useState(60);
-  const [proposedSlots, setProposedSlots] = useState<string[]>([]);
-  const toggleProposedSlot = (key: string) =>
-    setProposedSlots((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
+  // Créneaux proposés par l'organisateur (mode "Trouver un créneau")
+  const [proposedSlots, setProposedSlots] = useState<ProposedSlot[]>([]);
 
   // Modals et sélecteurs
   const [showSportsModal, setShowSportsModal] = useState(false);
@@ -591,12 +588,7 @@ export default function CreateSessionScreen() {
               <View>
                 {isScheduleStep && renderScheduleSections()}
                 {isSlotsStep && (
-                  <SlotPicker
-                    durationMinutes={slotDurationMinutes}
-                    onDurationChange={setSlotDurationMinutes}
-                    selectedSlots={proposedSlots}
-                    onToggleSlot={toggleProposedSlot}
-                  />
+                  <SlotPicker slots={proposedSlots} onChange={setProposedSlots} />
                 )}
                 {isDetailsStep && (
                   <>
@@ -611,8 +603,8 @@ export default function CreateSessionScreen() {
                 {isSlotsStep && (
                   <Text style={styles.slotsCounter}>
                     {proposedSlots.length === 0
-                      ? 'Coche au moins un créneau'
-                      : `${proposedSlots.length} créneau${proposedSlots.length > 1 ? 'x' : ''} sélectionné${proposedSlots.length > 1 ? 's' : ''}`}
+                      ? 'Ajoute au moins un créneau'
+                      : `${proposedSlots.length} créneau${proposedSlots.length > 1 ? 'x' : ''} proposé${proposedSlots.length > 1 ? 's' : ''}`}
                   </Text>
                 )}
                 <TouchableOpacity
