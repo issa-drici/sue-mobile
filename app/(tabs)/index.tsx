@@ -228,6 +228,8 @@ export default function HomeScreen() {
     const missingCount = maxParticipants ? maxParticipants - acceptedParticipants.length : 0;
     const sportConfig = getSportConfig(item.sport);
     const pending = isPendingInvite(item);
+    // Terrain en fond : texte en blanc sur le dégradé sombre
+    const dark = hasSportSurface(item.sport);
 
     return (
       <View style={styles.upcomingCardContainer}>
@@ -236,7 +238,7 @@ export default function HomeScreen() {
           onPress={() => handleSessionPress(item.id)}
           style={[styles.upcomingCard, pending && styles.upcomingCardPending]}
         >
-          <SportSurface sport={item.sport} veil={0.8} />
+          <SportSurface sport={item.sport} />
           {pending && (
             <View style={styles.pendingBadge}>
               <Ionicons name="mail-unread-outline" size={11} color="#000" />
@@ -253,15 +255,15 @@ export default function HomeScreen() {
             
             {/* Détails */}
             <View style={styles.upcomingDetails}>
-              <Text style={styles.upcomingSportName}>
+              <Text style={[styles.upcomingSportName, dark && styles.onDark]}>
                 {item.sport.charAt(0).toUpperCase() + item.sport.slice(1)}
               </Text>
-              <Text style={styles.upcomingDateText}>
+              <Text style={[styles.upcomingDateText, dark && styles.onDarkSoft]}>
                 {formatSessionDateTime(item.date, item.startTime)}
               </Text>
               <View style={styles.upcomingLocationRow}>
-                <Ionicons name="location-sharp" size={11} color="#999" />
-                <Text style={styles.upcomingLocationText} numberOfLines={1}>
+                <Ionicons name="location-sharp" size={11} color={dark ? 'rgba(255,255,255,0.8)' : '#999'} />
+                <Text style={[styles.upcomingLocationText, dark && styles.onDarkSoft]} numberOfLines={1}>
                   {item.location}
                 </Text>
               </View>
@@ -272,12 +274,12 @@ export default function HomeScreen() {
               {/* Ratio et Chevron */}
               <View style={styles.upcomingRatioAndArrow}>
                 <Text style={styles.upcomingRatioText}>
-                  <Text style={styles.upcomingRatioBold}>{acceptedParticipants.length}</Text>
+                  <Text style={[styles.upcomingRatioBold, dark && styles.onDark]}>{acceptedParticipants.length}</Text>
                   {maxParticipants ? (
-                    <Text style={styles.upcomingRatioSmall}> / {maxParticipants}</Text>
+                    <Text style={[styles.upcomingRatioSmall, dark && styles.onDarkSoft]}> / {maxParticipants}</Text>
                   ) : null}
                 </Text>
-                <Ionicons name="chevron-forward" size={16} color="#CCCCCC" />
+                <Ionicons name="chevron-forward" size={16} color={dark ? '#FFF' : '#CCCCCC'} />
               </View>
               
               {/* Avatars et Statuts */}
@@ -286,14 +288,14 @@ export default function HomeScreen() {
                 <View style={styles.upcomingStatusContainer}>
                   {maxParticipants ? (
                     isFull ? (
-                      <Text style={styles.upcomingStatusFull}>Complet</Text>
+                      <Text style={[styles.upcomingStatusFull, dark && styles.onDarkStatus]}>Complet</Text>
                     ) : (
-                      <Text style={styles.upcomingStatusMissing}>
+                      <Text style={[styles.upcomingStatusMissing, dark && styles.onDarkStatus]}>
                         Il manque {missingCount} joueur{missingCount > 1 ? 's' : ''}
                       </Text>
                     )
                   ) : (
-                    <Text style={styles.upcomingStatusOpen}>Session ouverte</Text>
+                    <Text style={[styles.upcomingStatusOpen, dark && styles.onDarkStatus]}>Session ouverte</Text>
                   )}
                 </View>
               </View>
@@ -313,6 +315,7 @@ export default function HomeScreen() {
     const hasNewSlot = !isMine && !!me?.hasNewSlots;
     const needsMyAnswer = !isMine && !!me && me.status !== 'declined' && (!me.hasGivenAvailability || hasNewSlot);
     const slotsCount = item.slotProposals?.length ?? 0;
+    const dark = hasSportSurface(item.sport);
 
     return (
       <TouchableOpacity
@@ -321,7 +324,7 @@ export default function HomeScreen() {
         onPress={() => handleSessionPress(item.id)}
         style={[styles.upcomingCard, styles.toOrganizeCard, needsMyAnswer && styles.upcomingCardPending]}
       >
-        <SportSurface sport={item.sport} veil={0.8} />
+        <SportSurface sport={item.sport} />
         {hasNewSlot && (
           <View style={styles.pendingBadge}>
             <Ionicons name="sparkles-outline" size={11} color="#000" />
@@ -335,17 +338,17 @@ export default function HomeScreen() {
             </View>
           </SportIcon>
           <View style={styles.upcomingDetails}>
-            <Text style={styles.upcomingSportName}>
+            <Text style={[styles.upcomingSportName, dark && styles.onDark]}>
               {item.sport.charAt(0).toUpperCase() + item.sport.slice(1)}
             </Text>
-            <Text style={styles.upcomingDateText}>
+            <Text style={[styles.upcomingDateText, dark && styles.onDarkSoft]}>
               {slotsCount === 0
                 ? 'Aucun créneau à venir'
                 : `Créneau à définir · ${slotsCount} proposé${slotsCount > 1 ? 's' : ''}`}
             </Text>
             <View style={styles.upcomingLocationRow}>
-              <Ionicons name="location-sharp" size={11} color="#999" />
-              <Text style={styles.upcomingLocationText} numberOfLines={1}>
+              <Ionicons name="location-sharp" size={11} color={dark ? 'rgba(255,255,255,0.8)' : '#999'} />
+              <Text style={[styles.upcomingLocationText, dark && styles.onDarkSoft]} numberOfLines={1}>
                 {item.location}
               </Text>
             </View>
@@ -356,12 +359,12 @@ export default function HomeScreen() {
             </View>
           ) : (
             <View style={styles.upcomingRatioAndArrow}>
-              <Text style={styles.toOrganizeStatusText}>
+              <Text style={[styles.toOrganizeStatusText, dark && styles.onDark]}>
                 {isMine
                   ? `${respondedCount}/${invitees.length} réponse${respondedCount > 1 ? 's' : ''}`
                   : 'Répondu'}
               </Text>
-              <Ionicons name="chevron-forward" size={16} color="#CCCCCC" />
+              <Ionicons name="chevron-forward" size={16} color={dark ? '#FFF' : '#CCCCCC'} />
             </View>
           )}
         </View>
@@ -393,6 +396,7 @@ export default function HomeScreen() {
     const pending = isPendingInvite(nextSession);
     // Habillage : dégradé dans la teinte du sport + grand objet 3D qui dépasse du coin
     const hasImage = hasSportImage(nextSession.sport);
+    const dark = hasSportSurface(nextSession.sport);
 
     return (
       <View style={styles.fixedTopSection}>
@@ -431,20 +435,20 @@ export default function HomeScreen() {
 
             {/* Détails textuels */}
             <View style={[styles.nextSessionDetails, hasImage && styles.nextSessionDetailsWithHero]}>
-              <Text style={styles.nextSessionSportTitle}>
+              <Text style={[styles.nextSessionSportTitle, dark && styles.onDark]}>
                 {nextSession.sport.charAt(0).toUpperCase() + nextSession.sport.slice(1)}
               </Text>
               
               <View style={styles.nextSessionInfoRow}>
-                <Ionicons name="calendar-outline" size={14} color="#666" style={styles.infoIcon} />
-                <Text style={styles.nextSessionInfoText}>
+                <Ionicons name="calendar-outline" size={14} color={dark ? 'rgba(255,255,255,0.85)' : '#666'} style={styles.infoIcon} />
+                <Text style={[styles.nextSessionInfoText, dark && styles.onDarkSoft]}>
                   {formatSessionDateTime(nextSession.date, nextSession.startTime)}
                 </Text>
               </View>
 
               <View style={styles.nextSessionInfoRow}>
-                <Ionicons name="location-outline" size={14} color="#666" style={styles.infoIcon} />
-                <Text style={styles.nextSessionInfoText} numberOfLines={1}>
+                <Ionicons name="location-outline" size={14} color={dark ? 'rgba(255,255,255,0.85)' : '#666'} style={styles.infoIcon} />
+                <Text style={[styles.nextSessionInfoText, dark && styles.onDarkSoft]} numberOfLines={1}>
                   {nextSession.location}
                 </Text>
               </View>
@@ -465,12 +469,12 @@ export default function HomeScreen() {
           </View>
 
           {/* Ligne médiane: Avatars et Manque X joueurs */}
-          <View style={styles.nextSessionMiddleRow}>
+          <View style={[styles.nextSessionMiddleRow, dark && styles.nextSessionMiddleRowOnDark]}>
             <View style={styles.nextSessionPlayersGroup}>
               {renderOverlappingAvatars(nextSession.participants)}
               {hasImage && (
-                <Text style={styles.nextSessionInlineRatio}>
-                  <Text style={styles.nextSessionInlineRatioBold}>{acceptedParticipants.length}</Text>
+                <Text style={[styles.nextSessionInlineRatio, dark && styles.onDarkSoft]}>
+                  <Text style={[styles.nextSessionInlineRatioBold, dark && styles.onDark]}>{acceptedParticipants.length}</Text>
                   {maxParticipants ? ` / ${maxParticipants}` : ''} joueur{acceptedParticipants.length > 1 ? 's' : ''}
                 </Text>
               )}
@@ -481,12 +485,12 @@ export default function HomeScreen() {
                 isFull ? (
                   <>
                     <View style={[styles.statusDot, { backgroundColor: '#70A831' }]} />
-                    <Text style={[styles.statusText, { color: '#70A831' }]}>Complet</Text>
+                    <Text style={[styles.statusText, { color: dark ? BrandColors.primary : '#70A831' }]}>Complet</Text>
                   </>
                 ) : (
                   <>
                     <View style={[styles.statusDot, { backgroundColor: '#F59223' }]} />
-                    <Text style={styles.statusText}>
+                    <Text style={[styles.statusText, dark && styles.onDark]}>
                       Il manque {missingCount} joueur{missingCount > 1 ? 's' : ''}
                     </Text>
                   </>
@@ -494,7 +498,7 @@ export default function HomeScreen() {
               ) : (
                 <>
                   <View style={[styles.statusDot, { backgroundColor: '#70A831' }]} />
-                  <Text style={[styles.statusText, { color: '#70A831' }]}>Session ouverte</Text>
+                  <Text style={[styles.statusText, { color: dark ? BrandColors.primary : '#70A831' }]}>Session ouverte</Text>
                 </>
               )}
             </View>
@@ -964,6 +968,19 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: 1,
     borderColor: '#F5F5F5',
+  },
+  // Texte sur fond terrain (dégradé sombre)
+  onDark: {
+    color: '#FFF',
+  },
+  onDarkSoft: {
+    color: 'rgba(255,255,255,0.85)',
+  },
+  nextSessionMiddleRowOnDark: {
+    borderTopColor: 'rgba(255,255,255,0.25)',
+  },
+  onDarkStatus: {
+    color: BrandColors.primary,
   },
   toOrganizeSection: {
     marginBottom: 8,
