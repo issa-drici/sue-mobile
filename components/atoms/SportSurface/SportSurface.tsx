@@ -9,16 +9,26 @@ import { Image, ImageSourcePropType, StyleSheet, View } from 'react-native';
 const SURFACES: Record<string, ImageSourcePropType> = {
   grass: require('../../../assets/images/surfaces/grass.webp'),
   clay: require('../../../assets/images/surfaces/clay.webp'),
+  'parquet-basket': require('../../../assets/images/surfaces/parquet-basket.webp'),
+  'parquet-multisport': require('../../../assets/images/surfaces/parquet-multisport.webp'),
 };
-
-// Ratio des textures (1000x483)
-const SURFACE_RATIO = 1000 / 483;
 
 const SPORT_SURFACES: Record<string, keyof typeof SURFACES> = {
   football: 'grass',
   rugby: 'grass',
   golf: 'grass',
   tennis: 'clay',
+  basketball: 'parquet-basket',
+  handball: 'parquet-multisport',
+  volleyball: 'parquet-multisport',
+  badminton: 'parquet-multisport',
+  squash: 'parquet-multisport',
+};
+
+// Format réel de chaque texture (elles n'ont pas toutes exactement la même hauteur)
+const surfaceRatio = (source: ImageSourcePropType) => {
+  const { width, height } = Image.resolveAssetSource(source);
+  return width / height;
 };
 
 export const hasSportSurface = (sport?: string | null) => !!sport && sport.toLowerCase() in SPORT_SURFACES;
@@ -35,8 +45,9 @@ export function SportSurface({ sport, borderRadius = 16 }: SportSurfaceProps) {
   if (!surface) return null;
 
   // Remplit la carte en calant l'image à droite (là où sont les marquages), centrée en hauteur
-  const imageHeight = Math.max(size.height, size.width / SURFACE_RATIO);
-  const imageWidth = imageHeight * SURFACE_RATIO;
+  const ratio = surfaceRatio(SURFACES[surface]);
+  const imageHeight = Math.max(size.height, size.width / ratio);
+  const imageWidth = imageHeight * ratio;
 
   return (
     <View
