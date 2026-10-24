@@ -22,6 +22,8 @@ const GREEN_ICON = '#70A831'; // SUE Accent Green
 interface Props {
   visible: boolean;
   onDismiss: () => void;
+  // 'participant' : après avoir rejoint une session ; 'availability' : après avoir donné ses dispos ("Trouver un créneau")
+  variant?: 'participant' | 'availability';
 }
 
 const BULLETS = [
@@ -47,13 +49,42 @@ const BULLETS = [
   }
 ];
 
+const AVAILABILITY_BULLETS = [
+  {
+    icon: 'calendar-outline' as const,
+    title: "Créneau confirmé",
+    description: "Sois prévenu dès que l'organisateur choisit le créneau."
+  },
+  {
+    icon: 'add-circle-outline' as const,
+    title: "Nouveau créneau",
+    description: "Sache quand un autre créneau est proposé."
+  },
+  BULLETS[1],
+  BULLETS[3],
+];
+
+const COPY = {
+  participant: {
+    title: 'Tu participes à cette session.',
+    subtitle: 'Active les notifications pour ne rien manquer des changements de dernière minute.',
+    bullets: BULLETS,
+  },
+  availability: {
+    title: 'Tes dispos sont envoyées.',
+    subtitle: 'Active les notifications pour savoir quel créneau sera choisi.',
+    bullets: AVAILABILITY_BULLETS,
+  },
+};
+
 /**
  * Demande "soft" (pré-permission) affichée AVANT la popup native.
  * - Le swipe et le clic en dehors sont bloqués pour forcer l'interaction avec le CTA.
  * - En cliquant sur "Activer", l'alerte Apple native s'affiche.
  * - Que l'utilisateur accepte ou refuse au niveau système, la sheet se ferme ensuite pour continuer.
  */
-export default function NotificationPermissionSheet({ visible, onDismiss }: Props) {
+export default function NotificationPermissionSheet({ visible, onDismiss, variant = 'participant' }: Props) {
+  const copy = COPY[variant];
   const insets = useSafeAreaInsets();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -126,13 +157,11 @@ export default function NotificationPermissionSheet({ visible, onDismiss }: Prop
           <Ionicons name="notifications" size={32} color={GREEN_ICON} />
         </View>
 
-        <Text style={styles.title}>Tu participes à cette session.</Text>
-        <Text style={styles.subtitle}>
-          Active les notifications pour ne rien manquer des changements de dernière minute.
-        </Text>
+        <Text style={styles.title}>{copy.title}</Text>
+        <Text style={styles.subtitle}>{copy.subtitle}</Text>
 
         <View style={styles.bullets}>
-          {BULLETS.map((b) => (
+          {copy.bullets.map((b) => (
             <View key={b.title} style={styles.bulletCard}>
               <View style={styles.bulletIconCircle}>
                 <Ionicons name={b.icon} size={18} color={GREEN_ICON} />

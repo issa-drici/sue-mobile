@@ -117,22 +117,21 @@ export default function SessionDetailsScreen() {
   const { cancelParticipation, isLoading: isCancelling } = useCancelParticipation();
   const { cancelSession } = useCancelSession();
 
-  // Demande "soft" de notifications : affichée une fois, dès que l'utilisateur
-  // est concerné par une session (organisateur, invité ou inscrit).
-  // Un invité à une session "à organiser" reste en attente jusqu'à la confirmation :
-  // sans ça il ne serait jamais prévenu du créneau retenu.
+  // Demande "soft" de notifications : affichée une fois, après que l'utilisateur
+  // participe à une session (typiquement juste après le flow de join).
   const [showNotifSheet, setShowNotifSheet] = useState(false);
+  const [notifSheetVariant, setNotifSheetVariant] = useState<'participant' | 'availability'>('participant');
   const notifPromptCheckedRef = useRef(false);
 
   useEffect(() => {
     if (notifPromptCheckedRef.current) return;
     if (!session || !user) return;
 
-    // L'utilisateur doit être organisateur ou invité (pas décliné) à cette session
-    const isConcerned = session.organizer?.id === user.id || session.participants?.some(
-      (p: any) => p.id === user.id && p.status !== 'declined'
+    // L'utilisateur doit participer (statut accepté) à cette session
+    const isAcceptedParticipant = session.participants?.some(
+      (p: any) => p.id === user.id && p.status === 'accepted'
     );
-    if (!isConcerned) return;
+    if (!isAcceptedParticipant) return;
 
     // On ne vérifie qu'une fois par montage
     notifPromptCheckedRef.current = true;
@@ -342,6 +341,11 @@ export default function SessionDetailsScreen() {
       await setAvailability(sessionId, slotIds);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       getSessionById(sessionId, false);
+      // Moment clé pour proposer les notifications : il attend maintenant le choix du créneau
+      if (slotIds.length > 0 && (await pushNotificationService.shouldShowSoftPrompt())) {
+        setNotifSheetVariant('availability');
+        setShowNotifSheet(true);
+      }
     } catch (error) {
       Alert.alert('Erreur', error instanceof Error ? error.message : "Impossible d'envoyer tes disponibilités");
     }
@@ -1382,6 +1386,7 @@ export default function SessionDetailsScreen() {
 
       <NotificationPermissionSheet
         visible={showNotifSheet}
+        variant={notifSheetVariant}
         onDismiss={() => setShowNotifSheet(false)}
       />
 
