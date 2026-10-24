@@ -23,6 +23,7 @@ import {
   View
 } from 'react-native';
 import { SportIcon } from '../../components/atoms/SportIcon';
+import { SportSurface, hasSportSurface } from '../../components/atoms/SportSurface';
 import Animated, {
   FadeInDown,
   FadeInUp
@@ -338,6 +339,7 @@ export default function SessionDetailsScreen() {
   const missingCount = maxParticipants ? maxParticipants - acceptedParticipants.length : 0;
   // "Trouver un créneau" : la date n'est pas encore fixée, on affiche les créneaux proposés
   const isFindingSlot = session?.scheduling === 'finding_slot';
+  const heroDark = hasSportSurface(session?.sport);
   const canGiveAvailability = isFindingSlot && !isOrganizer && isParticipant && !isFromHistory && session?.status !== 'cancelled'
     && (session?.slotProposals?.length ?? 0) > 0;
   const canConfirmSlot = isFindingSlot && isOrganizer && !isFromHistory && session?.status !== 'cancelled';
@@ -836,23 +838,31 @@ export default function SessionDetailsScreen() {
         <View style={styles.mainContainer}>
           
           {/* Titre Sport et Icône */}
-          <Animated.View entering={FadeInDown.delay(50).springify()} style={styles.sportTitleSection}>
-            <SportIcon sport={session.sport} size={58}>
+          {/* Carte "hero" : terrain du sport en fond, texte en blanc */}
+          <Animated.View entering={FadeInDown.delay(50).springify()} style={[styles.sessionHero, !heroDark && styles.sessionHeroPlain]}>
+          {heroDark && <SportSurface sport={session.sport} borderRadius={20} />}
+          {heroDark && (
+            <View style={styles.sessionHeroIcon} pointerEvents="none">
+              <SportIcon sport={session.sport} size={72} />
+            </View>
+          )}
+          <View style={styles.sportTitleSection}>
+            {!heroDark && <SportIcon sport={session.sport} size={58}>
               <View style={[styles.sportIconCircleLarge, { backgroundColor: getSportConfig(session.sport).color }]}>
                 <Ionicons name={getSportConfig(session.sport).icon as any} size={30} color="#FFF" />
               </View>
-            </SportIcon>
-            <Text style={styles.sportTitleText}>
+            </SportIcon>}
+            <Text style={[styles.sportTitleText, heroDark && styles.sessionHeroTitle]}>
               {session.sport.charAt(0).toUpperCase() + session.sport.slice(1)}
             </Text>
-          </Animated.View>
+          </View>
 
           {/* Ligne des Détails de Session */}
-          <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.detailsListBlock}>
+          <View style={[styles.detailsListBlock, heroDark && styles.sessionHeroDetails]}>
             {isFindingSlot ? (
               <View style={styles.detailRow}>
-                <Ionicons name="calendar-outline" size={16} color="#000" style={styles.detailIcon} />
-                <Text style={styles.slotsToDefineTitle}>
+                <Ionicons name="calendar-outline" size={16} color={heroDark ? '#FFF' : '#000'} style={styles.detailIcon} />
+                <Text style={[styles.slotsToDefineTitle, heroDark && styles.sessionHeroTitleSmall]}>
                   {(session.slotProposals?.length ?? 0) === 0
                     ? 'Créneau à définir · aucun créneau à venir'
                     : `Créneau à définir · ${session.slotProposals?.length} proposé${(session.slotProposals?.length ?? 0) > 1 ? 's' : ''}`}
@@ -861,15 +871,15 @@ export default function SessionDetailsScreen() {
             ) : (
               <>
                 <View style={styles.detailRow}>
-                  <Ionicons name="calendar-outline" size={16} color="#8E8E93" style={styles.detailIcon} />
-                  <Text style={styles.detailText}>
+                  <Ionicons name="calendar-outline" size={16} color={heroDark ? 'rgba(255,255,255,0.85)' : '#8E8E93'} style={styles.detailIcon} />
+                  <Text style={[styles.detailText, heroDark && styles.sessionHeroText]}>
                     {formatDate(session.date)}
                   </Text>
                 </View>
 
                 <View style={styles.detailRow}>
-                  <Ionicons name="time-outline" size={16} color="#8E8E93" style={styles.detailIcon} />
-                  <Text style={styles.detailText}>
+                  <Ionicons name="time-outline" size={16} color={heroDark ? 'rgba(255,255,255,0.85)' : '#8E8E93'} style={styles.detailIcon} />
+                  <Text style={[styles.detailText, heroDark && styles.sessionHeroText]}>
                     {formatSessionTimeRange(session.startTime, session.endTime)}
                   </Text>
                 </View>
@@ -877,11 +887,12 @@ export default function SessionDetailsScreen() {
             )}
 
             <View style={styles.detailRow}>
-              <Ionicons name="location-outline" size={16} color="#8E8E93" style={styles.detailIcon} />
-              <Text style={styles.detailText} numberOfLines={1}>
+              <Ionicons name="location-outline" size={16} color={heroDark ? 'rgba(255,255,255,0.85)' : '#8E8E93'} style={styles.detailIcon} />
+              <Text style={[styles.detailText, heroDark && styles.sessionHeroText]} numberOfLines={1}>
                 {session.location}
               </Text>
             </View>
+          </View>
           </Animated.View>
 
           {/* Trouver un créneau : dispos de l'invité / confirmation par l'organisateur */}
@@ -1559,6 +1570,41 @@ const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
     paddingHorizontal: 20,
+  },
+
+  // Carte hero (terrain du sport)
+  sessionHero: {
+    borderRadius: 20,
+    padding: 18,
+    marginTop: 8,
+    marginBottom: 20,
+    minHeight: 150,
+    justifyContent: 'flex-end',
+  },
+  sessionHeroPlain: {
+    padding: 0,
+    minHeight: 0,
+    marginTop: 0,
+    marginBottom: 0,
+  },
+  sessionHeroIcon: {
+    position: 'absolute',
+    top: 14,
+    right: 14,
+  },
+  sessionHeroTitle: {
+    color: '#FFF',
+    marginLeft: 0,
+  },
+  sessionHeroDetails: {
+    marginBottom: 0,
+    paddingRight: 70,
+  },
+  sessionHeroText: {
+    color: 'rgba(255,255,255,0.9)',
+  },
+  sessionHeroTitleSmall: {
+    color: '#FFF',
   },
 
   // Titre Sport Section
