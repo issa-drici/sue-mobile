@@ -46,6 +46,9 @@ export interface SessionSharePreview {
   startDate: string;
   endDate: string;
   location: string;
+  // "Trouver un créneau" : date pas encore fixée, créneaux proposés
+  scheduling?: 'scheduled' | 'finding_slot';
+  slotProposals?: { date: string; startTime: string; endTime: string }[];
   maxParticipants?: number | null;
   participantsCount: number;
   organizer: {

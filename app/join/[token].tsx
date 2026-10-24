@@ -288,23 +288,41 @@ export default function JoinSessionScreen() {
 
           {/* Session Details List */}
           <View style={styles.infoBlock}>
-            {/* Date */}
-            <View style={styles.infoRow}>
-              <View style={styles.infoIconWrapper}>
-                <Ionicons name="calendar-outline" size={20} color="#8CBF3D" />
+            {preview.scheduling === 'finding_slot' ? (
+              <View style={[styles.infoRow, { alignItems: 'flex-start' }]}>
+                <View style={styles.infoIconWrapper}>
+                  <Ionicons name="calendar-outline" size={20} color="#8CBF3D" />
+                </View>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={styles.infoText}>Date à définir</Text>
+                  {(preview.slotProposals || []).map((slot) => (
+                    <Text key={`${slot.date}-${slot.startTime}`} style={[styles.infoText, { color: '#8E8E93', fontWeight: '500' }]}>
+                      {formatFrenchDate(slot.date)} · {formatSessionTimeRange(slot.startTime, slot.endTime)}
+                    </Text>
+                  ))}
+                </View>
               </View>
-              <Text style={styles.infoText}>{formatFrenchDate(preview.date)}</Text>
-            </View>
+            ) : (
+              <>
+                {/* Date */}
+                <View style={styles.infoRow}>
+                  <View style={styles.infoIconWrapper}>
+                    <Ionicons name="calendar-outline" size={20} color="#8CBF3D" />
+                  </View>
+                  <Text style={styles.infoText}>{formatFrenchDate(preview.date)}</Text>
+                </View>
 
-            {/* Time */}
-            <View style={styles.infoRow}>
-              <View style={styles.infoIconWrapper}>
-                <Ionicons name="time-outline" size={20} color="#8CBF3D" />
-              </View>
-              <Text style={styles.infoText}>
-                {formatSessionTimeRange(preview.startTime, preview.endTime)}
-              </Text>
-            </View>
+                {/* Time */}
+                <View style={styles.infoRow}>
+                  <View style={styles.infoIconWrapper}>
+                    <Ionicons name="time-outline" size={20} color="#8CBF3D" />
+                  </View>
+                  <Text style={styles.infoText}>
+                    {formatSessionTimeRange(preview.startTime, preview.endTime)}
+                  </Text>
+                </View>
+              </>
+            )}
 
             {/* Location */}
             <View style={styles.infoRow}>
@@ -385,7 +403,9 @@ export default function JoinSessionScreen() {
         <View style={styles.actionsBlock}>
           <TouchableOpacity style={styles.primaryButton} onPress={handleJoin}>
             <Text style={styles.primaryButtonText}>
-              {isAuthenticated ? 'Je rejoins la session' : 'Se connecter pour rejoindre'}
+              {preview.scheduling === 'finding_slot'
+                ? (isAuthenticated ? 'Donner mes disponibilités' : 'Se connecter pour répondre')
+                : (isAuthenticated ? 'Je rejoins la session' : 'Se connecter pour rejoindre')}
             </Text>
             <Ionicons name="arrow-forward" size={20} color="#000000" />
           </TouchableOpacity>
