@@ -1,5 +1,5 @@
 #!/bin/bash
-# Découpe une planche d'icônes de sports (grille 3x2, fond transparent) en 6 PNG 240x240
+# Découpe une planche d'icônes de sports (grille 3x2, fond transparent) en 6 WebP 240x240
 # centrés, dans assets/images/sports/. Usage :
 #   scripts/cut-sport-sheet.sh planche.webp football basketball tennis padel volleyball handball
 set -euo pipefail
@@ -24,8 +24,9 @@ for name in "$@"; do
   magick "$TMP/cell.png" \( "$TMP/mask.png" -morphology Dilate Disk:10 -blur 0x3 -alpha copy \) \
     -compose DstIn -composite "$TMP/clean.png"
   magick "$TMP/clean.png" -crop "$BB" +repage -background none -gravity center \
-    -extent "%[fx:max(w,h)*1.1]x%[fx:max(w,h)*1.1]" -resize 240x240 -strip "$OUT/$name.png"
-  echo "$name.png"
+    -extent "%[fx:max(w,h)*1.1]x%[fx:max(w,h)*1.1]" -resize 240x240 -strip "$TMP/$name.png"
+  magick "$TMP/$name.png" -quality 88 -define webp:alpha-quality=95 -define webp:method=6 "$OUT/$name.webp"
+  echo "$name.webp"
   i=$((i + 1))
 done
 rm -rf "$TMP"
