@@ -14,6 +14,7 @@ import {
   View
 } from 'react-native';
 import { SportIcon, hasSportImage } from '../../components/atoms/SportIcon';
+import { SportSurface, hasSportSurface } from '../../components/atoms/SportSurface';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getSportTint } from '../../constants/sportTints';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -235,6 +236,7 @@ export default function HomeScreen() {
           onPress={() => handleSessionPress(item.id)}
           style={[styles.upcomingCard, pending && styles.upcomingCardPending]}
         >
+          <SportSurface sport={item.sport} veil={0.8} />
           {pending && (
             <View style={styles.pendingBadge}>
               <Ionicons name="mail-unread-outline" size={11} color="#000" />
@@ -319,6 +321,7 @@ export default function HomeScreen() {
         onPress={() => handleSessionPress(item.id)}
         style={[styles.upcomingCard, styles.toOrganizeCard, needsMyAnswer && styles.upcomingCardPending]}
       >
+        <SportSurface sport={item.sport} veil={0.8} />
         {hasNewSlot && (
           <View style={styles.pendingBadge}>
             <Ionicons name="sparkles-outline" size={11} color="#000" />
@@ -398,14 +401,15 @@ export default function HomeScreen() {
 
         {/* Carte Prochaine Session */}
         <View style={[styles.nextSessionCard, pending && styles.nextSessionCardPending]}>
+          {hasSportSurface(nextSession.sport) && <SportSurface sport={nextSession.sport} borderRadius={19} />}
           {hasImage && (
             <>
-              <LinearGradient
+              {!hasSportSurface(nextSession.sport) && <LinearGradient
                 colors={[getSportTint(nextSession.sport), '#FFFFFF']}
                 start={{ x: 1, y: 0 }}
                 end={{ x: 0.25, y: 0.85 }}
                 style={[StyleSheet.absoluteFill, styles.nextSessionGradient]}
-              />
+              />}
               <View style={styles.nextSessionHeroIcon} pointerEvents="none">
                 <SportIcon sport={nextSession.sport} size={116} />
               </View>
@@ -955,6 +959,7 @@ const styles = StyleSheet.create({
   },
   upcomingCard: {
     backgroundColor: '#FFF',
+    overflow: 'hidden',
     borderRadius: 16,
     padding: 12,
     borderWidth: 1,
