@@ -51,7 +51,7 @@ export function SportSurface({ sport, borderRadius = 16 }: SportSurfaceProps) {
         />
       )}
       <LinearGradient
-        colors={['rgba(0,0,0,0.62)', 'rgba(0,0,0,0.38)', 'rgba(0,0,0,0.1)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.5)']}
+        colors={['rgba(0,0,0,0.62)', 'rgba(0,0,0,0.38)', 'rgba(0,0,0,0.12)', 'rgba(0,0,0,0.45)', 'rgba(0,0,0,0.68)']}
         locations={[0, 0.45, 0.72, 0.9, 1]}
         start={{ x: 0, y: 0.5 }}
         end={{ x: 1, y: 0.5 }}
