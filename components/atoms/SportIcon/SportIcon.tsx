@@ -3,10 +3,16 @@ import { Image, ImageSourcePropType, StyleProp, View, ViewStyle } from 'react-na
 
 // Icônes 3D des sports (kit Sue). Un sport sans image garde son affichage actuel (children).
 const SPORT_IMAGES: Record<string, ImageSourcePropType> = {
+  badminton: require('../../../assets/images/sports/badminton.png'),
+  baseball: require('../../../assets/images/sports/baseball.png'),
   basketball: require('../../../assets/images/sports/basketball.png'),
   football: require('../../../assets/images/sports/football.png'),
+  golf: require('../../../assets/images/sports/golf.png'),
   handball: require('../../../assets/images/sports/handball.png'),
+  hockey: require('../../../assets/images/sports/hockey.png'),
   padel: require('../../../assets/images/sports/padel.png'),
+  rugby: require('../../../assets/images/sports/rugby.png'),
+  squash: require('../../../assets/images/sports/squash.png'),
   tennis: require('../../../assets/images/sports/tennis.png'),
   volleyball: require('../../../assets/images/sports/volleyball.png'),
 };
