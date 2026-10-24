@@ -3,19 +3,24 @@ import { Image, ImageSourcePropType, StyleProp, View, ViewStyle } from 'react-na
 
 // Icônes 3D des sports (kit Sue). Un sport sans image garde son affichage actuel (children).
 const SPORT_IMAGES: Record<string, ImageSourcePropType> = {
+  'athlétisme': require('../../../assets/images/sports/athletisme.png'),
   'aïkido': require('../../../assets/images/sports/aikido.png'),
   badminton: require('../../../assets/images/sports/badminton.png'),
   baseball: require('../../../assets/images/sports/baseball.png'),
   basketball: require('../../../assets/images/sports/basketball.png'),
   bowling: require('../../../assets/images/sports/bowling.png'),
   boxe: require('../../../assets/images/sports/boxe.png'),
+  course: require('../../../assets/images/sports/course.png'),
+  danse: require('../../../assets/images/sports/danse.png'),
   football: require('../../../assets/images/sports/football.png'),
   golf: require('../../../assets/images/sports/golf.png'),
+  gymnastique: require('../../../assets/images/sports/gymnastique.png'),
   handball: require('../../../assets/images/sports/handball.png'),
   hockey: require('../../../assets/images/sports/hockey.png'),
   'jiu-jitsu-brésilien': require('../../../assets/images/sports/jiu-jitsu-bresilien.png'),
   judo: require('../../../assets/images/sports/judo.png'),
   'karaté': require('../../../assets/images/sports/karate.png'),
+  'marche-nordique': require('../../../assets/images/sports/marche-nordique.png'),
   musculation: require('../../../assets/images/sports/musculation.png'),
   padel: require('../../../assets/images/sports/padel.png'),
   pilates: require('../../../assets/images/sports/pilates.png'),
@@ -25,6 +30,7 @@ const SPORT_IMAGES: Record<string, ImageSourcePropType> = {
   squash: require('../../../assets/images/sports/squash.png'),
   tennis: require('../../../assets/images/sports/tennis.png'),
   'tir-à-l-arc': require('../../../assets/images/sports/tir-a-l-arc.png'),
+  triathlon: require('../../../assets/images/sports/triathlon.png'),
   volleyball: require('../../../assets/images/sports/volleyball.png'),
   yoga: require('../../../assets/images/sports/yoga.png'),
 };
