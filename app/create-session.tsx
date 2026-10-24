@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Haptics from 'expo-haptics';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
@@ -111,7 +111,9 @@ export default function CreateSessionScreen() {
 
   // Choix "Quand ?" fait à l'étape 1 : il décide de l'étape suivante (date et
   // heure, ou recherche de créneau avec les joueurs).
-  const [whenMode, setWhenMode] = useState<WhenMode>('known-date');
+  // ?mode=find-slot (depuis l'accueil vide) pré-sélectionne "Trouver un créneau"
+  const { mode } = useLocalSearchParams<{ mode?: string }>();
+  const [whenMode, setWhenMode] = useState<WhenMode>(mode === 'find-slot' ? 'find-slot' : 'known-date');
   const [step, setStep] = useState<'details' | 'schedule' | 'slots'>('details');
 
   // Créneaux proposés par l'organisateur (mode "Trouver un créneau")

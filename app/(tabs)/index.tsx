@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { InlineLoading } from '../../components/OptimizedLoading';
 import { MainScreenLayout } from '../../components/ui/ScreenLayout';
 import { useGetSessions } from '../../services';
+import { HomeEmptyState } from '../../components/organisms/HomeEmptyState';
 import { SportSession } from '../../types/sport';
 import { useAuth } from '../context/auth';
 import { useGlobalNotifications } from '../../context/globalNotifications';
@@ -357,7 +358,10 @@ export default function HomeScreen() {
     );
   };
 
-  const renderListHeader = () => (
+  // Aucune session du tout (ni prochaine, ni à organiser, ni à venir) : écran d'accueil dédié
+  const hasNoSessionAtAll = !isFirstLoading && !nextSession && sessionsToOrganize.length === 0 && upcomingSessions.length === 0;
+
+  const renderListHeader = () => hasNoSessionAtAll ? <HomeEmptyState /> : (
     <>
       {sessionsToOrganize.length > 0 ? (
         <View style={styles.toOrganizeSection}>
@@ -556,7 +560,7 @@ export default function HomeScreen() {
               />
             }
             ListEmptyComponent={
-              !isFirstLoading ? (
+              hasNoSessionAtAll ? null : !isFirstLoading ? (
                 <View style={styles.emptyContainer}>
                   {nextSession ? (
                     <>
