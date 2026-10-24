@@ -100,7 +100,7 @@ export default function FriendsScreen() {
       >
         <View style={styles.requestInfo}>
           <Image
-            source={user.avatar ? { uri: user.avatar } : require('../../assets/images/icon-avatar.png')}
+            source={user.avatar ? { uri: user.avatar } : require('../../assets/images/avatar-default.webp')}
             style={styles.requestAvatar}
           />
           <View>
@@ -140,7 +140,7 @@ export default function FriendsScreen() {
       >
         <View style={styles.friendAvatarContainer}>
           <Image
-            source={item.avatar ? { uri: item.avatar } : require('../../assets/images/icon-avatar.png')}
+            source={item.avatar ? { uri: item.avatar } : require('../../assets/images/avatar-default.webp')}
             style={styles.friendAvatar}
           />
           <View style={styles.statusDot} />

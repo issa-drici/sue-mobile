@@ -239,9 +239,7 @@ export default function ProfileScreen() {
               style={styles.userAvatar}
             />
           ) : (
-            <View style={styles.avatarPlaceholder}>
-              <Text style={styles.avatarPlaceholderText}>{initials}</Text>
-            </View>
+            <Image source={require('../../assets/images/avatar-default.webp')} style={styles.avatarPlaceholder} />
           )}
           <View style={styles.userInfo}>
             <Text style={styles.userNameText}>

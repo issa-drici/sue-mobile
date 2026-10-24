@@ -406,9 +406,10 @@ export default function HomeScreen() {
         {/* Carte Prochaine Session */}
         <View style={[styles.nextSessionCard, pending && styles.nextSessionCardPending]}>
           {hasSportSurface(nextSession.sport) && <SportSurface sport={nextSession.sport} borderRadius={19} />}
-          {hasImage && (
+          {/* Sans terrain : dégradé teinté + grand objet 3D. Avec terrain, le terrain suffit */}
+          {hasImage && !hasSportSurface(nextSession.sport) && (
             <>
-              {!hasSportSurface(nextSession.sport) && <LinearGradient
+              {<LinearGradient
                 colors={[getSportTint(nextSession.sport), '#FFFFFF']}
                 start={{ x: 1, y: 0 }}
                 end={{ x: 0.25, y: 0.85 }}
@@ -434,7 +435,7 @@ export default function HomeScreen() {
             )}
 
             {/* Détails textuels */}
-            <View style={[styles.nextSessionDetails, hasImage && styles.nextSessionDetailsWithHero]}>
+            <View style={[styles.nextSessionDetails, hasImage && (dark ? { marginLeft: 0 } : styles.nextSessionDetailsWithHero)]}>
               <Text style={[styles.nextSessionSportTitle, dark && styles.onDark]}>
                 {nextSession.sport.charAt(0).toUpperCase() + nextSession.sport.slice(1)}
               </Text>
@@ -550,7 +551,7 @@ export default function HomeScreen() {
       <View style={[styles.header, Platform.OS === 'android' && { paddingTop: Math.max(insets.top, 20) }]}>
         <View style={styles.headerUserProfile}>
           <Image
-            source={user?.avatar ? { uri: user.avatar } : require('../../assets/images/icon-avatar.png')}
+            source={user?.avatar ? { uri: user.avatar } : require('../../assets/images/avatar-default.webp')}
             style={styles.userAvatar}
           />
           <Text style={styles.welcomeText}>

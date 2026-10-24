@@ -419,7 +419,7 @@ export default function AddFriendScreen() {
         >
           <View style={styles.resultInfo}>
             <Image
-              source={user.avatar ? { uri: user.avatar } : require('../assets/images/icon-avatar.png')}
+              source={user.avatar ? { uri: user.avatar } : require('../assets/images/avatar-default.webp')}
               style={styles.avatar}
             />
             <View>
