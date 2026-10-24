@@ -13,6 +13,7 @@ export {
     useGetSessionById,
     useGetSessions,
     useInviteFriends,
+    useRecentLocations,
     useRespondToInvitation,
     useSlotFinding,
     useUpdateSession

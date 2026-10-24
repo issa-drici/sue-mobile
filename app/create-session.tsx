@@ -24,7 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ProposedSlot, SlotPicker, slotEndTime } from '../components/organisms/SlotPicker';
 import { MainScreenLayout } from '../components/ui/ScreenLayout';
 import { BrandColors } from '../constants/Colors';
-import { useCreateSession } from '../services';
+import { useCreateSession, useRecentLocations } from '../services';
 import { SportsApi } from '../services/api/sportsApi';
 import { getDefaultEndTime, getSportEmoji, isValidEndTime, roundToNextHalfHour, SPORTS_LIST } from '../utils';
 import { matchesSearch } from '../utils/search';
@@ -49,6 +49,7 @@ export default function CreateSessionScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { createSession, isLoading: isCreating } = useCreateSession();
+  const recentLocations = useRecentLocations();
   const formScrollViewRef = React.useRef<ScrollView>(null);
 
   // State Formulaire
@@ -529,6 +530,32 @@ export default function CreateSessionScreen() {
             }}
           />
         </View>
+        {/* Raccourcis : lieux des sessions déjà jouées, un tap remplit le champ */}
+        {recentLocations.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={styles.locationChipsRow}
+          >
+            {recentLocations.map((recentLocation) => {
+              const isSelected = recentLocation === location.trim();
+              return (
+                <TouchableOpacity
+                  key={recentLocation}
+                  activeOpacity={0.8}
+                  style={[styles.locationChip, isSelected && styles.locationChipSelected]}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    handleLocationChange(recentLocation);
+                  }}
+                >
+                  <Text style={styles.locationChipText} numberOfLines={1}>{recentLocation}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
       </Animated.View>
     </>
   );
@@ -1128,6 +1155,28 @@ const styles = StyleSheet.create({
   },
   cardIcon: {
     marginRight: 12,
+  },
+  locationChipsRow: {
+    gap: 8,
+    paddingTop: 10,
+  },
+  locationChip: {
+    maxWidth: 220,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#EFEFEF',
+  },
+  locationChipSelected: {
+    backgroundColor: '#F7FBEF',
+    borderColor: BrandColors.darkPink,
+  },
+  locationChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#000',
   },
   inputCardRowError: {
     borderColor: '#FF3B30',
