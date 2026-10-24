@@ -13,6 +13,10 @@ const SURFACES: Record<string, ImageSourcePropType> = {
   'parquet-multisport': require('../../../assets/images/surfaces/parquet-multisport.webp'),
   padel: require('../../../assets/images/surfaces/padel.webp'),
   'ping-pong': require('../../../assets/images/surfaces/ping-pong.webp'),
+  tatami: require('../../../assets/images/surfaces/tatami.webp'),
+  ring: require('../../../assets/images/surfaces/ring.webp'),
+  'athletics-track': require('../../../assets/images/surfaces/athletics-track.webp'),
+  trail: require('../../../assets/images/surfaces/trail.webp'),
 };
 
 const SPORT_SURFACES: Record<string, keyof typeof SURFACES> = {
@@ -27,6 +31,17 @@ const SPORT_SURFACES: Record<string, keyof typeof SURFACES> = {
   squash: 'parquet-multisport',
   padel: 'padel',
   'ping-pong': 'ping-pong',
+  judo: 'tatami',
+  'karaté': 'tatami',
+  'aïkido': 'tatami',
+  'jiu-jitsu-brésilien': 'tatami',
+  boxe: 'ring',
+  course: 'athletics-track',
+  'athlétisme': 'athletics-track',
+  triathlon: 'athletics-track',
+  'randonnée': 'trail',
+  'marche-nordique': 'trail',
+  'marche-sportive': 'trail',
 };
 
 // Format réel de chaque texture (elles n'ont pas toutes exactement la même hauteur)

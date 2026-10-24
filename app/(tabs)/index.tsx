@@ -587,7 +587,7 @@ export default function HomeScreen() {
         {/* Scrollable "À VENIR" Section */}
         <View style={styles.upcomingContainer}>
           <RNAnimated.View pointerEvents="none" style={[styles.topShadow, { opacity: topShadowOpacity }]}>
-            <LinearGradient colors={['rgba(0,0,0,0.08)', 'rgba(0,0,0,0)']} style={StyleSheet.absoluteFill} />
+            <LinearGradient colors={['rgba(0,0,0,0.18)', 'rgba(0,0,0,0.06)', 'rgba(0,0,0,0)']} locations={[0, 0.4, 1]} style={StyleSheet.absoluteFill} />
           </RNAnimated.View>
           <RNAnimated.FlatList
             data={upcomingSessions}
@@ -741,7 +741,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: -20,
     right: -20,
-    height: 10,
+    height: 22,
     zIndex: 2,
   },
   listContent: {
