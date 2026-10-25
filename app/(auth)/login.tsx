@@ -199,7 +199,11 @@ export default function LoginScreen() {
   };
 
   // Step 2: Verify OTP
+  // Le remplissage auto d'iOS peut déclencher la saisie deux fois : une seule vérification à la fois
+  const isVerifyingRef = useRef(false);
   const handleVerifyOtp = async (codeValue: string) => {
+    if (isVerifyingRef.current) return;
+    isVerifyingRef.current = true;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsLoading(true);
 
@@ -224,6 +228,8 @@ export default function LoginScreen() {
       setOtp('');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Code incorrect', err?.message || 'Le code saisi est invalide ou expiré.');
+    } finally {
+      isVerifyingRef.current = false;
     }
   };
 
