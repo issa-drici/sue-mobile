@@ -44,6 +44,8 @@ export const SESSIONS_ENDPOINTS = {
   SLOT_AVAILABILITY: (sessionId: string) => `/sessions/${sessionId}/availability`,
   CONFIRM_SLOT: (sessionId: string) => `/sessions/${sessionId}/confirm-slot`,
   SLOTS: (sessionId: string) => `/sessions/${sessionId}/slots`,
+  PROPOSE_SLOT: (sessionId: string) => `/sessions/${sessionId}/slots/propose`,
+  PROPOSED_SLOT: (sessionId: string, slotId: string) => `/sessions/${sessionId}/slots/${slotId}`,
 } as const;
 
 // Endpoints de partage / Universal Links (/join/{token})

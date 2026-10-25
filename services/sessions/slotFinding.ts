@@ -32,5 +32,16 @@ export function useSlotFinding() {
     [run]
   );
 
-  return { isLoading, setAvailability, confirmSlot, updateSlots };
+  const proposeSlot = useCallback(
+    (sessionId: string, slot: { date: string; startTime: string; endTime: string }) =>
+      run(() => SessionsApi.proposeSlot(sessionId, slot)),
+    [run]
+  );
+
+  const removeProposedSlot = useCallback(
+    (sessionId: string, slotId: string) => run(() => SessionsApi.removeProposedSlot(sessionId, slotId)),
+    [run]
+  );
+
+  return { isLoading, setAvailability, confirmSlot, updateSlots, proposeSlot, removeProposedSlot };
 }

@@ -116,7 +116,7 @@ export default function SessionDetailsScreen() {
   const { data: friends, isLoading: isLoadingFriends } = useGetFriends();
   const { inviteFriends } = useInviteFriends();
   const { respondToInvitation, isLoading: isResponding } = useRespondToInvitation();
-  const { setAvailability, confirmSlot, updateSlots, isLoading: isSlotActionLoading } = useSlotFinding();
+  const { setAvailability, confirmSlot, updateSlots, proposeSlot, removeProposedSlot, isLoading: isSlotActionLoading } = useSlotFinding();
   // Modification des créneaux par l'organisateur (même écran qu'à la création)
   const [isSlotsEditorVisible, setIsSlotsEditorVisible] = useState(false);
   const [editedSlots, setEditedSlots] = useState<ProposedSlot[]>([]);
@@ -363,6 +363,27 @@ export default function SessionDetailsScreen() {
       }
     } catch (error) {
       Alert.alert('Erreur', error instanceof Error ? error.message : "Impossible d'envoyer tes disponibilités");
+    }
+  };
+
+  const handleProposeSlot = async (slot: { date: string; startTime: string; endTime: string }) => {
+    try {
+      await proposeSlot(sessionId, slot);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      getSessionById(sessionId, false);
+      return true;
+    } catch (error) {
+      Alert.alert('Erreur', error instanceof Error ? error.message : 'Impossible de proposer ce créneau');
+      return false;
+    }
+  };
+
+  const handleRemoveProposedSlot = async (slotId: string) => {
+    try {
+      await removeProposedSlot(sessionId, slotId);
+      getSessionById(sessionId, false);
+    } catch (error) {
+      Alert.alert('Erreur', error instanceof Error ? error.message : 'Impossible de retirer ce créneau');
     }
   };
 
@@ -915,6 +936,8 @@ export default function SessionDetailsScreen() {
                 userId={user.id}
                 isSending={isSlotActionLoading}
                 onSend={handleSendAvailability}
+                onPropose={handleProposeSlot}
+                onRemoveProposal={handleRemoveProposedSlot}
               />
             </Animated.View>
           ) : null}

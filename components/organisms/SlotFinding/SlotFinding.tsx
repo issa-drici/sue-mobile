@@ -1,12 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BrandColors } from '../../../constants/Colors';
 import { SlotProposal, SportSession } from '../../../types/sport';
+import { SlotDraft, SlotEditorSheet, slotEndTime } from '../SlotPicker';
 
 // "Trouver un créneau" : cartes affichées sur la page session tant que le créneau n'est pas confirmé.
-// L'invité coche ses disponibilités ; l'organisateur voit les réponses et confirme un créneau.
+// L'invité coche ses disponibilités (et peut proposer d'autres créneaux) ; l'organisateur voit les
+// réponses et confirme un créneau.
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -34,6 +36,18 @@ const formatSlotShort = (slot: SlotProposal) => {
   return `${weekday} ${d} à ${formatHour(slot.startTime)}`;
 };
 
+/** Un invité peut proposer au plus 2 créneaux (même limite côté backend) */
+const MAX_PROPOSALS_PER_USER = 2;
+
+const byStart = (a: SlotProposal, b: SlotProposal) => `${a.date} ${a.startTime}`.localeCompare(`${b.date} ${b.startTime}`);
+
+const proposedByLabel = (session: SportSession, slot: SlotProposal, userId?: string) => {
+  if (!slot.proposedBy) return null;
+  if (slot.proposedBy === userId) return 'Proposé par toi';
+  const firstname = session.participants.find((p) => p.id === slot.proposedBy)?.firstname;
+  return `Proposé par ${firstname || 'un joueur'}`;
+};
+
 const availabilityLabel = (count: number) => (count === 0 ? 'Personne' : count === 1 ? '1 dispo' : `${count} dispos`);
 
 /* ------------------------------------------------------------------ */
@@ -45,10 +59,41 @@ interface SlotAvailabilityCardProps {
   userId: string;
   isSending: boolean;
   onSend: (slotIds: string[]) => void;
+  /** Propose un créneau ; renvoie true s'il a été ajouté */
+  onPropose: (slot: { date: string; startTime: string; endTime: string }) => Promise<boolean>;
+  onRemoveProposal: (slotId: string) => void;
 }
 
-export function SlotAvailabilityCard({ session, userId, isSending, onSend }: SlotAvailabilityCardProps) {
-  const slots = useMemo(() => session.slotProposals ?? [], [session.slotProposals]);
+export function SlotAvailabilityCard({ session, userId, isSending, onSend, onPropose, onRemoveProposal }: SlotAvailabilityCardProps) {
+  const slots = useMemo(() => [...(session.slotProposals ?? [])].sort(byStart), [session.slotProposals]);
+  const myProposalsCount = slots.filter((s) => s.proposedBy === userId).length;
+  const [isProposing, setIsProposing] = useState(false);
+
+  // Pré-rempli avec le lendemain du dernier créneau, à la même heure
+  const proposalStart = useMemo(() => {
+    const last = slots[slots.length - 1];
+    if (!last) return new Date();
+    const [y, mo, d] = last.date.split('-').map(Number);
+    const [h, mi] = last.startTime.split(':').map(Number);
+    return new Date(y, mo - 1, d + 1, h, mi);
+  }, [slots]);
+
+  const submitProposal = async (draft: SlotDraft) => {
+    if (slots.some((s) => s.date === draft.date && s.startTime === draft.startTime)) {
+      Alert.alert('Déjà proposé', 'Un créneau commence déjà à cette heure : coche-le plutôt.');
+      return;
+    }
+    const added = await onPropose({ date: draft.date, startTime: draft.startTime, endTime: slotEndTime({ id: '', ...draft }) });
+    if (added) setIsProposing(false);
+  };
+
+  const confirmRemoveProposal = (slot: SlotProposal) => {
+    Haptics.selectionAsync();
+    Alert.alert('Retirer ce créneau ?', `${formatSlotDay(slot)}, ${formatSlotTime(slot)}`, [
+      { text: 'Annuler', style: 'cancel' },
+      { text: 'Retirer', style: 'destructive', onPress: () => slot.id && onRemoveProposal(slot.id) },
+    ]);
+  };
   const me = session.participants.find((p) => p.id === userId);
   const hasResponded = !!me?.hasGivenAvailability;
   // Un créneau a été ajouté après sa réponse : il doit pouvoir revalider même sans rien changer
@@ -94,6 +139,7 @@ export function SlotAvailabilityCard({ session, userId, isSending, onSend }: Slo
         {slots.map((slot) => {
           const id = slotKey(slot);
           const isOn = selected.includes(id);
+          const proposedBy = proposedByLabel(session, slot, userId);
           return (
             <TouchableOpacity
               key={id}
@@ -109,11 +155,43 @@ export function SlotAvailabilityCard({ session, userId, isSending, onSend }: Slo
               <View style={styles.slotTexts}>
                 <Text style={styles.slotDay}>{formatSlotDay(slot)}</Text>
                 <Text style={styles.slotTime}>{formatSlotTime(slot)}</Text>
+                {proposedBy ? <Text style={styles.proposedByText}>{proposedBy}</Text> : null}
               </View>
+              {slot.proposedBy === userId ? (
+                <TouchableOpacity
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  onPress={() => confirmRemoveProposal(slot)}
+                >
+                  <Ionicons name="close" size={18} color="#8E8E93" />
+                </TouchableOpacity>
+              ) : null}
             </TouchableOpacity>
           );
         })}
       </View>
+
+      {myProposalsCount < MAX_PROPOSALS_PER_USER ? (
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={styles.proposeButton}
+          onPress={() => {
+            Haptics.selectionAsync();
+            setIsProposing(true);
+          }}
+        >
+          <Ionicons name="add" size={18} color={BrandColors.success} />
+          <Text style={styles.proposeButtonText}>Proposer un autre créneau</Text>
+        </TouchableOpacity>
+      ) : null}
+
+      <SlotEditorSheet
+        visible={isProposing}
+        title="Proposer un créneau"
+        submitLabel="PROPOSER CE CRÉNEAU"
+        initialStart={proposalStart}
+        onCancel={() => setIsProposing(false)}
+        onSubmit={submitProposal}
+      />
 
       {statusLine && !isDirty && !hasNewSlots ? (
         <View style={styles.statusRow}>
@@ -202,6 +280,7 @@ export function SlotConfirmCard({ session, isConfirming, onConfirm, onInvite, on
           const id = slotKey(slot);
           const isChosen = chosenSlot && slotKey(chosenSlot) === id;
           const names = (slot.availableUserIds ?? []).map(firstNameOf);
+          const proposedBy = proposedByLabel(session, slot);
           return (
             <TouchableOpacity
               key={id}
@@ -220,6 +299,7 @@ export function SlotConfirmCard({ session, isConfirming, onConfirm, onInvite, on
               <View style={styles.slotTexts}>
                 <Text style={styles.slotDay}>{formatSlotDay(slot)}</Text>
                 <Text style={styles.slotTime}>{formatSlotTime(slot)}</Text>
+                {proposedBy ? <Text style={styles.proposedByText}>{proposedBy}</Text> : null}
                 {names.length > 0 ? (
                   <Text style={styles.slotNames} numberOfLines={1}>
                     {names.join(', ')}
@@ -352,6 +432,30 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#000',
+  },
+  proposedByText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: BrandColors.success,
+    marginTop: 2,
+  },
+  proposeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: BrandColors.success,
+    backgroundColor: '#F6FBEE',
+    marginBottom: 12,
+  },
+  proposeButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: BrandColors.success,
   },
   waitingText: {
     fontSize: 13,

@@ -82,7 +82,7 @@ export interface ApiSportSession {
   }[];
 }
 
-// Créneau proposé par l'organisateur quand la date n'est pas encore fixée ("Trouver un créneau")
+// Créneau proposé quand la date n'est pas encore fixée ("Trouver un créneau") : par l'organisateur ou un invité
 export interface SlotProposal {
   id?: string;
   date: string; // YYYY-MM-DD (heure de Paris)
@@ -90,6 +90,7 @@ export interface SlotProposal {
   endTime: string; // HH:mm
   availableUserIds?: string[];
   availabilityCount?: number;
+  proposedBy?: string | null; // id de l'invité qui l'a proposé, null si c'est l'organisateur
 }
 
 // 'finding_slot' : date à définir parmi slotProposals ; date/startTime/endTime ne sont alors qu'une plage

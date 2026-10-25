@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Haptics from 'expo-haptics';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, Modal, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { BrandColors } from '../../../constants/Colors';
@@ -29,7 +29,7 @@ const slotStart = (slot: Pick<ProposedSlot, 'date' | 'startTime'>) => {
   return new Date(y, mo - 1, d, h, mi);
 };
 
-/** Heure de fin "HH:mm" d'un créneau (même jour : validateDraft refuse un créneau qui passe minuit). */
+/** Heure de fin "HH:mm" d'un créneau (avant l'heure de début : il se termine le lendemain). */
 export const slotEndTime = (slot: ProposedSlot) =>
   toTimeKey(new Date(slotStart(slot).getTime() + slot.durationMinutes * 60000));
 
@@ -55,9 +55,8 @@ export interface SlotPickerProps {
 export function SlotPicker({ slots, onChange }: SlotPickerProps) {
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [draftStart, setDraftStart] = useState(new Date());
-  const [draftDuration, setDraftDuration] = useState(DEFAULT_DURATION);
-  const [androidPicker, setAndroidPicker] = useState<'date' | 'time' | null>(null);
+  const [editorStart, setEditorStart] = useState(new Date());
+  const [editorDuration, setEditorDuration] = useState(DEFAULT_DURATION);
 
   const sortedSlots = [...slots].sort((a, b) => slotStart(a).getTime() - slotStart(b).getTime());
 
@@ -70,16 +69,16 @@ export function SlotPicker({ slots, onChange }: SlotPickerProps) {
     start.setDate(start.getDate() + 1);
     if (!last) start.setHours(DEFAULT_START_HOUR, 0, 0, 0);
     setEditingId(null);
-    setDraftStart(start);
-    setDraftDuration(last ? last.durationMinutes : DEFAULT_DURATION);
+    setEditorStart(start);
+    setEditorDuration(last ? last.durationMinutes : DEFAULT_DURATION);
     setIsEditorOpen(true);
   };
 
   const openExistingSlot = (slot: ProposedSlot) => {
     Haptics.selectionAsync();
     setEditingId(slot.id);
-    setDraftStart(slotStart(slot));
-    setDraftDuration(slot.durationMinutes);
+    setEditorStart(slotStart(slot));
+    setEditorDuration(slot.durationMinutes);
     setIsEditorOpen(true);
   };
 
@@ -88,55 +87,19 @@ export function SlotPicker({ slots, onChange }: SlotPickerProps) {
     onChange(slots.filter((s) => s.id !== id));
   };
 
-  const validateDraft = () => {
-    if (draftStart.getTime() <= Date.now()) {
-      Alert.alert('Créneau passé', 'Choisis un jour et une heure à venir.');
-      return;
-    }
-    const date = toDateKey(draftStart);
-    const startTime = toTimeKey(draftStart);
-    const draftEnd = new Date(draftStart.getTime() + draftDuration * 60000);
-    if (toDateKey(draftEnd) !== date) {
-      Alert.alert('Trop tard', 'Le créneau doit se terminer avant minuit.');
-      return;
-    }
-    const isDuplicate = slots.some((s) => s.id !== editingId && s.date === date && s.startTime === startTime);
+  const submitSlot = (draft: SlotDraft) => {
+    const isDuplicate = slots.some((s) => s.id !== editingId && s.date === draft.date && s.startTime === draft.startTime);
     if (isDuplicate) {
-      Alert.alert('Déjà proposé', 'Tu as déjà proposé ce créneau.');
+      Alert.alert('Déjà proposé', 'Un créneau commence déjà à cette heure.');
       return;
     }
-
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const slot: ProposedSlot = {
-      id: editingId ?? `${date}|${startTime}|${Math.random().toString(36).slice(2, 8)}`,
-      date,
-      startTime,
-      durationMinutes: draftDuration,
+      id: editingId ?? `${draft.date}|${draft.startTime}|${Math.random().toString(36).slice(2, 8)}`,
+      ...draft,
     };
     onChange(editingId ? slots.map((s) => (s.id === editingId ? slot : s)) : [...slots, slot]);
     setIsEditorOpen(false);
   };
-
-  const changeDuration = (delta: number) => {
-    const next = draftDuration + delta;
-    if (next < MIN_DURATION || next > MAX_DURATION) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setDraftDuration(next);
-  };
-
-  const updateDraftDate = (picked: Date) => {
-    const next = new Date(draftStart);
-    next.setFullYear(picked.getFullYear(), picked.getMonth(), picked.getDate());
-    setDraftStart(next);
-  };
-
-  const updateDraftTime = (picked: Date) => {
-    const next = new Date(draftStart);
-    next.setHours(picked.getHours(), picked.getMinutes(), 0, 0);
-    setDraftStart(next);
-  };
-
-  const draftEnd = new Date(draftStart.getTime() + draftDuration * 60_000);
 
   return (
     <View style={styles.container}>
@@ -191,112 +154,196 @@ export function SlotPicker({ slots, onChange }: SlotPickerProps) {
         </>
       )}
 
-      <Modal
+      <SlotEditorSheet
         visible={isEditorOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setIsEditorOpen(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => setIsEditorOpen(false)} />
-          <View style={styles.sheet}>
-            <View style={styles.sheetHeader}>
-              <TouchableOpacity onPress={() => setIsEditorOpen(false)}>
-                <Text style={styles.sheetCancel}>Annuler</Text>
-              </TouchableOpacity>
-              <Text style={styles.sheetTitle}>{editingId ? 'Modifier le créneau' : 'Proposer un créneau'}</Text>
-              <View style={styles.sheetHeaderSpacer} />
-            </View>
-
-            <View style={styles.sheetRow}>
-              <Ionicons name="calendar-outline" size={18} color="#8E8E93" />
-              <Text style={styles.sheetRowLabel}>Jour</Text>
-              {Platform.OS === 'ios' ? (
-                <DateTimePicker
-                  value={draftStart}
-                  mode="date"
-                  display="compact"
-                  minimumDate={new Date()}
-                  locale="fr-FR"
-                  themeVariant="light"
-                  onChange={(_, d) => d && updateDraftDate(d)}
-                />
-              ) : (
-                <TouchableOpacity onPress={() => setAndroidPicker('date')}>
-                  <Text style={styles.sheetRowValue}>{formatDayLabel(draftStart)}</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-
-            <View style={styles.sheetRow}>
-              <Ionicons name="time-outline" size={18} color="#8E8E93" />
-              <Text style={styles.sheetRowLabel}>Heure de début</Text>
-              {Platform.OS === 'ios' ? (
-                <DateTimePicker
-                  value={draftStart}
-                  mode="time"
-                  display="compact"
-                  minuteInterval={15}
-                  locale="fr-FR"
-                  themeVariant="light"
-                  onChange={(_, d) => d && updateDraftTime(d)}
-                />
-              ) : (
-                <TouchableOpacity onPress={() => setAndroidPicker('time')}>
-                  <Text style={styles.sheetRowValue}>{formatHour(draftStart)}</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-
-            <View style={styles.sheetRow}>
-              <Ionicons name="hourglass-outline" size={18} color="#8E8E93" />
-              <Text style={styles.sheetRowLabel}>Durée</Text>
-              <View style={styles.stepper}>
-                <TouchableOpacity
-                  onPress={() => changeDuration(-DURATION_STEP)}
-                  style={[styles.stepperButton, draftDuration <= MIN_DURATION && styles.stepperButtonDisabled]}
-                  disabled={draftDuration <= MIN_DURATION}
-                >
-                  <Ionicons name="remove" size={16} color="#000" />
-                </TouchableOpacity>
-                <Text style={styles.stepperValue}>{formatDuration(draftDuration)}</Text>
-                <TouchableOpacity
-                  onPress={() => changeDuration(DURATION_STEP)}
-                  style={[styles.stepperButton, draftDuration >= MAX_DURATION && styles.stepperButtonDisabled]}
-                  disabled={draftDuration >= MAX_DURATION}
-                >
-                  <Ionicons name="add" size={16} color="#000" />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <Text style={styles.sheetSummary}>
-              {formatDayLabel(draftStart)} · {formatHour(draftStart)} → {formatHour(draftEnd)}
-            </Text>
-
-            <TouchableOpacity activeOpacity={0.8} style={styles.validateButton} onPress={validateDraft}>
-              <Text style={styles.validateButtonText}>{editingId ? 'ENREGISTRER' : 'VALIDER CE CRÉNEAU'}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {Platform.OS === 'android' && androidPicker && (
-          <DateTimePicker
-            value={draftStart}
-            mode={androidPicker}
-            display="default"
-            minimumDate={androidPicker === 'date' ? new Date() : undefined}
-            onChange={(_, d) => {
-              const picker = androidPicker;
-              setAndroidPicker(null);
-              if (!d) return;
-              if (picker === 'date') updateDraftDate(d);
-              else updateDraftTime(d);
-            }}
-          />
-        )}
-      </Modal>
+        title={editingId ? 'Modifier le créneau' : 'Proposer un créneau'}
+        submitLabel={editingId ? 'ENREGISTRER' : 'VALIDER CE CRÉNEAU'}
+        initialStart={editorStart}
+        initialDuration={editorDuration}
+        onCancel={() => setIsEditorOpen(false)}
+        onSubmit={submitSlot}
+      />
     </View>
+  );
+}
+
+/** Créneau saisi dans la fenêtre (heure locale) */
+export interface SlotDraft {
+  date: string; // YYYY-MM-DD
+  startTime: string; // HH:mm
+  durationMinutes: number;
+}
+
+interface SlotEditorSheetProps {
+  visible: boolean;
+  title: string;
+  submitLabel: string;
+  initialStart: Date;
+  initialDuration?: number;
+  onCancel: () => void;
+  onSubmit: (draft: SlotDraft) => void;
+}
+
+/** Fenêtre de saisie d'un créneau (jour, heure de début, durée), partagée organisateur / invités */
+export function SlotEditorSheet({
+  visible,
+  title,
+  submitLabel,
+  initialStart,
+  initialDuration = DEFAULT_DURATION,
+  onCancel,
+  onSubmit,
+}: SlotEditorSheetProps) {
+  const [draftStart, setDraftStart] = useState(initialStart);
+  const [draftDuration, setDraftDuration] = useState(initialDuration);
+  const [androidPicker, setAndroidPicker] = useState<'date' | 'time' | null>(null);
+
+  // Repart des valeurs proposées à chaque ouverture
+  useEffect(() => {
+    if (!visible) return;
+    setDraftStart(initialStart);
+    setDraftDuration(initialDuration);
+  }, [visible]);
+
+  const validateDraft = () => {
+    if (draftStart.getTime() <= Date.now()) {
+      Alert.alert('Créneau passé', 'Choisis un jour et une heure à venir.');
+      return;
+    }
+    const date = toDateKey(draftStart);
+    const startTime = toTimeKey(draftStart);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    onSubmit({ date, startTime, durationMinutes: draftDuration });
+  };
+
+  const changeDuration = (delta: number) => {
+    const next = draftDuration + delta;
+    if (next < MIN_DURATION || next > MAX_DURATION) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setDraftDuration(next);
+  };
+
+  const updateDraftDate = (picked: Date) => {
+    const next = new Date(draftStart);
+    next.setFullYear(picked.getFullYear(), picked.getMonth(), picked.getDate());
+    setDraftStart(next);
+  };
+
+  const updateDraftTime = (picked: Date) => {
+    const next = new Date(draftStart);
+    next.setHours(picked.getHours(), picked.getMinutes(), 0, 0);
+    setDraftStart(next);
+  };
+
+  const draftEnd = new Date(draftStart.getTime() + draftDuration * 60_000);
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onCancel}
+    >
+      <View style={styles.modalOverlay}>
+        <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onCancel} />
+        <View style={styles.sheet}>
+          <View style={styles.sheetHeader}>
+            <TouchableOpacity onPress={onCancel}>
+              <Text style={styles.sheetCancel}>Annuler</Text>
+            </TouchableOpacity>
+            <Text style={styles.sheetTitle}>{title}</Text>
+            <View style={styles.sheetHeaderSpacer} />
+          </View>
+
+          <View style={styles.sheetRow}>
+            <Ionicons name="calendar-outline" size={18} color="#8E8E93" />
+            <Text style={styles.sheetRowLabel}>Jour</Text>
+            {Platform.OS === 'ios' ? (
+              <DateTimePicker
+                value={draftStart}
+                mode="date"
+                display="compact"
+                minimumDate={new Date()}
+                locale="fr-FR"
+                themeVariant="light"
+                onChange={(_, d) => d && updateDraftDate(d)}
+              />
+            ) : (
+              <TouchableOpacity onPress={() => setAndroidPicker('date')}>
+                <Text style={styles.sheetRowValue}>{formatDayLabel(draftStart)}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <View style={styles.sheetRow}>
+            <Ionicons name="time-outline" size={18} color="#8E8E93" />
+            <Text style={styles.sheetRowLabel}>Heure de début</Text>
+            {Platform.OS === 'ios' ? (
+              <DateTimePicker
+                value={draftStart}
+                mode="time"
+                display="compact"
+                minuteInterval={15}
+                locale="fr-FR"
+                themeVariant="light"
+                onChange={(_, d) => d && updateDraftTime(d)}
+              />
+            ) : (
+              <TouchableOpacity onPress={() => setAndroidPicker('time')}>
+                <Text style={styles.sheetRowValue}>{formatHour(draftStart)}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <View style={styles.sheetRow}>
+            <Ionicons name="hourglass-outline" size={18} color="#8E8E93" />
+            <Text style={styles.sheetRowLabel}>Durée</Text>
+            <View style={styles.stepper}>
+              <TouchableOpacity
+                onPress={() => changeDuration(-DURATION_STEP)}
+                style={[styles.stepperButton, draftDuration <= MIN_DURATION && styles.stepperButtonDisabled]}
+                disabled={draftDuration <= MIN_DURATION}
+              >
+                <Ionicons name="remove" size={16} color="#000" />
+              </TouchableOpacity>
+              <Text style={styles.stepperValue}>{formatDuration(draftDuration)}</Text>
+              <TouchableOpacity
+                onPress={() => changeDuration(DURATION_STEP)}
+                style={[styles.stepperButton, draftDuration >= MAX_DURATION && styles.stepperButtonDisabled]}
+                disabled={draftDuration >= MAX_DURATION}
+              >
+                <Ionicons name="add" size={16} color="#000" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <Text style={styles.sheetSummary}>
+            {formatDayLabel(draftStart)} · {formatHour(draftStart)} → {formatHour(draftEnd)}
+            {toDateKey(draftEnd) !== toDateKey(draftStart) ? ' (lendemain)' : ''}
+          </Text>
+
+          <TouchableOpacity activeOpacity={0.8} style={styles.validateButton} onPress={validateDraft}>
+            <Text style={styles.validateButtonText}>{submitLabel}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {Platform.OS === 'android' && androidPicker && (
+        <DateTimePicker
+          value={draftStart}
+          mode={androidPicker}
+          display="default"
+          minimumDate={androidPicker === 'date' ? new Date() : undefined}
+          onChange={(_, d) => {
+            const picker = androidPicker;
+            setAndroidPicker(null);
+            if (!d) return;
+            if (picker === 'date') updateDraftDate(d);
+            else updateDraftTime(d);
+          }}
+        />
+      )}
+    </Modal>
   );
 }
 

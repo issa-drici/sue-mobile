@@ -230,6 +230,21 @@ export class SessionsApi {
     return response.data;
   }
 
+  // Trouver un créneau : un invité propose un créneau en plus de ceux de l'organisateur
+  static async proposeSlot(
+    sessionId: string,
+    slot: { date: string; startTime: string; endTime: string }
+  ): Promise<Session> {
+    const response = await baseApiService.post<LaravelResponse<Session>>(SESSIONS_ENDPOINTS.PROPOSE_SLOT(sessionId), slot);
+    return response.data;
+  }
+
+  // Trouver un créneau : un invité retire un créneau qu'il a proposé
+  static async removeProposedSlot(sessionId: string, slotId: string): Promise<Session> {
+    const response = await baseApiService.delete<LaravelResponse<Session>>(SESSIONS_ENDPOINTS.PROPOSED_SLOT(sessionId, slotId));
+    return response.data;
+  }
+
   // Changer l'organisateur
   static async changeOrganizer(sessionId: string, newOrganizerId: string): Promise<Session> {
     const response = await baseApiService.patch<LaravelResponse<Session>>(
