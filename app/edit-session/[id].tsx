@@ -488,11 +488,6 @@ export default function EditSessionScreen() {
                       </TouchableOpacity>
                     </View>
                   </View>
-                  <Text style={styles.maxParticipantsHint}>
-                    {maxParticipants === null
-                      ? 'Tout le monde peut rejoindre. Appuie sur + pour fixer un nombre maximum.'
-                      : `La session sera complète à ${maxParticipants} joueur${maxParticipants > 1 ? 's' : ''}.`}
-                  </Text>
                 </Animated.View>
 
                 {/* Section Prix par joueur */}
@@ -831,12 +826,6 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 20,
     paddingHorizontal: 20,
-  },
-  maxParticipantsHint: {
-    marginTop: 10,
-    fontSize: 13,
-    color: '#8E8E93',
-    fontWeight: '500',
   },
   sectionLabel: {
     fontSize: 11,
