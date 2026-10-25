@@ -2,7 +2,7 @@
  * Tests pour les utilitaires de gestion des heures
  */
 
-import { roundToNearestHalfHour, addOneHour, isValidEndTime, getDefaultEndTime } from '../timeHelpers';
+import { roundToNearestHalfHour, addOneHour, isValidEndTime, endsNextDay, getDefaultEndTime } from '../timeHelpers';
 
 describe('timeHelpers', () => {
   describe('roundToNearestHalfHour', () => {
@@ -50,10 +50,18 @@ describe('timeHelpers', () => {
       expect(isValidEndTime(startTime, endTime)).toBe(false);
     });
 
-    it('devrait retourner false si l\'heure de fin est avant l\'heure de début', () => {
-      const startTime = new Date('2000-01-01T14:00:00');
-      const endTime = new Date('2000-01-01T13:00:00');
-      expect(isValidEndTime(startTime, endTime)).toBe(false);
+    it('devrait retourner true si l\'heure de fin est avant l\'heure de début (fin le lendemain)', () => {
+      const startTime = new Date('2000-01-01T23:00:00');
+      const endTime = new Date('2000-01-02T00:30:00');
+      expect(isValidEndTime(startTime, endTime)).toBe(true);
+      expect(endsNextDay(startTime, endTime)).toBe(true);
+    });
+
+    it('devrait comparer les heures et pas les jours', () => {
+      const startTime = new Date('2000-01-01T23:00:00');
+      const endTime = new Date('2000-01-01T00:30:00');
+      expect(isValidEndTime(startTime, endTime)).toBe(true);
+      expect(endsNextDay(startTime, new Date('2000-01-01T23:30:00'))).toBe(false);
     });
   });
 

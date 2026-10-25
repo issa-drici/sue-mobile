@@ -19,7 +19,7 @@ const CHOICES = [
     href: '/create-session?mode=find-slot',
     image: require('../../../assets/images/brand/find-slot.webp'),
     title: 'Trouver un créneau',
-    hint: 'Tes potes disent quand ils sont dispos.',
+    hint: 'Tes potes votent pour le meilleur créneau.',
   },
 ];
 

@@ -29,15 +29,15 @@ import { MainScreenLayout } from '../components/ui/ScreenLayout';
 import { BrandColors } from '../constants/Colors';
 import { useCreateSession, useRecentLocations } from '../services';
 import { SportsApi } from '../services/api/sportsApi';
-import { getDefaultEndTime, getSportEmoji, isValidEndTime, roundToNextHalfHour, SPORTS_LIST } from '../utils';
+import { endsNextDay, getDefaultEndTime, getSportEmoji, isValidEndTime, roundToNextHalfHour, SPORTS_LIST } from '../utils';
 import { matchesSportSearch } from '../utils/search';
 import { Sport } from '../types/sport';
 
 type WhenMode = 'known-date' | 'find-slot';
 
-const WHEN_OPTIONS: { value: WhenMode; label: string; image: ImageSourcePropType; hint: string }[] = [
-  { value: 'known-date', label: "J'ai une date", image: require('../assets/images/brand/date.webp'), hint: "Tu choisis la date et l'heure à l'étape suivante." },
-  { value: 'find-slot', label: 'Trouver un créneau', image: require('../assets/images/brand/find-slot.webp'), hint: 'Tes joueurs indiqueront quand ils peuvent jouer.' },
+const WHEN_OPTIONS: { value: WhenMode; label: string; image: ImageSourcePropType; description: string }[] = [
+  { value: 'known-date', label: "J'ai une date", image: require('../assets/images/brand/date.webp'), description: "Tu fixes le jour et l'heure." },
+  { value: 'find-slot', label: 'Trouver un créneau', image: require('../assets/images/brand/find-slot.webp'), description: 'Tes potes votent pour le meilleur créneau.' },
 ];
 
 // Configuration fixe des sports principaux par défaut (pour correspondre à la maquette)
@@ -329,7 +329,7 @@ export default function CreateSessionScreen() {
     if (!validateRequiredFields()) return;
 
     if (!isValidEndTime(startTime, endTime)) {
-      Alert.alert('Erreur', "L'heure de fin doit être après l'heure de début");
+      Alert.alert('Erreur', "L'heure de fin doit être différente de l'heure de début");
       return;
     }
 
@@ -457,13 +457,11 @@ export default function CreateSessionScreen() {
               <Text style={[styles.whenChoiceText, isSelected && styles.whenChoiceTextSelected]}>
                 {option.label}
               </Text>
+              <Text style={styles.whenChoiceDescription}>{option.description}</Text>
             </TouchableOpacity>
           );
         })}
       </View>
-      <Text style={styles.whenChoiceHint}>
-        {WHEN_OPTIONS.find((option) => option.value === whenMode)?.hint}
-      </Text>
     </Animated.View>
   );
 
@@ -599,6 +597,7 @@ export default function CreateSessionScreen() {
             <Text style={styles.timeValueText}>{formatTimeLabel(startTime)}</Text>
             <Ionicons name="arrow-forward-outline" size={14} color="#8E8E93" style={{ marginHorizontal: 12 }} />
             <Text style={styles.timeValueText}>{formatTimeLabel(endTime)}</Text>
+            {endsNextDay(startTime, endTime) && <Text style={styles.nextDayText}>lendemain</Text>}
           </View>
         </TouchableOpacity>
       </Animated.View>
@@ -736,7 +735,7 @@ export default function CreateSessionScreen() {
                   <View style={styles.summaryDetailRow}>
                     <Ionicons name="time-outline" size={14} color="#8E8E93" style={{ marginRight: 8 }} />
                     <Text style={styles.summaryDetailText}>
-                      {formatTimeLabel(startTime)} - {formatTimeLabel(endTime)}
+                      {formatTimeLabel(startTime)} - {formatTimeLabel(endTime)}{endsNextDay(startTime, endTime) ? ' (lendemain)' : ''}
                     </Text>
                   </View>
                   <View style={styles.summaryDetailRow}>
@@ -1006,10 +1005,10 @@ export default function CreateSessionScreen() {
           onChange={(event, selectedTime) => {
             setShowAndroidEndTimePicker(false);
             if (selectedTime) {
-              if (selectedTime.getTime() > startTime.getTime()) {
+              if (isValidEndTime(startTime, selectedTime)) {
                 setEndTime(selectedTime);
               } else {
-                Alert.alert('Erreur', "L'heure de fin doit être après l'heure de début");
+                Alert.alert('Erreur', "L'heure de fin doit être différente de l'heure de début");
               }
             }
           }}
@@ -1233,6 +1232,13 @@ const styles = StyleSheet.create({
     color: '#000',
     fontWeight: '700',
   },
+  whenChoiceDescription: {
+    marginTop: -4,
+    fontSize: 12,
+    lineHeight: 16,
+    color: '#8E8E93',
+    fontWeight: '500',
+  },
   slotsCounter: {
     fontSize: 13,
     fontWeight: '600',
@@ -1258,6 +1264,12 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  nextDayText: {
+    marginLeft: 8,
+    fontSize: 12,
+    color: '#8E8E93',
+    fontWeight: '600',
   },
   timeValueText: {
     fontSize: 14,

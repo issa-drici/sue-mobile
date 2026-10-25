@@ -378,7 +378,8 @@ export default function SessionDetailsScreen() {
         id: slot.id ?? `${slot.date}|${slot.startTime}`,
         date: slot.date,
         startTime: slot.startTime,
-        durationMinutes: toMinutes(slot.endTime) - toMinutes(slot.startTime),
+        // Fin avant le début : le créneau se termine le lendemain
+        durationMinutes: (toMinutes(slot.endTime) - toMinutes(slot.startTime) + 24 * 60) % (24 * 60),
       }))
     );
     setIsSlotsEditorVisible(true);

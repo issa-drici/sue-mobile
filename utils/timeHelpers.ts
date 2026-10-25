@@ -79,7 +79,19 @@ export function addOneHour(date: Date): Date {
  * @returns true si l'heure de fin est valide
  */
 export function isValidEndTime(startTime: Date, endTime: Date): boolean {
-  return endTime > startTime;
+  // Une fin avant le début tombe le lendemain (ex. 23:00 → 00:30) : seule une durée nulle est refusée
+  return minutesOfDay(endTime) !== minutesOfDay(startTime);
+}
+
+/**
+ * Vrai si la session se termine le lendemain (heure de fin avant l'heure de début)
+ */
+export function endsNextDay(startTime: Date, endTime: Date): boolean {
+  return minutesOfDay(endTime) < minutesOfDay(startTime);
+}
+
+function minutesOfDay(date: Date): number {
+  return date.getHours() * 60 + date.getMinutes();
 }
 
 /**

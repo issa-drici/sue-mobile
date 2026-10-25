@@ -42,7 +42,7 @@ export {
     formatCommentDate, formatDate, formatDateTime, formatRelativeDate, formatShortDate, formatTime
 } from './dateHelpers';
 
-export { addOneHour, formatTimeString, getDefaultEndTime, isValidEndTime, roundToNearestHalfHour, roundToNextHalfHour } from './timeHelpers';
+export { addOneHour, endsNextDay, formatTimeString, getDefaultEndTime, isValidEndTime, roundToNearestHalfHour, roundToNextHalfHour } from './timeHelpers';
 
 export { getSportEmoji, SPORT_EMOJIS } from './sportEmojis';
 

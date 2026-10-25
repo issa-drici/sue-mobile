@@ -27,7 +27,7 @@ import { MainScreenLayout } from '../../components/ui/ScreenLayout';
 import { BrandColors } from '../../constants/Colors';
 import { useGetSessionById, useUpdateSession } from '../../services';
 import { SportsApi } from '../../services/api/sportsApi';
-import { getDefaultEndTime, getSportEmoji, isValidEndTime, SPORTS_LIST } from '../../utils';
+import { endsNextDay, getDefaultEndTime, getSportEmoji, isValidEndTime, SPORTS_LIST } from '../../utils';
 import { matchesSportSearch } from '../../utils/search';
 import { useAuth } from '../context/auth';
 
@@ -293,7 +293,7 @@ export default function EditSessionScreen() {
     }
 
     if (!isValidEndTime(startTime, endTime)) {
-      Alert.alert('Erreur', "L'heure de fin doit être strictement après l'heure de début");
+      Alert.alert('Erreur', "L'heure de fin doit être différente de l'heure de début");
       return;
     }
 
@@ -457,6 +457,7 @@ export default function EditSessionScreen() {
                         <Text style={styles.timeValueText}>{formatTimeLabel(startTime)}</Text>
                         <Ionicons name="arrow-forward-outline" size={14} color="#8E8E93" style={{ marginHorizontal: 12 }} />
                         <Text style={styles.timeValueText}>{formatTimeLabel(endTime)}</Text>
+                        {endsNextDay(startTime, endTime) && <Text style={styles.nextDayText}>lendemain</Text>}
                       </View>
                     </TouchableOpacity>
                   </Animated.View>
@@ -770,7 +771,7 @@ export default function EditSessionScreen() {
               if (isValidEndTime(startTime, selectedTime)) {
                 setEndTime(selectedTime);
               } else {
-                Alert.alert('Erreur', "L'heure de fin doit être après l'heure de début");
+                Alert.alert('Erreur', "L'heure de fin doit être différente de l'heure de début");
               }
             }
           }}
@@ -938,6 +939,12 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  nextDayText: {
+    marginLeft: 8,
+    fontSize: 12,
+    color: '#8E8E93',
+    fontWeight: '600',
   },
   timeValueText: {
     fontSize: 14,
