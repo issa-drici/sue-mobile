@@ -515,6 +515,7 @@ export default function CreateSessionScreen() {
       </Animated.View>
       {/* Options avancées : limite de joueurs et prix, facultatifs */}
       <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.advancedToggleRow}>
+        <View style={styles.advancedToggleLine} />
         <TouchableOpacity
           activeOpacity={0.8}
           style={[styles.advancedToggle, showAdvanced && styles.advancedToggleOpen]}
@@ -527,6 +528,7 @@ export default function CreateSessionScreen() {
           <Text style={styles.advancedToggleText}>Options avancées</Text>
           <Ionicons name={showAdvanced ? 'chevron-up' : 'chevron-down'} size={14} color="#8E8E93" />
         </TouchableOpacity>
+        <View style={styles.advancedToggleLine} />
       </Animated.View>
 
       {showAdvanced && (
@@ -1263,8 +1265,15 @@ const styles = StyleSheet.create({
   },
   advancedToggleRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     marginBottom: 20,
     paddingHorizontal: 20,
+  },
+  advancedToggleLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: '#D9D9D9',
   },
   advancedToggle: {
     flexDirection: 'row',
