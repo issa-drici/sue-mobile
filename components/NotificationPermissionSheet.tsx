@@ -24,7 +24,7 @@ interface Props {
   visible: boolean;
   onDismiss: () => void;
   // 'participant' : après avoir rejoint une session ; 'availability' : après avoir donné ses dispos ("Trouver un créneau")
-  variant?: 'participant' | 'availability';
+  variant?: 'participant' | 'organizer' | 'availability';
 }
 
 const BULLETS = [
@@ -65,11 +65,30 @@ const AVAILABILITY_BULLETS = [
   BULLETS[3],
 ];
 
+const ORGANIZER_BULLETS = [
+  {
+    icon: 'person-add-outline' as const,
+    title: "Nouveaux joueurs",
+    description: "Sois prévenu dès que quelqu'un rejoint ta session."
+  },
+  {
+    icon: 'exit-outline' as const,
+    title: "Désistements",
+    description: "Sache tout de suite si un joueur se désiste."
+  },
+  BULLETS[3],
+];
+
 const COPY = {
   participant: {
     title: 'Tu participes à cette session.',
     subtitle: 'Active les notifications pour ne rien manquer des changements de dernière minute.',
     bullets: BULLETS,
+  },
+  organizer: {
+    title: 'Ta session est créée.',
+    subtitle: 'Active les notifications pour savoir qui rejoint ta session.',
+    bullets: ORGANIZER_BULLETS,
   },
   availability: {
     title: 'Tes dispos sont envoyées.',

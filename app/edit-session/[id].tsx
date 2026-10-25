@@ -28,7 +28,7 @@ import { BrandColors } from '../../constants/Colors';
 import { useGetSessionById, useUpdateSession } from '../../services';
 import { SportsApi } from '../../services/api/sportsApi';
 import { getDefaultEndTime, getSportEmoji, isValidEndTime, SPORTS_LIST } from '../../utils';
-import { matchesSearch } from '../../utils/search';
+import { matchesSportSearch } from '../../utils/search';
 import { useAuth } from '../context/auth';
 
 // Configuration fixe des sports principaux par défaut (identique à create-session)
@@ -233,7 +233,7 @@ export default function EditSessionScreen() {
 
   const getFilteredSports = () => {
     if (!searchQuery.trim()) return allSports;
-    return allSports.filter((sport) => matchesSearch(sport, searchQuery));
+    return allSports.filter((sport) => matchesSportSearch(sport, searchQuery));
   };
 
   const formatDateLabel = (d: Date) => {
@@ -465,7 +465,7 @@ export default function EditSessionScreen() {
 
                 {/* Section Joueurs Max */}
                 <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.section}>
-                  <Text style={styles.sectionLabel}>JOUEURS MAX</Text>
+                  <Text style={styles.sectionLabel}>LIMITE DE JOUEURS</Text>
                   <View style={styles.inputCardRow}>
                     <Ionicons name="people-outline" size={18} color="#8E8E93" style={styles.cardIcon} />
                     <View style={styles.stepperContainer}>
@@ -477,7 +477,7 @@ export default function EditSessionScreen() {
                         <Ionicons name="remove" size={16} color={maxParticipants === null ? '#CCCCCC' : '#000'} />
                       </TouchableOpacity>
                       <Text style={[styles.stepperValueText, maxParticipants === null && styles.stepperValueTextUncapped]}>
-                        {maxParticipants === null ? 'Session ouverte (illimité)' : `${maxParticipants} joueur${maxParticipants > 1 ? 's' : ''}`}
+                        {maxParticipants === null ? 'Pas de limite' : `${maxParticipants} joueur${maxParticipants > 1 ? 's' : ''} max`}
                       </Text>
                       <TouchableOpacity
                         onPress={incrementMax}
@@ -487,6 +487,11 @@ export default function EditSessionScreen() {
                       </TouchableOpacity>
                     </View>
                   </View>
+                  <Text style={styles.maxParticipantsHint}>
+                    {maxParticipants === null
+                      ? 'Tout le monde peut rejoindre. Appuie sur + pour fixer un nombre maximum.'
+                      : `La session sera complète à ${maxParticipants} joueur${maxParticipants > 1 ? 's' : ''}.`}
+                  </Text>
                 </Animated.View>
 
                 {/* Section Prix par joueur */}
@@ -825,6 +830,12 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 20,
     paddingHorizontal: 20,
+  },
+  maxParticipantsHint: {
+    marginTop: 10,
+    fontSize: 13,
+    color: '#8E8E93',
+    fontWeight: '500',
   },
   sectionLabel: {
     fontSize: 11,

@@ -126,12 +126,17 @@ export default function SessionDetailsScreen() {
   // Demande "soft" de notifications : affichée une fois, après que l'utilisateur
   // participe à une session (typiquement juste après le flow de join).
   const [showNotifSheet, setShowNotifSheet] = useState(false);
-  const [notifSheetVariant, setNotifSheetVariant] = useState<'participant' | 'availability'>('participant');
+  const [notifSheetVariant, setNotifSheetVariant] = useState<'participant' | 'organizer' | 'availability'>('participant');
   const notifPromptCheckedRef = useRef(false);
+
+  // iOS ne superpose pas deux fenêtres : une demande ouverte pendant l'invitation (ouverte d'office
+  // après la création) restait invisible et bloquait tous les taps une fois l'invitation fermée.
+  const isAnotherModalOpen = isInviteModalVisible || isSlotsEditorVisible || showComments;
 
   useEffect(() => {
     if (notifPromptCheckedRef.current) return;
     if (!session || !user) return;
+    if (isAnotherModalOpen) return;
 
     // L'utilisateur doit participer (statut accepté) à cette session
     const isAcceptedParticipant = session.participants?.some(
@@ -144,9 +149,11 @@ export default function SessionDetailsScreen() {
 
     // Gating (déjà accepté/refusé, token existant, déjà traité) délégué au service
     pushNotificationService.shouldShowSoftPrompt().then((should) => {
-      if (should) setShowNotifSheet(true);
+      if (!should) return;
+      setNotifSheetVariant(session.organizer?.id === user.id ? 'organizer' : 'participant');
+      setShowNotifSheet(true);
     });
-  }, [session, user]);
+  }, [session, user, isAnotherModalOpen]);
 
   // Comments
   const {
@@ -1393,22 +1400,25 @@ export default function SessionDetailsScreen() {
 
               {/* Bottom Send Button (invitation dans l'application) */}
               <View style={[styles.inviteBottomBtnContainer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  style={[
-                    styles.inviteSendBtn,
-                    selectedFriends.length === 0 && styles.inviteSendBtnDisabled
-                  ]}
-                  onPress={handleInvite}
-                  disabled={selectedFriends.length === 0}
-                >
-                  <View style={styles.inviteSendBtnLeftContent}>
-                    <Text style={styles.inviteSendBtnMainText}>
-                      Inviter {selectedFriends.length} joueur{selectedFriends.length > 1 ? 's' : ''}
-                    </Text>
-                  </View>
-                  <Ionicons name="paper-plane" size={18} color="#000" />
-                </TouchableOpacity>
+                {selectedFriends.length === 0 ? (
+                  // Personne de sélectionné (ex. aucun ami, lien partagé) : on peut toujours terminer
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    style={[styles.inviteSendBtn, styles.inviteDoneBtn]}
+                    onPress={() => setIsInviteModalVisible(false)}
+                  >
+                    <Text style={styles.inviteSendBtnMainText}>Terminé</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity activeOpacity={0.8} style={styles.inviteSendBtn} onPress={handleInvite}>
+                    <View style={styles.inviteSendBtnLeftContent}>
+                      <Text style={styles.inviteSendBtnMainText}>
+                        Inviter {selectedFriends.length} joueur{selectedFriends.length > 1 ? 's' : ''}
+                      </Text>
+                    </View>
+                    <Ionicons name="paper-plane" size={18} color="#000" />
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           )}
@@ -1481,7 +1491,7 @@ export default function SessionDetailsScreen() {
       </Modal>
 
       <NotificationPermissionSheet
-        visible={showNotifSheet}
+        visible={showNotifSheet && !isAnotherModalOpen}
         variant={notifSheetVariant}
         onDismiss={() => setShowNotifSheet(false)}
       />
@@ -2285,8 +2295,8 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 20,
   },
-  inviteSendBtnDisabled: {
-    opacity: 0.5,
+  inviteDoneBtn: {
+    justifyContent: 'center',
   },
   inviteSendBtnLeftContent: {
     flex: 1,

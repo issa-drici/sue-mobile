@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Dimensions, Image, Modal, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { useIsFocused } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   Easing,
@@ -112,7 +113,10 @@ export function BadgeCelebration({ checkKey }: { checkKey: unknown }) {
   const [queue, setQueue] = useState<Badge[]>([]);
   const [isSharing, setIsSharing] = useState(false);
   const cardRef = useRef<View>(null);
-  const current = queue[0];
+  // iOS ne superpose pas deux fenêtres : restée ouverte sous un autre écran, la célébration
+  // empêchait sa fenêtre (ex. l'invitation) de s'afficher tout en bloquant les taps.
+  const isFocused = useIsFocused();
+  const current = isFocused ? queue[0] : undefined;
 
   const medalScale = useSharedValue(0.2);
   const medalRotate = useSharedValue(0);

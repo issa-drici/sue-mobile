@@ -30,7 +30,7 @@ import { BrandColors } from '../constants/Colors';
 import { useCreateSession, useRecentLocations } from '../services';
 import { SportsApi } from '../services/api/sportsApi';
 import { getDefaultEndTime, getSportEmoji, isValidEndTime, roundToNextHalfHour, SPORTS_LIST } from '../utils';
-import { matchesSearch } from '../utils/search';
+import { matchesSportSearch } from '../utils/search';
 import { Sport } from '../types/sport';
 
 type WhenMode = 'known-date' | 'find-slot';
@@ -221,7 +221,7 @@ export default function CreateSessionScreen() {
 
   const getFilteredSports = () => {
     if (!searchQuery.trim()) return allSports;
-    return allSports.filter((sport) => matchesSearch(sport, searchQuery));
+    return allSports.filter((sport) => matchesSportSearch(sport, searchQuery));
   };
 
   const formatDateLabel = (d: Date) => {
@@ -471,7 +471,7 @@ export default function CreateSessionScreen() {
     <>
       {/* Section Joueurs Max (Illimité par défaut) */}
       <Animated.View entering={FadeInDown.delay(150).springify()} style={styles.section}>
-        <Text style={styles.sectionLabel}>JOUEURS MAX</Text>
+        <Text style={styles.sectionLabel}>LIMITE DE JOUEURS</Text>
         <View style={styles.inputCardRow}>
           <Ionicons name="people-outline" size={18} color="#8E8E93" style={styles.cardIcon} />
           <View style={styles.stepperContainer}>
@@ -483,7 +483,7 @@ export default function CreateSessionScreen() {
               <Ionicons name="remove" size={16} color={maxParticipants === null ? '#CCCCCC' : '#000'} />
             </TouchableOpacity>
             <Text style={[styles.stepperValueText, maxParticipants === null && styles.stepperValueTextUncapped]}>
-              {maxParticipants === null ? 'Session ouverte (illimité)' : `${maxParticipants} joueur${maxParticipants > 1 ? 's' : ''}`}
+              {maxParticipants === null ? 'Pas de limite' : `${maxParticipants} joueur${maxParticipants > 1 ? 's' : ''} max`}
             </Text>
             <TouchableOpacity
               onPress={incrementMax}
@@ -493,6 +493,11 @@ export default function CreateSessionScreen() {
             </TouchableOpacity>
           </View>
         </View>
+        <Text style={styles.whenChoiceHint}>
+          {maxParticipants === null
+            ? 'Tout le monde peut rejoindre. Appuie sur + pour fixer un nombre maximum.'
+            : `La session sera complète à ${maxParticipants} joueur${maxParticipants > 1 ? 's' : ''}.`}
+        </Text>
       </Animated.View>
 
       {/* Section Prix par joueur */}
@@ -741,7 +746,7 @@ export default function CreateSessionScreen() {
                   <View style={styles.summaryDetailRow}>
                     <Ionicons name="people-outline" size={14} color="#8E8E93" style={{ marginRight: 8 }} />
                     <Text style={styles.summaryDetailText}>
-                      {maxParticipants === null ? 'Session ouverte (illimité)' : `${maxParticipants} joueur${maxParticipants > 1 ? 's' : ''} max`}
+                      {maxParticipants === null ? 'Pas de limite de joueurs' : `${maxParticipants} joueur${maxParticipants > 1 ? 's' : ''} max`}
                     </Text>
                   </View>
                   <View style={styles.summaryDetailRow}>

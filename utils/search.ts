@@ -12,3 +12,14 @@ export function normalizeForSearch(value: string): string {
 export function matchesSearch(candidate: string, query: string): boolean {
   return normalizeForSearch(candidate).includes(normalizeForSearch(query));
 }
+
+// Termes que les gens tapent sans penser au nom du sport dans la liste
+const SPORT_SYNONYMS: Record<string, string[]> = {
+  musculation: ['fitness', 'salle de sport'],
+};
+
+export function matchesSportSearch(sport: string, query: string): boolean {
+  if (matchesSearch(sport, query)) return true;
+  const synonyms = SPORT_SYNONYMS[normalizeForSearch(sport)] ?? [];
+  return synonyms.some((term) => matchesSearch(term, query));
+}
