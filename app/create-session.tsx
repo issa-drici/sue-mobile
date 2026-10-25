@@ -21,7 +21,7 @@ import {
   View
 } from 'react-native';
 import { SportIcon, hasSportImage } from '../components/atoms/SportIcon';
-import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, FadeInUp, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ProposedSlot, SlotPicker, slotEndTime } from '../components/organisms/SlotPicker';
@@ -385,18 +385,28 @@ export default function CreateSessionScreen() {
     <Animated.View entering={FadeInDown.delay(50).springify()} style={styles.section}>
       <Text style={styles.sectionLabel}>SPORT*</Text>
       <View style={[styles.sportsHorizontalRow, fieldErrors.sport && styles.inputCardRowError]}>
-        {/* Accès rapides : défilent horizontalement si nombreux */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.badgesScroll}
-          contentContainerStyle={styles.badgesScrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          {quickSports.length === 0 ? (
+        {/* Pas encore de sport : toute la zone ouvre la liste des sports */}
+        {quickSports.length === 0 ? (
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={styles.badgesEmptyTouch}
+            onPress={() => {
+              Haptics.selectionAsync();
+              setShowSportsModal(true);
+            }}
+          >
             <Text style={styles.badgesEmptyHint}>Choisis ton sport</Text>
-          ) : (
-            quickSports.map((sportKey) => {
+          </TouchableOpacity>
+        ) : (
+          // Accès rapides : défilent horizontalement si nombreux
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.badgesScroll}
+            contentContainerStyle={styles.badgesScrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            {quickSports.map((sportKey) => {
               const details = getSportDetails(sportKey);
               const isSelected = selectedSport === sportKey;
               return (
@@ -417,9 +427,9 @@ export default function CreateSessionScreen() {
                   </Text>
                 </TouchableOpacity>
               );
-            })
-          )}
-        </ScrollView>
+            })}
+          </ScrollView>
+        )}
 
         {/* Bouton "Plus" fixe à droite (ne défile pas) */}
         <TouchableOpacity
@@ -514,7 +524,7 @@ export default function CreateSessionScreen() {
         )}
       </Animated.View>
       {/* Options avancées : limite de joueurs et prix, facultatifs */}
-      <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.advancedToggleRow}>
+      <Animated.View entering={FadeIn.delay(200)} layout={LinearTransition} style={styles.advancedToggleRow}>
         <View style={styles.advancedToggleLine} />
         <TouchableOpacity
           activeOpacity={0.8}
@@ -532,12 +542,11 @@ export default function CreateSessionScreen() {
       </Animated.View>
 
       {showAdvanced && (
-        <>
-          {/* Section Joueurs Max (Illimité par défaut) */}
-          <Animated.View entering={FadeIn.duration(200)} style={styles.section}>
+        // Limite et prix côte à côte : le formulaire déplié tient sans défiler
+        <Animated.View entering={FadeIn.duration(200)} style={[styles.section, styles.advancedRow]}>
+          <View style={styles.advancedField}>
             <Text style={styles.sectionLabel}>LIMITE DE JOUEURS</Text>
-            <View style={styles.inputCardRow}>
-              <Ionicons name="people-outline" size={18} color="#8E8E93" style={styles.cardIcon} />
+            <View style={[styles.inputCardRow, styles.advancedCard]}>
               <View style={styles.stepperContainer}>
                 <TouchableOpacity
                   onPress={decrementMax}
@@ -547,7 +556,7 @@ export default function CreateSessionScreen() {
                   <Ionicons name="remove" size={16} color={maxParticipants === null ? '#CCCCCC' : '#000'} />
                 </TouchableOpacity>
                 <Text style={[styles.stepperValueText, maxParticipants === null && styles.stepperValueTextUncapped]}>
-                  {maxParticipants === null ? 'Pas de limite' : `${maxParticipants} joueur${maxParticipants > 1 ? 's' : ''} max`}
+                  {maxParticipants === null ? 'Aucune' : `${maxParticipants} joueur${maxParticipants > 1 ? 's' : ''}`}
                 </Text>
                 <TouchableOpacity
                   onPress={incrementMax}
@@ -557,16 +566,14 @@ export default function CreateSessionScreen() {
                 </TouchableOpacity>
               </View>
             </View>
-          </Animated.View>
+          </View>
 
-          {/* Section Prix par joueur */}
-          <Animated.View entering={FadeIn.duration(200)} style={styles.section}>
+          <View style={styles.advancedField}>
             <Text style={styles.sectionLabel}>PRIX PAR JOUEUR</Text>
-            <View style={styles.inputCardRow}>
-              <Ionicons name="pricetag-outline" size={18} color="#8E8E93" style={styles.cardIcon} />
+            <View style={[styles.inputCardRow, styles.advancedCard]}>
               <TextInput
                 style={styles.textInputRow}
-                placeholder="Optionnel"
+                placeholder="Gratuit"
                 placeholderTextColor="#CCCCCC"
                 value={pricePerPerson}
                 onChangeText={setPricePerPerson}
@@ -579,8 +586,8 @@ export default function CreateSessionScreen() {
               />
               <Text style={styles.currencySuffixText}>€</Text>
             </View>
-          </Animated.View>
-        </>
+          </View>
+        </Animated.View>
       )}
     </>
   );
@@ -828,6 +835,9 @@ export default function CreateSessionScreen() {
               value={searchQuery}
               onChangeText={setSearchQuery}
               autoCapitalize="none"
+              autoCorrect={false}
+              spellCheck={false}
+              autoComplete="off"
             />
           </View>
 
@@ -836,6 +846,7 @@ export default function CreateSessionScreen() {
             keyExtractor={(item) => item}
             contentContainerStyle={styles.sportsListContent}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
             renderItem={({ item }) => {
               const details = getSportDetails(item);
               return (
@@ -1086,7 +1097,7 @@ const styles = StyleSheet.create({
   formContentInner: {
     flexGrow: 1,
     justifyContent: 'space-between',
-    paddingBottom: Platform.OS === 'ios' ? 60 : 32,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 24,
   },
   section: {
     marginBottom: 20,
@@ -1118,6 +1129,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 20,
     paddingRight: 12,
+  },
+  badgesEmptyTouch: {
+    flex: 1,
+    alignSelf: 'stretch',
+    justifyContent: 'center',
   },
   badgesEmptyHint: {
     color: '#8E8E93',
@@ -1269,6 +1285,16 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 20,
     paddingHorizontal: 20,
+  },
+  advancedRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  advancedField: {
+    flex: 1,
+  },
+  advancedCard: {
+    paddingHorizontal: 10,
   },
   advancedToggleLine: {
     flex: 1,

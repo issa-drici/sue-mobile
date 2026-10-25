@@ -571,10 +571,14 @@ export default function EditSessionScreen() {
               value={searchQuery}
               onChangeText={setSearchQuery}
               autoCapitalize="none"
+              autoCorrect={false}
+              spellCheck={false}
+              autoComplete="off"
             />
           </View>
 
           <FlatList
+            keyboardShouldPersistTaps="handled"
             data={getFilteredSports()}
             keyExtractor={(item) => item}
             contentContainerStyle={styles.sportsListContent}
