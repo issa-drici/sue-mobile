@@ -427,6 +427,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       baseApiService.setAuthToken(token);
 
+      // La réponse de connexion ne contient pas la photo de profil : on recharge le profil complet
+      refreshUser().catch(() => {});
+
       // Enregistrer le token push (comme après une connexion classique)
       try {
         const permissionsGranted = await pushNotificationService.checkAndReinitializePermissions();
