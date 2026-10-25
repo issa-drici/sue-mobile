@@ -6,7 +6,8 @@ import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { BrandColors } from '../../../constants/Colors';
 
-// Accueil sans aucune session : on propose directement les deux façons de lancer une session.
+// Accueil sans aucune session : on propose directement les deux façons de lancer une session,
+// à égalité tant qu'on ne sait pas laquelle les gens utilisent le plus.
 
 const CHOICES = [
   {
@@ -44,17 +45,17 @@ export function HomeEmptyState() {
       </Animated.View>
 
       <Animated.View entering={FadeInDown.delay(150).springify()} style={styles.choices}>
-        {CHOICES.map((choice, index) => (
+        {CHOICES.map((choice) => (
           <TouchableOpacity
             key={choice.href}
             activeOpacity={0.85}
-            style={[styles.choiceCard, index === 0 && styles.choiceCardPrimary]}
+            style={styles.choiceCard}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               router.push(choice.href as any);
             }}
           >
-            <View style={[styles.choiceIcon, index === 0 && styles.choiceIconPrimary]}>
+            <View style={styles.choiceIcon}>
               <Image source={choice.image} style={styles.choiceImage} resizeMode="contain" />
             </View>
             <View style={styles.choiceTexts}>
@@ -126,10 +127,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#EFEFEF',
   },
-  choiceCardPrimary: {
-    backgroundColor: BrandColors.primary,
-    borderColor: BrandColors.primary,
-  },
   choiceIcon: {
     width: 52,
     height: 52,
@@ -141,9 +138,6 @@ const styles = StyleSheet.create({
   choiceImage: {
     width: 46,
     height: 46,
-  },
-  choiceIconPrimary: {
-    backgroundColor: 'rgba(255,255,255,0.6)',
   },
   choiceTexts: {
     flex: 1,
