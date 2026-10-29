@@ -545,6 +545,7 @@ export default function HomeScreen() {
         </View>
 
         {/* Créer une autre session : les deux façons, sur la hauteur d'un bouton */}
+        <Text style={[styles.sectionHeader, styles.quickCreateHeader]}>CRÉER UNE AUTRE SESSION</Text>
         <QuickCreateRow />
       </View>
     );
@@ -734,6 +735,10 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: 40,
+  },
+  quickCreateHeader: {
+    marginTop: 4,
+    marginBottom: 8,
   },
   sectionHeader: {
     fontSize: 11,
