@@ -145,10 +145,31 @@ export class UsersApi {
     return response.data;
   }
 
-  // Supprimer le compte
-  static async deleteAccount(): Promise<void> {
-    const response = await baseApiService.delete<LaravelResponse<void>>(USERS_ENDPOINTS.DELETE_ACCOUNT);
+  // Supprimer le compte, confirmé par le code SMS reçu sur le numéro du compte
+  static async deleteAccount(code: string): Promise<void> {
+    const response = await baseApiService.delete<LaravelResponse<void>>(USERS_ENDPOINTS.DELETE_ACCOUNT, { code });
     return response.data;
+  }
+
+  // Envoyer un code SMS sur le numéro du compte (changement de numéro, suppression)
+  static async sendAccountCode(): Promise<void> {
+    await baseApiService.post(USERS_ENDPOINTS.SEND_ACCOUNT_CODE, {});
+  }
+
+  // Vérifier le code reçu sur le numéro actuel
+  static async verifyCurrentPhone(code: string): Promise<void> {
+    await baseApiService.post(USERS_ENDPOINTS.VERIFY_CURRENT_PHONE, { code });
+  }
+
+  // Envoyer un code sur le nouveau numéro (après vérification du numéro actuel)
+  static async sendNewPhoneCode(phone: string): Promise<void> {
+    await baseApiService.post(USERS_ENDPOINTS.SEND_NEW_PHONE_CODE, { phone });
+  }
+
+  // Vérifier le code du nouveau numéro : il remplace l'ancien sur le compte
+  static async confirmNewPhone(phone: string, code: string): Promise<string> {
+    const response = await baseApiService.post<{ phone: string }>(USERS_ENDPOINTS.CONFIRM_NEW_PHONE, { phone, code });
+    return response.phone;
   }
 
   // Récupérer le nombre de demandes d'amis non traitées

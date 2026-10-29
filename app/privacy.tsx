@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import * as Haptics from 'expo-haptics';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -15,72 +16,96 @@ import {
   View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { OtpCodeInput } from '../components/molecules/OtpCodeInput/OtpCodeInput';
 import { UsersApi } from '../services/api/usersApi';
+import { formatPhoneDisplay, normalizeFrenchPhone } from '../utils/phone';
 import { useAuth } from './context/auth';
 
 const ACCENT_COLOR = '#70A831'; // Vert SUE / Vert d'action
 const VOLT_COLOR = '#D4FC79'; // Electric Volt pour validation
 
+type CodeFlow = 'current-code' | 'new-number' | 'new-code' | 'delete-code';
+
 export default function PrivacyScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { user, signOut } = useAuth();
+  const { user, signOut, refreshUser } = useAuth();
 
   const [loading, setLoading] = useState(false);
 
-  // Email Modal State
-  const [emailModalVisible, setEmailModalVisible] = useState(false);
-  const [newEmail, setNewEmail] = useState('');
-  const [currentEmail, setCurrentEmail] = useState('');
-
-  // Password Modal State
-  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  // Feuille de code SMS : changer de numéro (code sur l'actuel, nouveau numéro, code sur le nouveau) ou supprimer le compte
+  const [codeFlow, setCodeFlow] = useState<CodeFlow | null>(null);
+  const [code, setCode] = useState('');
+  const [newPhoneInput, setNewPhoneInput] = useState('');
+  const [flowError, setFlowError] = useState('');
+  const [resendIn, setResendIn] = useState(0);
 
   // Legal Modals State
   const [legalModalVisible, setLegalModalVisible] = useState(false);
   const [legalModalType, setLegalModalType] = useState<'privacy' | 'terms'>('privacy');
 
-  const handleChangeEmail = async () => {
-    if (!newEmail) {
-      Alert.alert('Erreur', 'Veuillez entrer une nouvelle adresse email.');
-      return;
-    }
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const timer = setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [resendIn]);
+
+  const currentPhone = formatPhoneDisplay(user?.phone);
+  const newPhone = normalizeFrenchPhone(newPhoneInput);
+
+  const closeCodeFlow = () => {
+    setCodeFlow(null);
+    setCode('');
+    setNewPhoneInput('');
+    setFlowError('');
+  };
+
+  // Envoie un code et ouvre (ou fait avancer) la feuille sur l'étape voulue
+  const sendCode = async (next: CodeFlow) => {
     setLoading(true);
+    setFlowError('');
     try {
-      await UsersApi.updateEmail(newEmail, currentEmail);
-      Alert.alert('Succès', 'Votre email a été mis à jour.');
-      setEmailModalVisible(false);
-      setNewEmail('');
-      setCurrentEmail('');
+      if (next === 'new-code') {
+        await UsersApi.sendNewPhoneCode(newPhone!);
+      } else {
+        await UsersApi.sendAccountCode();
+      }
+      setCode('');
+      setResendIn(45);
+      setCodeFlow(next);
     } catch (error: any) {
-      Alert.alert('Erreur', error.message || 'Impossible de mettre à jour l\'email.');
+      if (codeFlow) setFlowError(error.message || "Impossible d'envoyer le code.");
+      else Alert.alert('Erreur', error.message || "Impossible d'envoyer le code.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChangePassword = async () => {
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      Alert.alert('Erreur', 'Veuillez remplir tous les champs.');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      Alert.alert('Erreur', 'Les nouveaux mots de passe ne correspondent pas.');
-      return;
-    }
+  const submitCode = async (value: string) => {
+    if (value.length !== 6 || loading) return;
     setLoading(true);
+    setFlowError('');
     try {
-      await UsersApi.updatePassword(currentPassword, newPassword);
-      Alert.alert('Succès', 'Votre mot de passe a été mis à jour.');
-      setPasswordModalVisible(false);
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
+      if (codeFlow === 'current-code') {
+        await UsersApi.verifyCurrentPhone(value);
+        setCode('');
+        setCodeFlow('new-number');
+      } else if (codeFlow === 'new-code') {
+        await UsersApi.confirmNewPhone(newPhone!, value);
+        await refreshUser();
+        closeCodeFlow();
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert('Numéro mis à jour', `Tu te connecteras désormais avec le ${formatPhoneDisplay(newPhone)}.`);
+      } else if (codeFlow === 'delete-code') {
+        await UsersApi.deleteAccount(value);
+        closeCodeFlow();
+        await signOut();
+        router.replace('/(auth)/login');
+      }
     } catch (error: any) {
-      Alert.alert('Erreur', error.message || 'Impossible de mettre à jour le mot de passe.');
+      setCode('');
+      setFlowError(error.message || 'Code invalide ou expiré.');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setLoading(false);
     }
@@ -89,24 +114,10 @@ export default function PrivacyScreen() {
   const handleDeleteAccount = () => {
     Alert.alert(
       'Supprimer le compte',
-      'Cette action est irréversible. Toutes tes sessions créées et participations seront effacées. Continuer ?',
+      'Cette action est irréversible. Toutes tes sessions créées et participations seront effacées. On t\'envoie un code par SMS pour confirmer.',
       [
         { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Supprimer',
-          style: 'destructive',
-          onPress: async () => {
-            setLoading(true);
-            try {
-              await UsersApi.deleteAccount();
-              await signOut();
-              router.replace('/(auth)/login');
-            } catch (error: any) {
-              Alert.alert('Erreur', error.message || 'Impossible de supprimer le compte.');
-              setLoading(false);
-            }
-          }
-        }
+        { text: 'Recevoir le code', style: 'destructive', onPress: () => sendCode('delete-code') },
       ]
     );
   };
@@ -135,26 +146,17 @@ export default function PrivacyScreen() {
         {/* COMPTE */}
         <Text style={styles.sectionHeader}>COMPTE</Text>
         <View style={styles.sectionCard}>
-          <TouchableOpacity 
+          <TouchableOpacity
             activeOpacity={0.8}
-            style={styles.rowItem} 
-            onPress={() => setEmailModalVisible(true)}
+            style={[styles.rowItem, { borderBottomWidth: 0 }]}
+            onPress={() => sendCode('current-code')}
           >
             <View style={styles.rowLeft}>
-              <Ionicons name="mail-outline" size={20} color={ACCENT_COLOR} />
-              <Text style={styles.rowText}>Changer l'email</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="#C7C7CC" />
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            activeOpacity={0.8}
-            style={[styles.rowItem, { borderBottomWidth: 0 }]} 
-            onPress={() => setPasswordModalVisible(true)}
-          >
-            <View style={styles.rowLeft}>
-              <Ionicons name="lock-closed-outline" size={20} color={ACCENT_COLOR} />
-              <Text style={styles.rowText}>Changer le mot de passe</Text>
+              <Ionicons name="call-outline" size={20} color={ACCENT_COLOR} />
+              <View>
+                <Text style={styles.rowText}>Changer de numéro</Text>
+                {currentPhone ? <Text style={styles.rowSubText}>{currentPhone}</Text> : null}
+              </View>
             </View>
             <Ionicons name="chevron-forward" size={18} color="#C7C7CC" />
           </TouchableOpacity>
@@ -205,12 +207,12 @@ export default function PrivacyScreen() {
         </View>
       </ScrollView>
 
-      {/* Email Modal */}
+      {/* Feuille de code SMS */}
       <Modal
         animationType="slide"
         transparent={true}
-        visible={emailModalVisible}
-        onRequestClose={() => setEmailModalVisible(false)}
+        visible={codeFlow !== null}
+        onRequestClose={closeCodeFlow}
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -218,103 +220,86 @@ export default function PrivacyScreen() {
         >
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Modifier l'email</Text>
-              <TouchableOpacity onPress={() => setEmailModalVisible(false)} style={styles.modalCloseBtn}>
+              <Text style={styles.modalTitle}>
+                {codeFlow === 'delete-code' ? 'Supprimer mon compte' : 'Changer de numéro'}
+              </Text>
+              <TouchableOpacity onPress={closeCodeFlow} style={styles.modalCloseBtn}>
                 <Ionicons name="close" size={20} color="#000" />
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.inputLabel}>EMAIL ACTUEL</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Ton e-mail actuel"
-              placeholderTextColor="#999"
-              value={currentEmail}
-              onChangeText={setCurrentEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-            
-            <Text style={styles.inputLabel}>NOUVEL EMAIL</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Nouvel email"
-              placeholderTextColor="#999"
-              value={newEmail}
-              onChangeText={setNewEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-
-            <TouchableOpacity 
-              activeOpacity={0.8}
-              style={styles.modalSaveBtn} 
-              onPress={handleChangeEmail} 
-              disabled={loading}
-            >
-              {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.modalSaveBtnText}>Enregistrer</Text>}
-            </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-
-      {/* Password Modal */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={passwordModalVisible}
-        onRequestClose={() => setPasswordModalVisible(false)}
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.modalOverlay}
-        >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Changer le mot de passe</Text>
-              <TouchableOpacity onPress={() => setPasswordModalVisible(false)} style={styles.modalCloseBtn}>
-                <Ionicons name="close" size={20} color="#000" />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.inputLabel}>MOT DE PASSE ACTUEL</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Mot de passe actuel"
-              placeholderTextColor="#999"
-              value={currentPassword}
-              onChangeText={setCurrentPassword}
-              secureTextEntry
-            />
-
-            <Text style={styles.inputLabel}>NOUVEAU MOT DE PASSE</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Nouveau mot de passe"
-              placeholderTextColor="#999"
-              value={newPassword}
-              onChangeText={setNewPassword}
-              secureTextEntry
-            />
-
-            <Text style={styles.inputLabel}>CONFIRMATION</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Confirmer le mot de passe"
-              placeholderTextColor="#999"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-            />
-
-            <TouchableOpacity 
-              activeOpacity={0.8}
-              style={styles.modalSaveBtn} 
-              onPress={handleChangePassword} 
-              disabled={loading}
-            >
-              {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.modalSaveBtnText}>Enregistrer</Text>}
-            </TouchableOpacity>
+            {codeFlow === 'new-number' ? (
+              <>
+                <Text style={styles.modalText}>C'est bien toi. Entre ton nouveau numéro, on t'y envoie un code.</Text>
+                <Text style={styles.inputLabel}>NOUVEAU NUMÉRO</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="06 12 34 56 78"
+                  placeholderTextColor="#999"
+                  value={newPhoneInput}
+                  onChangeText={(text) => { setNewPhoneInput(text); setFlowError(''); }}
+                  keyboardType="phone-pad"
+                  textContentType="telephoneNumber"
+                  autoComplete="tel"
+                  autoFocus
+                />
+                {flowError ? <Text style={styles.flowError}>{flowError}</Text> : null}
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={[styles.modalSaveBtn, (!newPhone || loading) && styles.modalBtnDisabled]}
+                  onPress={() => sendCode('new-code')}
+                  disabled={!newPhone || loading}
+                >
+                  {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.modalSaveBtnText}>Recevoir le code</Text>}
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={styles.modalText}>
+                  {codeFlow === 'new-code' ? 'Code envoyé au ' : 'Code envoyé à ton numéro actuel, le '}
+                  <Text style={styles.modalTextStrong}>
+                    {codeFlow === 'new-code' ? formatPhoneDisplay(newPhone) : currentPhone}
+                  </Text>
+                  {codeFlow === 'delete-code' ? '. Saisis-le pour supprimer définitivement ton compte.' : '.'}
+                </Text>
+                <View style={styles.codeWrapper}>
+                  <OtpCodeInput
+                    value={code}
+                    onChange={(value) => { setCode(value); setFlowError(''); }}
+                    // Suppression : on attend la confirmation explicite, le reste valide tout seul
+                    onComplete={codeFlow === 'delete-code' ? undefined : submitCode}
+                  />
+                </View>
+                {flowError ? <Text style={styles.flowError}>{flowError}</Text> : null}
+                <TouchableOpacity
+                  onPress={() => codeFlow && sendCode(codeFlow)}
+                  disabled={resendIn > 0 || loading}
+                  style={styles.resendBtn}
+                >
+                  <Text style={[styles.resendText, resendIn > 0 && styles.resendTextDisabled]}>
+                    {resendIn > 0 ? `Renvoyer le code dans ${resendIn}s` : 'Renvoyer le code'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={[
+                    styles.modalSaveBtn,
+                    codeFlow === 'delete-code' && styles.modalDangerBtn,
+                    (code.length !== 6 || loading) && styles.modalBtnDisabled,
+                  ]}
+                  onPress={() => submitCode(code)}
+                  disabled={code.length !== 6 || loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator color={codeFlow === 'delete-code' ? '#FFF' : '#000'} />
+                  ) : (
+                    <Text style={[styles.modalSaveBtnText, codeFlow === 'delete-code' && { color: '#FFF' }]}>
+                      {codeFlow === 'delete-code' ? 'Supprimer définitivement' : 'Valider'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -387,7 +372,7 @@ export default function PrivacyScreen() {
       </Modal>
 
       {/* Global Loading Overlay */}
-      {loading && !emailModalVisible && !passwordModalVisible && (
+      {loading && codeFlow === null && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color={ACCENT_COLOR} />
         </View>
@@ -468,6 +453,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#000',
   },
+  rowSubText: {
+    fontSize: 13,
+    color: '#8E8E93',
+    marginTop: 2,
+  },
 
   // Modals stylisés comme des Bottom Sheets propres
   modalOverlay: {
@@ -537,6 +527,43 @@ const styles = StyleSheet.create({
     color: '#000',
     fontWeight: '800',
     fontSize: 16,
+  },
+  modalBtnDisabled: {
+    opacity: 0.5,
+  },
+  modalDangerBtn: {
+    backgroundColor: '#FF3B30',
+  },
+  modalText: {
+    fontSize: 15,
+    lineHeight: 21,
+    color: '#6B7280',
+  },
+  modalTextStrong: {
+    fontWeight: '800',
+    color: '#000',
+  },
+  codeWrapper: {
+    marginTop: 20,
+  },
+  flowError: {
+    marginTop: 12,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#FF3B30',
+  },
+  resendBtn: {
+    alignSelf: 'center',
+    marginTop: 18,
+    paddingVertical: 6,
+  },
+  resendText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#000',
+  },
+  resendTextDisabled: {
+    color: '#A1A1A9',
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,

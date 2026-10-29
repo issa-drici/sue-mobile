@@ -1,13 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Application from 'expo-application';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
 import {
+  ActionSheetIOS,
   ActivityIndicator,
   Alert,
   Animated,
   Easing,
+  findNodeHandle,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -31,9 +34,16 @@ import { useAuth } from '../context/auth';
 import { BadgeGrid } from '../../components/organisms/Badges';
 import { useBadges } from '../../services/badges';
 import { useFocusEffect } from 'expo-router';
+import { formatPhoneDisplay } from '../../utils/phone';
 
 const SUE_GREEN = '#70A831'; // SUE primary icon green
 const VOLT_COLOR = '#D4FC79'; // Electric Volt for buttons
+
+// Version du binaire installé (celle de l'App Store) et son numéro de build
+const APP_VERSION = [
+  Application.nativeApplicationVersion,
+  Application.nativeBuildVersion ? `(${Application.nativeBuildVersion})` : null,
+].filter(Boolean).join(' ');
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -51,6 +61,7 @@ export default function ProfileScreen() {
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const rotation = useRef(new Animated.Value(0)).current;
+  const avatarButtonRef = useRef<View>(null);
 
   // Edit Profile bottom sheet modal state
   const [isEditProfileVisible, setIsEditProfileVisible] = useState(false);
@@ -152,37 +163,48 @@ export default function ProfileScreen() {
     }
   };
 
-  const pickImage = async () => {
+  const pickFromCamera = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission refusée', 'L\'accès à la caméra est nécessaire.');
+      return;
+    }
+    launchCamera();
+  };
+
+  const pickFromLibrary = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission refusée', 'L\'accès aux photos est nécessaire.');
+      return;
+    }
+    launchLibrary();
+  };
+
+  const pickImage = () => {
     Haptics.selectionAsync();
-    Alert.alert(
-      "Photo de profil",
-      undefined,
-      [
-        { text: "Annuler", style: "cancel" },
+    // iOS : la feuille d'actions native, qui part de la photo touchée
+    if (Platform.OS === 'ios') {
+      const anchor = avatarButtonRef.current ? findNodeHandle(avatarButtonRef.current) : null;
+      ActionSheetIOS.showActionSheetWithOptions(
         {
-          text: "Prendre une photo",
-          onPress: async () => {
-            const { status } = await ImagePicker.requestCameraPermissionsAsync();
-            if (status !== 'granted') {
-              Alert.alert('Permission refusée', 'L\'accès à la caméra est nécessaire.');
-              return;
-            }
-            launchCamera();
-          }
+          title: 'Photo de profil',
+          options: ['Prendre une photo', 'Choisir dans la photothèque', 'Annuler'],
+          cancelButtonIndex: 2,
+          ...(anchor ? { anchor } : {}),
         },
-        {
-          text: "Choisir depuis la galerie",
-          onPress: async () => {
-            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            if (status !== 'granted') {
-              Alert.alert('Permission refusée', 'L\'accès aux photos est nécessaire.');
-              return;
-            }
-            launchLibrary();
-          }
+        (index) => {
+          if (index === 0) pickFromCamera();
+          else if (index === 1) pickFromLibrary();
         }
-      ]
-    );
+      );
+      return;
+    }
+    Alert.alert('Photo de profil', undefined, [
+      { text: 'Annuler', style: 'cancel' },
+      { text: 'Prendre une photo', onPress: pickFromCamera },
+      { text: 'Choisir depuis la galerie', onPress: pickFromLibrary },
+    ]);
   };
 
   const launchCamera = async () => {
@@ -253,7 +275,7 @@ export default function ProfileScreen() {
               {userProfile?.firstname || user?.firstname} {userProfile?.lastname || user?.lastname}
             </Text>
             <Text style={styles.userEmailText}>
-              {userProfile?.email || user?.email}
+              {formatPhoneDisplay(user?.phone || userProfile?.phone) || userProfile?.email || user?.email}
             </Text>
           </View>
         </View>
@@ -323,7 +345,7 @@ export default function ProfileScreen() {
         )}
 
         {/* Version */}
-        <Text style={styles.versionText}>Version 1.0.0</Text>
+        {APP_VERSION ? <Text style={styles.versionText}>Version {APP_VERSION}</Text> : null}
       </ScrollView>
 
       {/* Edit Profile Modal Bottom Sheet */}
@@ -360,6 +382,7 @@ export default function ProfileScreen() {
 
               {/* Avatar Uploader in Modal */}
               <TouchableOpacity 
+                ref={avatarButtonRef}
                 activeOpacity={0.9} 
                 style={styles.modalAvatarContainer}
                 onPress={pickImage}

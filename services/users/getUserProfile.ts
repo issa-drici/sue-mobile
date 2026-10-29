@@ -32,6 +32,7 @@ export const useGetUserProfile = () => {
           firstname: userData.firstname || '',
           lastname: userData.lastname || '',
           email: userData.email || '',
+          phone: userData.phone || undefined,
           avatar: formatAvatarUrl(userData.avatar || userData.avatar_url || userData.avatarUrl) || undefined,
           sports_preferences: userData.sports_preferences || [],
           // Stats adaptées à la structure de l'API
