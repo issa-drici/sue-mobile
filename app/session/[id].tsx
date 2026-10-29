@@ -20,6 +20,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  UIManager,
   View
 } from 'react-native';
 import { SportIcon } from '../../components/atoms/SportIcon';
@@ -32,6 +33,10 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MenuAction, MenuView, NativeActionEvent } from '@react-native-menu/menu';
+
+// Le menu natif n'existe que dans les builds qui embarquent le module : une mise à jour OTA
+// arrive aussi sur des builds plus anciens, qui gardent alors le menu sous forme d'alerte.
+const HAS_NATIVE_MENU = !!UIManager.getViewManagerConfig?.('MenuView');
 import * as Contacts from 'expo-contacts';
 import ChatComments from '../../components/ChatComments';
 import NotificationPermissionSheet from '../../components/NotificationPermissionSheet';
@@ -566,9 +571,8 @@ export default function SessionDetailsScreen() {
     return groups.map((actions, i) => ({ id: `group-${i}`, title: '', displayInline: true, subactions: actions }));
   }, [session?.status, session?.shareToken, isSessionOver, isOrganizer, canCancel]);
 
-  const handleMoreMenuAction = ({ nativeEvent }: NativeActionEvent) => {
-    Haptics.selectionAsync();
-    switch (nativeEvent.event) {
+  const runMoreMenuAction = (id: string) => {
+    switch (id) {
       case 'invite':
         setIsInviteModalVisible(true);
         break;
@@ -585,6 +589,25 @@ export default function SessionDetailsScreen() {
         handleCancelPart();
         break;
     }
+  };
+
+  const handleMoreMenuAction = ({ nativeEvent }: NativeActionEvent) => {
+    Haptics.selectionAsync();
+    runMoreMenuAction(nativeEvent.event);
+  };
+
+  // Builds sans menu natif : les mêmes actions dans une alerte
+  const openFallbackMenu = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const actions = moreMenuActions.flatMap((group) => group.subactions ?? []);
+    Alert.alert('', undefined, [
+      ...actions.map((action) => ({
+        text: action.title,
+        style: action.attributes?.destructive ? ('destructive' as const) : ('default' as const),
+        onPress: () => runMoreMenuAction(action.id ?? ''),
+      })),
+      { text: 'Annuler', style: 'cancel' as const },
+    ]);
   };
 
   const filteredFriends = React.useMemo(() => {
@@ -907,7 +930,11 @@ export default function SessionDetailsScreen() {
           )}
 
           {/* Bouton Plus Options */}
-          {moreMenuActions.length > 0 ? (
+          {moreMenuActions.length > 0 && !HAS_NATIVE_MENU ? (
+            <TouchableOpacity onPress={openFallbackMenu} style={styles.headerMoreButton}>
+              <Ionicons name="ellipsis-horizontal" size={24} color="#000" />
+            </TouchableOpacity>
+          ) : moreMenuActions.length > 0 ? (
             <MenuView actions={moreMenuActions} onPressAction={handleMoreMenuAction} shouldOpenOnLongPress={false}>
               <View style={styles.headerMoreButton}>
                 <Ionicons name="ellipsis-horizontal" size={24} color="#000" />
