@@ -19,7 +19,7 @@ import {
     View
 } from 'react-native';
 import { SportIcon, hasSportImage } from '../../components/atoms/SportIcon';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { InlineLoading } from '../../components/OptimizedLoading';
@@ -92,6 +92,7 @@ export default function EditSessionScreen() {
   const [endTime, setEndTime] = useState(new Date());
   const [maxParticipants, setMaxParticipants] = useState<number | null>(null);
   const [pricePerPerson, setPricePerPerson] = useState<string>('');
+  const [showAdvanced, setShowAdvanced] = useState(true);
   const [location, setLocation] = useState<string>('');
 
   // Modals et sélecteurs
@@ -464,56 +465,8 @@ export default function EditSessionScreen() {
                   </>
                 )}
 
-                {/* Section Joueurs Max */}
-                <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.section}>
-                  <Text style={styles.sectionLabel}>LIMITE DE JOUEURS</Text>
-                  <View style={styles.inputCardRow}>
-                    <Ionicons name="people-outline" size={18} color="#8E8E93" style={styles.cardIcon} />
-                    <View style={styles.stepperContainer}>
-                      <TouchableOpacity
-                        onPress={decrementMax}
-                        style={[styles.stepperButton, maxParticipants === null && styles.stepperButtonDisabled]}
-                        disabled={maxParticipants === null}
-                      >
-                        <Ionicons name="remove" size={16} color={maxParticipants === null ? '#CCCCCC' : '#000'} />
-                      </TouchableOpacity>
-                      <Text style={[styles.stepperValueText, maxParticipants === null && styles.stepperValueTextUncapped]}>
-                        {maxParticipants === null ? 'Pas de limite' : `${maxParticipants} joueur${maxParticipants > 1 ? 's' : ''} max`}
-                      </Text>
-                      <TouchableOpacity
-                        onPress={incrementMax}
-                        style={styles.stepperButton}
-                      >
-                        <Ionicons name="add" size={16} color="#000" />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </Animated.View>
-
-                {/* Section Prix par joueur */}
-                <Animated.View entering={FadeInDown.delay(250).springify()} style={styles.section}>
-                  <Text style={styles.sectionLabel}>PRIX PAR JOUEUR</Text>
-                  <View style={styles.inputCardRow}>
-                    <Ionicons name="pricetag-outline" size={18} color="#8E8E93" style={styles.cardIcon} />
-                    <TextInput
-                      style={styles.textInputRow}
-                      placeholder="Optionnel"
-                      placeholderTextColor="#CCCCCC"
-                      value={pricePerPerson}
-                      onChangeText={setPricePerPerson}
-                      keyboardType="numeric"
-                      onFocus={() => {
-                        setTimeout(() => {
-                          formScrollViewRef.current?.scrollToEnd({ animated: true });
-                        }, 100);
-                      }}
-                    />
-                    <Text style={styles.currencySuffixText}>€</Text>
-                  </View>
-                </Animated.View>
-
                 {/* Section Lieu */}
-                <Animated.View entering={FadeInDown.delay(300).springify()} style={styles.section}>
+                <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.section}>
                   <Text style={styles.sectionLabel}>LIEU*</Text>
                   <View style={styles.inputCardRow}>
                     <Ionicons name="location-outline" size={18} color="#8E8E93" style={styles.cardIcon} />
@@ -531,6 +484,73 @@ export default function EditSessionScreen() {
                     />
                   </View>
                 </Animated.View>
+
+                {/* Options avancées : limite de joueurs et prix, dépliées pour voir ce qui est déjà réglé */}
+                <Animated.View entering={FadeIn.delay(250)} layout={LinearTransition} style={styles.advancedToggleRow}>
+                  <View style={styles.advancedToggleLine} />
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    style={[styles.advancedToggle, showAdvanced && styles.advancedToggleOpen]}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      setShowAdvanced((open) => !open);
+                    }}
+                  >
+                    <Ionicons name="options-outline" size={16} color="#000" />
+                    <Text style={styles.advancedToggleText}>Options avancées</Text>
+                    <Ionicons name={showAdvanced ? 'chevron-up' : 'chevron-down'} size={14} color="#8E8E93" />
+                  </TouchableOpacity>
+                  <View style={styles.advancedToggleLine} />
+                </Animated.View>
+
+                {showAdvanced && (
+                  // Limite et prix côte à côte, comme à la création
+                  <Animated.View entering={FadeIn.duration(200)} style={[styles.section, styles.advancedRow]}>
+                    <View style={styles.advancedField}>
+                      <Text style={styles.sectionLabel}>LIMITE DE JOUEURS</Text>
+                      <View style={[styles.inputCardRow, styles.advancedCard]}>
+                        <View style={styles.stepperContainer}>
+                          <TouchableOpacity
+                            onPress={decrementMax}
+                            style={[styles.stepperButton, maxParticipants === null && styles.stepperButtonDisabled]}
+                            disabled={maxParticipants === null}
+                          >
+                            <Ionicons name="remove" size={16} color={maxParticipants === null ? '#CCCCCC' : '#000'} />
+                          </TouchableOpacity>
+                          <Text style={[styles.stepperValueText, maxParticipants === null && styles.stepperValueTextUncapped]}>
+                            {maxParticipants === null ? 'Aucune' : `${maxParticipants} joueur${maxParticipants > 1 ? 's' : ''}`}
+                          </Text>
+                          <TouchableOpacity
+                            onPress={incrementMax}
+                            style={styles.stepperButton}
+                          >
+                            <Ionicons name="add" size={16} color="#000" />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </View>
+
+                    <View style={styles.advancedField}>
+                      <Text style={styles.sectionLabel}>PRIX PAR JOUEUR</Text>
+                      <View style={[styles.inputCardRow, styles.advancedCard]}>
+                        <TextInput
+                          style={styles.textInputRow}
+                          placeholder="Gratuit"
+                          placeholderTextColor="#CCCCCC"
+                          value={pricePerPerson}
+                          onChangeText={setPricePerPerson}
+                          keyboardType="numeric"
+                          onFocus={() => {
+                            setTimeout(() => {
+                              formScrollViewRef.current?.scrollToEnd({ animated: true });
+                            }, 100);
+                          }}
+                        />
+                        <Text style={styles.currencySuffixText}>€</Text>
+                      </View>
+                    </View>
+                  </Animated.View>
+                )}
               </View>
 
               {/* Bouton ENREGISTRER */}
@@ -826,6 +846,48 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'space-between',
     paddingBottom: Platform.OS === 'ios' ? 60 : 32,
+  },
+  advancedToggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 20,
+    paddingHorizontal: 20,
+  },
+  advancedRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  advancedField: {
+    flex: 1,
+  },
+  advancedCard: {
+    paddingHorizontal: 10,
+  },
+  advancedToggleLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: '#D9D9D9',
+  },
+  advancedToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 20,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#EFEFEF',
+  },
+  advancedToggleOpen: {
+    borderColor: BrandColors.success,
+    backgroundColor: '#F6FBEE',
+  },
+  advancedToggleText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#000',
   },
   section: {
     marginBottom: 20,
