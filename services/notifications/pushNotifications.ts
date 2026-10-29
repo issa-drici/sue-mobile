@@ -14,6 +14,15 @@ Notifications.setNotificationHandler({
   }),
 });
 
+/**
+ * Niveau d'accès aux notifications :
+ *  - full : autorisées (bannières, sons, écran verrouillé) ;
+ *  - provisional : iOS les accepte d'office mais les range en silence dans le centre de notifications ;
+ *  - denied : refusées (seuls les Réglages permettent de revenir dessus) ;
+ *  - undetermined : jamais demandées.
+ */
+export type NotificationAccess = 'full' | 'provisional' | 'denied' | 'undetermined';
+
 export interface PushNotificationData {
   notification_id?: string;
   type?: string;
@@ -67,9 +76,11 @@ export class PushNotificationService {
       // est déclenchée uniquement par la demande "soft" (bottom sheet) via
       // activateFromPrompt() -> requestPermissions(). Cela évite que la popup Apple
       // s'affiche automatiquement au login/au foreground, sans contexte pour l'utilisateur.
-      const { status } = await Notifications.getPermissionsAsync();
+      // Sans rien afficher : sur iOS, une app jamais autorisée passe en provisoire (notifications
+      // rangées en silence). La vraie demande se fait plus tard, depuis l'accueil ou une session.
+      const access = await this.ensureProvisional();
 
-      if (status !== 'granted') {
+      if (!this.canDeliver(access)) {
         return false;
       }
 
@@ -259,19 +270,70 @@ export class PushNotificationService {
    */
   async requestPermissions(): Promise<boolean> {
     try {
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
+      const access = await this.getAccess();
+      if (access === 'full') return true;
+      if (access === 'denied') return false;
 
-      if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-      }
-
-      return finalStatus === 'granted';
+      // Depuis le provisoire aussi : iOS affiche alors sa vraie fenêtre de demande
+      await Notifications.requestPermissionsAsync({
+        ios: { allowAlert: true, allowBadge: true, allowSound: true },
+      });
+      return (await this.getAccess()) === 'full';
     } catch (error) {
       console.error('❌ Erreur lors de la demande de permissions:', error);
       return false;
     }
+  }
+
+  /**
+   * Niveau d'accès actuel. Sur iOS, expo renvoie "undetermined" pour le provisoire :
+   * on lit donc le statut iOS détaillé.
+   */
+  async getAccess(): Promise<NotificationAccess> {
+    try {
+      const settings = await Notifications.getPermissionsAsync();
+      if (Platform.OS === 'ios' && settings.ios) {
+        switch (settings.ios.status) {
+          case Notifications.IosAuthorizationStatus.AUTHORIZED:
+          case Notifications.IosAuthorizationStatus.EPHEMERAL:
+            return 'full';
+          case Notifications.IosAuthorizationStatus.PROVISIONAL:
+            return 'provisional';
+          case Notifications.IosAuthorizationStatus.DENIED:
+            return 'denied';
+          default:
+            return 'undetermined';
+        }
+      }
+      if (settings.status === 'granted') return 'full';
+      if (settings.status === 'denied') return 'denied';
+      return 'undetermined';
+    } catch {
+      return 'undetermined';
+    }
+  }
+
+  /** Les notifications peuvent arriver (même en silence) : on enregistre le token push */
+  private canDeliver(access: NotificationAccess): boolean {
+    return access === 'full' || access === 'provisional';
+  }
+
+  /**
+   * iOS, jamais demandé : autorisation provisoire, sans fenêtre. La personne découvre ce qu'elle
+   * rate dans le centre de notifications, et la vraie demande n'est pas brûlée.
+   * Android n'a pas d'équivalent : rien n'est demandé ici.
+   */
+  async ensureProvisional(): Promise<NotificationAccess> {
+    const access = await this.getAccess();
+    if (Platform.OS !== 'ios' || access !== 'undetermined') return access;
+    try {
+      await Notifications.requestPermissionsAsync({
+        ios: { allowAlert: true, allowBadge: true, allowSound: true, allowProvisional: true },
+      });
+    } catch (error) {
+      console.warn('⚠️ Autorisation provisoire impossible:', error);
+    }
+    return this.getAccess();
   }
 
   /**
@@ -299,13 +361,9 @@ export class PushNotificationService {
       const handled = await AsyncStorage.getItem(PushNotificationService.SOFT_PROMPT_KEY);
       if (handled === 'true') return false;
 
-      const { status } = await this.getPermissions();
-      if (status !== 'undetermined') return false;
-
-      const token = await this.getStoredToken();
-      if (token) return false;
-
-      return true;
+      // Provisoire compris : les notifications arrivent en silence, la vraie demande reste à faire
+      const access = await this.getAccess();
+      return access === 'undetermined' || access === 'provisional';
     } catch {
       return false;
     }
@@ -342,9 +400,9 @@ export class PushNotificationService {
    */
   async checkAndReinitializePermissions(): Promise<boolean> {
     try {
-      const { status } = await Notifications.getPermissionsAsync();
-      
-      if (status === 'granted') {
+      const access = await this.ensureProvisional();
+
+      if (this.canDeliver(access)) {
         // Les permissions sont accordées
         const storedToken = await this.getStoredToken();
         

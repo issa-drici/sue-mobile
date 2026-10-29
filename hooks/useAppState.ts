@@ -22,7 +22,10 @@ export const useAppState = () => {
 
         const isInitialized = pushNotificationService.isServiceInitialized();
         if (!isInitialized) {
-          await pushNotificationService.initialize();
+          // Provisoire compris : le token est envoyé tout de suite, pour que les notifications
+          // discrètes arrivent sans attendre une reconnexion
+          const ready = await pushNotificationService.initialize();
+          if (ready) await pushNotificationService.registerTokenInDatabase();
         }
       } catch (error) {
         console.warn('⚠️ Erreur lors de l\'initialisation du service:', error);

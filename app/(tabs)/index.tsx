@@ -24,6 +24,7 @@ import { InlineLoading } from '../../components/OptimizedLoading';
 import { MainScreenLayout } from '../../components/ui/ScreenLayout';
 import { useGetSessions } from '../../services';
 import { HomeEmptyState } from '../../components/organisms/HomeEmptyState';
+import { NotificationsCard } from '../../components/organisms/NotificationsCard';
 import { BadgeCelebration } from '../../components/organisms/Badges';
 import { SportSession } from '../../types/sport';
 import { useAuth } from '../context/auth';
@@ -390,6 +391,7 @@ export default function HomeScreen() {
 
   const renderListHeader = () => hasNoSessionAtAll ? <HomeEmptyState /> : (
     <>
+      <NotificationsCard />
       {sessionsToOrganize.length > 0 ? (
         <View style={styles.toOrganizeSection}>
           <Text style={styles.sectionHeader}>À ORGANISER</Text>

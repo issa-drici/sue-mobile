@@ -5,3 +5,4 @@ export * from './SessionsList';
 export * from './SlotPicker';
 export * from './SlotFinding';
 export * from './HomeEmptyState';
+export * from './NotificationsCard';
