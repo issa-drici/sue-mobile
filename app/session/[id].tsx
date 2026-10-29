@@ -622,8 +622,22 @@ export default function SessionDetailsScreen() {
   // repli sur l'ancien format si le token n'est pas encore disponible.
   // On ajoute ?from={monId} : celui qui rejoint via mon lien devient mon ami et je
   // suis affiché comme « la personne qui invite » sur l'aperçu.
+  // "p" change avec ce que montre l'aperçu (sport, horaire, lieu, joueurs) : iMessage et WhatsApp
+  // gardent l'aperçu d'une adresse déjà vue, une nouvelle adresse les force à le refaire.
+  const previewKey = session
+    ? (() => {
+        const state = [
+          session.sport, session.scheduling, session.date, session.startTime, session.endTime, session.location,
+          session.maxParticipants, session.slotProposals?.length,
+          session.participants?.filter((p) => p.status === 'accepted').length,
+        ].join('|');
+        let hash = 0;
+        for (let i = 0; i < state.length; i++) hash = (hash * 31 + state.charCodeAt(i)) | 0;
+        return (hash >>> 0).toString(36);
+      })()
+    : '';
   const sessionUrl = session?.shareToken
-    ? `${ENV.WEB_BASE_URL}/join/${session.shareToken}${user?.id ? `?from=${user.id}` : ''}`
+    ? `${ENV.WEB_BASE_URL}/join/${session.shareToken}?${user?.id ? `from=${user.id}&` : ''}p=${previewKey}`
     : `${ENV.WEB_BASE_URL}/session/${sessionId}`;
 
   const formatButtonDate = (dStr: string) => {
