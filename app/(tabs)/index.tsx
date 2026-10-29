@@ -23,7 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { InlineLoading } from '../../components/OptimizedLoading';
 import { MainScreenLayout } from '../../components/ui/ScreenLayout';
 import { useGetSessions } from '../../services';
-import { HomeEmptyState, NextSessionPrompt } from '../../components/organisms/HomeEmptyState';
+import { HomeEmptyState, NextSessionPrompt, QuickCreateRow } from '../../components/organisms/HomeEmptyState';
 import { NotificationsCard } from '../../components/organisms/NotificationsCard';
 import { BadgeCelebration } from '../../components/organisms/Badges';
 import { SportSession } from '../../types/sport';
@@ -544,19 +544,8 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Bouton Créer une session */}
-        <TouchableOpacity
-          activeOpacity={0.9}
-          style={styles.createSessionBtn}
-          onPress={() => router.push('/create-session')}
-        >
-          <View style={styles.createSessionBtnContent}>
-            <View style={styles.plusOutlineCircle}>
-              <Ionicons name="add" size={16} color="#000" />
-            </View>
-            <Text style={styles.createSessionBtnText}>Créer une session</Text>
-          </View>
-        </TouchableOpacity>
+        {/* Créer une autre session : les deux façons, sur la hauteur d'un bouton */}
+        <QuickCreateRow />
       </View>
     );
   };
@@ -976,35 +965,6 @@ const styles = StyleSheet.create({
     color: '#000',
   },
 
-  // Bouton "Créer une session"
-  createSessionBtn: {
-    width: '100%',
-    height: 46,
-    borderRadius: 12,
-    backgroundColor: BrandColors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-  },
-  createSessionBtnContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  plusOutlineCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: '#000',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8,
-  },
-  createSessionBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#000',
-  },
 
   // Cartes "À VENIR"
   upcomingCardContainer: {

@@ -80,6 +80,30 @@ const SHORT_TITLES: Record<string, string> = {
   '/create-session?mode=find-slot': 'Trouver un créneau',
 };
 
+/** Accueil avec des sessions : les deux façons d'en créer une autre, sur une seule ligne de 46 px */
+export function QuickCreateRow() {
+  const router = useRouter();
+  return (
+    <View style={styles.quickRow}>
+      {CHOICES.map((choice, index) => (
+        <TouchableOpacity
+          key={choice.href}
+          activeOpacity={0.85}
+          style={styles.quickChoice}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push(choice.href as any);
+          }}
+        >
+          <VoltSheen delay={index * 1800} />
+          <Image source={choice.image} style={styles.quickImage} resizeMode="contain" />
+          <Text style={styles.quickText} numberOfLines={1}>{SHORT_TITLES[choice.href]}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
+
 /** Liste déjà commencée mais rien à venir : les deux façons de lancer la suivante, en compact */
 export function NextSessionPrompt({ title, hint }: { title: string; hint: string }) {
   const router = useRouter();
@@ -246,6 +270,35 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     color: '#555',
+  },
+  quickRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 20,
+  },
+  quickChoice: {
+    flex: 1,
+    height: 46,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 6,
+    borderRadius: 12,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#DDEFB2',
+    overflow: 'hidden',
+  },
+  quickImage: {
+    width: 22,
+    height: 22,
+  },
+  quickText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#000',
+    flexShrink: 1,
   },
   promptCard: {
     marginTop: 4,
