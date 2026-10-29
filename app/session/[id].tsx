@@ -545,20 +545,20 @@ export default function SessionDetailsScreen() {
 
   // Menu des options supplémentaires (Trois points ...)
   // Menu "…" : le vrai menu natif (iOS UIMenu / Android), en groupes séparés
-  const isSessionOver = session?.date && session?.endTime ? isSessionFinished(session.date, session.endTime) : false;
+  const isSessionOver = session?.date && session?.endTime ? isSessionFinished(session.date, session.endTime, session.startTime) : false;
   const moreMenuActions = React.useMemo<MenuAction[]>(() => {
     const groups: MenuAction[][] = [];
 
     // Inviter et partager : là où on cherche le lien en premier (mêmes conditions que le bouton Inviter)
     if (session?.status !== 'cancelled' && !isSessionOver) {
-      const share: MenuAction[] = [{ id: 'invite', title: "Inviter d'autres joueurs", image: 'person.badge.plus', imageColor: '#000000' }];
-      if (session?.shareToken) share.push({ id: 'copy-link', title: 'Copier le lien', image: 'link', imageColor: '#000000' });
+      const share: MenuAction[] = [{ id: 'invite', title: 'Inviter des joueurs', image: 'person.badge.plus' }];
+      if (session?.shareToken) share.push({ id: 'copy-link', title: 'Copier le lien', image: 'link' });
       groups.push(share);
     }
 
     // Organisateur : modifier, puis annuler à part
     if (isOrganizer && !isSessionOver) {
-      groups.push([{ id: 'edit', title: 'Modifier la session', image: 'pencil', imageColor: '#000000' }]);
+      groups.push([{ id: 'edit', title: 'Modifier la session', image: 'pencil' }]);
       groups.push([{ id: 'cancel-session', title: 'Annuler la session', image: 'xmark.circle', attributes: { destructive: true } }]);
     }
 
@@ -935,7 +935,7 @@ export default function SessionDetailsScreen() {
               <Ionicons name="ellipsis-horizontal" size={24} color="#000" />
             </TouchableOpacity>
           ) : moreMenuActions.length > 0 ? (
-            <MenuView actions={moreMenuActions} onPressAction={handleMoreMenuAction} shouldOpenOnLongPress={false}>
+            <MenuView actions={moreMenuActions} onPressAction={handleMoreMenuAction} shouldOpenOnLongPress={false} themeVariant="light">
               <View style={styles.headerMoreButton}>
                 <Ionicons name="ellipsis-horizontal" size={24} color="#000" />
               </View>
@@ -1571,7 +1571,7 @@ export default function SessionDetailsScreen() {
         isPlayerOrganizer={selectedUserId === session.organizer.id}
         sessionId={sessionId}
         isSessionOrganizer={isOrganizer}
-        isSessionFinished={session?.date && session?.endTime ? isSessionFinished(session.date, session.endTime) : false}
+        isSessionFinished={session?.date && session?.endTime ? isSessionFinished(session.date, session.endTime, session.startTime) : false}
         onOrganizerChanged={() => {
           getSessionById(sessionId);
         }}

@@ -58,7 +58,7 @@ export const SessionCard: React.FC<SessionCardProps> = ({
 
   // Vérifier si la session est terminée
   const isFinished = session.date && session.endTime 
-    ? isSessionFinished(session.date, session.endTime) 
+    ? isSessionFinished(session.date, session.endTime, session.startTime) 
     : false;
   const canEdit = session.isCreator && !isFinished;
 

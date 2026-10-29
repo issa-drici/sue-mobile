@@ -121,7 +121,7 @@ export function formatTimeString(date: Date): string {
  * @param endTime - L'heure de fin de la session (format "HH:MM" ou "HH:MM:SS")
  * @returns true si la session est terminée
  */
-export function isSessionFinished(date: string, endTime: string): boolean {
+export function isSessionFinished(date: string, endTime: string, startTime?: string): boolean {
   if (!date || !endTime) {
     return false;
   }
@@ -134,6 +134,11 @@ export function isSessionFinished(date: string, endTime: string): boolean {
   // Créer une date avec la date et l'heure de fin
   const sessionEndDate = new Date(date);
   sessionEndDate.setHours(hours, minutes, 0, 0);
+
+  // Fin avant le début (23:30 - 00:30) : la session se termine le lendemain
+  if (startTime && endTime.slice(0, 5) < startTime.slice(0, 5)) {
+    sessionEndDate.setDate(sessionEndDate.getDate() + 1);
+  }
 
   // Comparer avec maintenant
   const now = new Date();
