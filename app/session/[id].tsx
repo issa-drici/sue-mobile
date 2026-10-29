@@ -31,6 +31,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { MenuAction, MenuView, NativeActionEvent } from '@react-native-menu/menu';
 import * as Contacts from 'expo-contacts';
 import ChatComments from '../../components/ChatComments';
 import NotificationPermissionSheet from '../../components/NotificationPermissionSheet';
@@ -538,43 +539,52 @@ export default function SessionDetailsScreen() {
   };
 
   // Menu des options supplémentaires (Trois points ...)
-  const handleMoreOptions = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const options: { text: string; onPress: () => void; style?: 'default' | 'cancel' | 'destructive' }[] = [];
-    const isFinished = session?.date && session?.endTime ? isSessionFinished(session.date, session.endTime) : false;
+  // Menu "…" : le vrai menu natif (iOS UIMenu / Android), en groupes séparés
+  const isSessionOver = session?.date && session?.endTime ? isSessionFinished(session.date, session.endTime) : false;
+  const moreMenuActions = React.useMemo<MenuAction[]>(() => {
+    const groups: MenuAction[][] = [];
 
     // Inviter et partager : là où on cherche le lien en premier (mêmes conditions que le bouton Inviter)
-    if (session?.status !== 'cancelled' && !isFinished) {
-      options.push({ text: "Inviter d'autres joueurs", onPress: () => setIsInviteModalVisible(true) });
-      if (session?.shareToken) {
-        options.push({ text: 'Copier le lien', onPress: copyLinkFromMenu });
-      }
+    if (session?.status !== 'cancelled' && !isSessionOver) {
+      const share: MenuAction[] = [{ id: 'invite', title: "Inviter d'autres joueurs", image: 'person.badge.plus', imageColor: '#000000' }];
+      if (session?.shareToken) share.push({ id: 'copy-link', title: 'Copier le lien', image: 'link', imageColor: '#000000' });
+      groups.push(share);
     }
 
-    // Si l'organisateur veut modifier ou supprimer la session
-    if (isOrganizer && !isFinished) {
-      options.push({ text: 'Modifier la session', onPress: () => router.push(`/edit-session/${sessionId}`) });
-      options.push({ text: 'Annuler la session', onPress: handleCancelSess, style: 'destructive' });
+    // Organisateur : modifier, puis annuler à part
+    if (isOrganizer && !isSessionOver) {
+      groups.push([{ id: 'edit', title: 'Modifier la session', image: 'pencil', imageColor: '#000000' }]);
+      groups.push([{ id: 'cancel-session', title: 'Annuler la session', image: 'xmark.circle', attributes: { destructive: true } }]);
     }
-    
-    // Si simple participant veut quitter
+
+    // Participant : quitter
     if (canCancel) {
-      options.push({ text: 'Quitter le Squad', onPress: handleCancelPart, style: 'destructive' });
+      groups.push([{ id: 'leave', title: 'Quitter la session', image: 'rectangle.portrait.and.arrow.right', attributes: { destructive: true } }]);
     }
 
-    if (options.length === 0) {
-      Alert.alert('Information', 'Aucune action disponible pour cette session.');
-      return;
-    }
+    // Chaque groupe devient une section séparée par un trait, comme dans les menus d'iOS
+    return groups.map((actions, i) => ({ id: `group-${i}`, title: '', displayInline: true, subactions: actions }));
+  }, [session?.status, session?.shareToken, isSessionOver, isOrganizer, canCancel]);
 
-    Alert.alert(
-      '',
-      undefined,
-      [
-        ...options.map(opt => ({ text: opt.text, onPress: opt.onPress, style: opt.style })),
-        { text: 'Annuler', style: 'cancel' }
-      ]
-    );
+  const handleMoreMenuAction = ({ nativeEvent }: NativeActionEvent) => {
+    Haptics.selectionAsync();
+    switch (nativeEvent.event) {
+      case 'invite':
+        setIsInviteModalVisible(true);
+        break;
+      case 'copy-link':
+        copyLinkFromMenu();
+        break;
+      case 'edit':
+        router.push(`/edit-session/${sessionId}`);
+        break;
+      case 'cancel-session':
+        handleCancelSess();
+        break;
+      case 'leave':
+        handleCancelPart();
+        break;
+    }
   };
 
   const filteredFriends = React.useMemo(() => {
@@ -897,9 +907,15 @@ export default function SessionDetailsScreen() {
           )}
 
           {/* Bouton Plus Options */}
-          <TouchableOpacity onPress={handleMoreOptions} style={styles.headerMoreButton}>
-            <Ionicons name="ellipsis-horizontal" size={24} color="#000" />
-          </TouchableOpacity>
+          {moreMenuActions.length > 0 ? (
+            <MenuView actions={moreMenuActions} onPressAction={handleMoreMenuAction} shouldOpenOnLongPress={false}>
+              <View style={styles.headerMoreButton}>
+                <Ionicons name="ellipsis-horizontal" size={24} color="#000" />
+              </View>
+            </MenuView>
+          ) : (
+            <View style={styles.headerMoreButton} />
+          )}
         </View>
       </View>
 
