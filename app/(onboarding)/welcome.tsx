@@ -13,7 +13,6 @@ import {
 } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { pushNotificationService } from '../../services/notifications/pushNotifications';
 import { useAuth } from '../context/auth';
 
 const ACCENT_COLOR = '#D4FC79'; // Electric Volt
@@ -62,7 +61,6 @@ export default function WelcomeScreen() {
     const flatListRef = useRef<FlatList>(null);
     const [currentIndex, setCurrentIndex] = useState(0);
     const { completeOnboarding } = useAuth();
-    const [isRequestingPermissions, setIsRequestingPermissions] = useState(false);
     const insets = useSafeAreaInsets();
     const { width, height } = Dimensions.get('window');
 
@@ -81,24 +79,6 @@ export default function WelcomeScreen() {
             });
         } else {
             finishOnboarding();
-        }
-    };
-
-    const requestNotifications = async () => {
-        if (isRequestingPermissions) return;
-        setIsRequestingPermissions(true);
-        try {
-            const hasPermission = await pushNotificationService.requestPermissions();
-            if (hasPermission) {
-                await pushNotificationService.initialize();
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            } else {
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            }
-        } catch (error) {
-            console.error('Error requesting notifications:', error);
-        } finally {
-            setIsRequestingPermissions(false);
         }
     };
 

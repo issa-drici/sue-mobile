@@ -725,10 +725,16 @@ export default function SessionDetailsScreen() {
     }
   };
 
+  // Confirmation dans le bouton lui-même (pas d'alerte à fermer), pendant 2 secondes
+  const [linkCopied, setLinkCopied] = useState(false);
+  const linkCopiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (linkCopiedTimer.current) clearTimeout(linkCopiedTimer.current); }, []);
   const copyLink = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     Clipboard.setString(sessionUrl);
-    Alert.alert('Lien copié !', 'Le lien de la session a été copié dans ton presse-papiers.');
+    setLinkCopied(true);
+    if (linkCopiedTimer.current) clearTimeout(linkCopiedTimer.current);
+    linkCopiedTimer.current = setTimeout(() => setLinkCopied(false), 2000);
   };
 
   const shareGeneral = async () => {
@@ -1236,8 +1242,10 @@ export default function SessionDetailsScreen() {
                     style={[styles.bigShareBottomLink, { marginTop: 12 }]}
                     onPress={copyLink}
                   >
-                    <Ionicons name="link-outline" size={16} color="#000" style={{ marginRight: 6 }} />
-                    <Text style={styles.bigShareBottomText}>Copier le lien</Text>
+                    <Ionicons name={linkCopied ? 'checkmark-circle' : 'link-outline'} size={16} color={linkCopied ? '#3D6B12' : '#000'} style={{ marginRight: 6 }} />
+                    <Text style={[styles.bigShareBottomText, linkCopied && { color: '#3D6B12' }]}>
+                      {linkCopied ? 'Lien copié !' : 'Copier le lien'}
+                    </Text>
                   </TouchableOpacity>
                 </LinearGradient>
               ) : userPhase === 2 ? (
