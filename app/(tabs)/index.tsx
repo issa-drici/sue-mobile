@@ -23,7 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { InlineLoading } from '../../components/OptimizedLoading';
 import { MainScreenLayout } from '../../components/ui/ScreenLayout';
 import { useGetSessions } from '../../services';
-import { HomeEmptyState } from '../../components/organisms/HomeEmptyState';
+import { HomeEmptyState, NextSessionPrompt } from '../../components/organisms/HomeEmptyState';
 import { NotificationsCard } from '../../components/organisms/NotificationsCard';
 import { BadgeCelebration } from '../../components/organisms/Badges';
 import { SportSession } from '../../types/sport';
@@ -627,25 +627,10 @@ export default function HomeScreen() {
             }
             ListEmptyComponent={
               hasNoSessionAtAll ? null : !isFirstLoading ? (
-                <View style={styles.emptyContainer}>
-                  {nextSession ? (
-                    <>
-                      <Text style={styles.emptyTitle}>ANTICIPE LA SUITE</Text>
-                      <Text style={styles.emptySubtitle}>PLANIFIE DÉJÀ TA PROCHAINE SESSION</Text>
-                    </>
-                  ) : (
-                    <>
-                      <Text style={styles.emptyTitle}>AUCUNE SESSION</Text>
-                      <Text style={styles.emptySubtitle}>SOIS LE PREMIER À LANCER LE MOUVEMENT</Text>
-                    </>
-                  )}
-                  <TouchableOpacity
-                    style={styles.emptyButton}
-                    onPress={() => router.push('/create-session')}
-                  >
-                    <Text style={styles.emptyButtonText}>CRÉER UNE SESSION</Text>
-                  </TouchableOpacity>
-                </View>
+                <NextSessionPrompt
+                  title={nextSession ? 'Et la suivante ?' : 'Rien de prévu pour l\'instant'}
+                  hint={nextSession ? 'Lance déjà ta prochaine session.' : 'Tes potes répondent en un tap.'}
+                />
               ) : (
                 <InlineLoading message="Chargement..." />
               )
@@ -1209,32 +1194,4 @@ const styles = StyleSheet.create({
   },
 
   // Empty List State
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 100,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#CCC',
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 12,
-    color: '#999',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  emptyButton: {
-    backgroundColor: '#000',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 24,
-  },
-  emptyButtonText: {
-    color: '#FFF',
-    fontWeight: '700',
-    fontSize: 12,
-  },
 });

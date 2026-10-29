@@ -7,7 +7,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { BrandColors } from '../../../constants/Colors';
 
 // Accueil sans aucune session : on propose directement les deux façons de lancer une session,
-// à égalité tant qu'on ne sait pas laquelle les gens utilisent le plus.
+// à égalité tant qu'on ne sait pas laquelle les gens utilisent le plus, toutes deux en bouton principal.
 
 const CHOICES = [
   {
@@ -25,6 +25,38 @@ const CHOICES = [
 ];
 
 const STEPS = ['Crée', 'Partage le lien', "C'est parti"];
+
+const SHORT_TITLES: Record<string, string> = {
+  '/create-session': "J'ai une date",
+  '/create-session?mode=find-slot': 'Trouver un créneau',
+};
+
+/** Liste déjà commencée mais rien à venir : les deux façons de lancer la suivante, en compact */
+export function NextSessionPrompt({ title, hint }: { title: string; hint: string }) {
+  const router = useRouter();
+  return (
+    <View style={styles.promptCard}>
+      <Text style={styles.promptTitle}>{title}</Text>
+      <Text style={styles.promptHint}>{hint}</Text>
+      <View style={styles.promptChoices}>
+        {CHOICES.map((choice) => (
+          <TouchableOpacity
+            key={choice.href}
+            activeOpacity={0.85}
+            style={styles.promptChoice}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push(choice.href as any);
+            }}
+          >
+            <Image source={choice.image} style={styles.promptImage} resizeMode="contain" />
+            <Text style={styles.promptChoiceText}>{SHORT_TITLES[choice.href]}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  );
+}
 
 export function HomeEmptyState() {
   const router = useRouter();
@@ -123,15 +155,13 @@ const styles = StyleSheet.create({
     gap: 14,
     padding: 16,
     borderRadius: 20,
-    backgroundColor: '#FFF',
-    borderWidth: 1,
-    borderColor: '#EFEFEF',
+    backgroundColor: BrandColors.primary,
   },
   choiceIcon: {
     width: 52,
     height: 52,
     borderRadius: 16,
-    backgroundColor: '#F5F5F7',
+    backgroundColor: 'rgba(255,255,255,0.6)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -151,7 +181,51 @@ const styles = StyleSheet.create({
   choiceHint: {
     fontSize: 13,
     fontWeight: '500',
+    color: '#2A3510',
+  },
+  promptCard: {
+    marginTop: 4,
+    padding: 18,
+    borderRadius: 24,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#EFEFEF',
+  },
+  promptTitle: {
+    fontSize: 18,
+    fontFamily: 'Outfit-Bold',
+    fontWeight: '800',
+    color: '#000',
+  },
+  promptHint: {
+    marginTop: 4,
+    fontSize: 14,
+    fontWeight: '500',
     color: '#555',
+  },
+  promptChoices: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+  },
+  promptChoice: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    borderRadius: 18,
+    backgroundColor: BrandColors.primary,
+  },
+  promptImage: {
+    width: 44,
+    height: 44,
+  },
+  promptChoiceText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#000',
+    textAlign: 'center',
   },
   steps: {
     flexDirection: 'row',
