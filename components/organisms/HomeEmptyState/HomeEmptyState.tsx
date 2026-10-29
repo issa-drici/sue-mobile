@@ -1,13 +1,24 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import React from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useEffect } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, {
+  Easing,
+  FadeInDown,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 import { BrandColors } from '../../../constants/Colors';
 
 // Accueil sans aucune session : on propose directement les deux façons de lancer une session,
-// à égalité tant qu'on ne sait pas laquelle les gens utilisent le plus, toutes deux en bouton principal.
+// à égalité tant qu'on ne sait pas laquelle les gens utilisent le plus. Un reflet volt traverse
+// lentement chaque carte pour montrer où toucher, sans les peindre en vert.
 
 const CHOICES = [
   {
@@ -26,6 +37,44 @@ const CHOICES = [
 
 const STEPS = ['Crée', 'Partage le lien', "C'est parti"];
 
+/** Fond blanc traversé d'un reflet volt qui va et vient (décalé par carte avec `delay`) */
+function VoltSheen({ delay = 0 }: { delay?: number }) {
+  const reduceMotion = useReducedMotion();
+  const progress = useSharedValue(0.5);
+  const width = useSharedValue(0);
+
+  useEffect(() => {
+    if (reduceMotion) return;
+    progress.value = 0;
+    progress.value = withDelay(
+      delay,
+      withRepeat(withTiming(1, { duration: 3200, easing: Easing.inOut(Easing.sin) }), -1, true)
+    );
+  }, [delay, progress, reduceMotion]);
+
+  // Le reflet fait la largeur de la carte et va du bord gauche au bord droit
+  const sheenStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: (progress.value * 2 - 1) * width.value }],
+  }));
+
+  return (
+    <View
+      pointerEvents="none"
+      style={StyleSheet.absoluteFill}
+      onLayout={(event) => { width.value = event.nativeEvent.layout.width; }}
+    >
+      <Animated.View style={[StyleSheet.absoluteFill, sheenStyle]}>
+        <LinearGradient
+          colors={['rgba(212,252,121,0)', 'rgba(212,252,121,0.38)', 'rgba(212,252,121,0)']}
+          start={{ x: 0, y: 0.3 }}
+          end={{ x: 1, y: 0.7 }}
+          style={StyleSheet.absoluteFill}
+        />
+      </Animated.View>
+    </View>
+  );
+}
+
 const SHORT_TITLES: Record<string, string> = {
   '/create-session': "J'ai une date",
   '/create-session?mode=find-slot': 'Trouver un créneau',
@@ -39,7 +88,7 @@ export function NextSessionPrompt({ title, hint }: { title: string; hint: string
       <Text style={styles.promptTitle}>{title}</Text>
       <Text style={styles.promptHint}>{hint}</Text>
       <View style={styles.promptChoices}>
-        {CHOICES.map((choice) => (
+        {CHOICES.map((choice, index) => (
           <TouchableOpacity
             key={choice.href}
             activeOpacity={0.85}
@@ -49,6 +98,7 @@ export function NextSessionPrompt({ title, hint }: { title: string; hint: string
               router.push(choice.href as any);
             }}
           >
+            <VoltSheen delay={index * 1800} />
             <Image source={choice.image} style={styles.promptImage} resizeMode="contain" />
             <Text style={styles.promptChoiceText}>{SHORT_TITLES[choice.href]}</Text>
           </TouchableOpacity>
@@ -77,7 +127,7 @@ export function HomeEmptyState() {
       </Animated.View>
 
       <Animated.View entering={FadeInDown.delay(150).springify()} style={styles.choices}>
-        {CHOICES.map((choice) => (
+        {CHOICES.map((choice, index) => (
           <TouchableOpacity
             key={choice.href}
             activeOpacity={0.85}
@@ -87,6 +137,7 @@ export function HomeEmptyState() {
               router.push(choice.href as any);
             }}
           >
+            <VoltSheen delay={index * 1800} />
             <View style={styles.choiceIcon}>
               <Image source={choice.image} style={styles.choiceImage} resizeMode="contain" />
             </View>
@@ -155,13 +206,26 @@ const styles = StyleSheet.create({
     gap: 14,
     padding: 16,
     borderRadius: 20,
-    backgroundColor: BrandColors.primary,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#DDEFB2',
+    overflow: 'hidden',
+  },
+  sheen: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    width: '300%',
+  },
+  sheenStill: {
+    transform: [{ translateX: '-33.3%' as unknown as number }],
   },
   choiceIcon: {
     width: 52,
     height: 52,
     borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.6)',
+    backgroundColor: '#F5F5F7',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -181,7 +245,7 @@ const styles = StyleSheet.create({
   choiceHint: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#2A3510',
+    color: '#555',
   },
   promptCard: {
     marginTop: 4,
@@ -215,7 +279,10 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 8,
     borderRadius: 18,
-    backgroundColor: BrandColors.primary,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#DDEFB2',
+    overflow: 'hidden',
   },
   promptImage: {
     width: 44,
