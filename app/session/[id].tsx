@@ -26,7 +26,8 @@ import { SportIcon } from '../../components/atoms/SportIcon';
 import { SportSurface, hasSportSurface } from '../../components/atoms/SportSurface';
 import Animated, {
   FadeInDown,
-  FadeInUp
+  FadeInUp,
+  FadeOut
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -540,9 +541,17 @@ export default function SessionDetailsScreen() {
   const handleMoreOptions = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const options: { text: string; onPress: () => void; style?: 'default' | 'cancel' | 'destructive' }[] = [];
-    
-    // Si l'organisateur veut modifier ou supprimer la session
     const isFinished = session?.date && session?.endTime ? isSessionFinished(session.date, session.endTime) : false;
+
+    // Inviter et partager : là où on cherche le lien en premier (mêmes conditions que le bouton Inviter)
+    if (session?.status !== 'cancelled' && !isFinished) {
+      options.push({ text: "Inviter d'autres joueurs", onPress: () => setIsInviteModalVisible(true) });
+      if (session?.shareToken) {
+        options.push({ text: 'Copier le lien', onPress: copyLinkFromMenu });
+      }
+    }
+
+    // Si l'organisateur veut modifier ou supprimer la session
     if (isOrganizer && !isFinished) {
       options.push({ text: 'Modifier la session', onPress: () => router.push(`/edit-session/${sessionId}`) });
       options.push({ text: 'Annuler la session', onPress: handleCancelSess, style: 'destructive' });
@@ -755,6 +764,15 @@ export default function SessionDetailsScreen() {
     linkCopiedTimer.current = setTimeout(() => setLinkCopied(false), 2000);
   };
 
+  // Depuis le menu "…" : pas de bouton à transformer, une courte confirmation qui se ferme seule
+  const [menuLinkCopied, setMenuLinkCopied] = useState(false);
+  const copyLinkFromMenu = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    Clipboard.setString(sessionUrl);
+    setMenuLinkCopied(true);
+    setTimeout(() => setMenuLinkCopied(false), 2000);
+  };
+
   const shareGeneral = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await Share.share({ message: buildShareMessage() });
@@ -884,6 +902,13 @@ export default function SessionDetailsScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {menuLinkCopied ? (
+        <Animated.View entering={FadeInUp.duration(180)} exiting={FadeOut.duration(250)} style={styles.copiedToast} pointerEvents="none">
+          <Ionicons name="checkmark-circle" size={18} color="#000" />
+          <Text style={styles.copiedToastText}>Lien copié</Text>
+        </Animated.View>
+      ) : null}
 
       <ScrollView
         ref={scrollViewRef}
@@ -1620,6 +1645,28 @@ const styles = StyleSheet.create({
     fontSize: 8,
     fontWeight: '800',
     color: '#FFF',
+  },
+  copiedToast: {
+    position: 'absolute',
+    top: 110,
+    alignSelf: 'center',
+    zIndex: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: '#D4FC79',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+  },
+  copiedToastText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#000',
   },
   headerMoreButton: {
     width: 36,
