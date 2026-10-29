@@ -32,7 +32,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import * as Contacts from 'expo-contacts';
 import ChatComments from '../../components/ChatComments';
-import NotificationPermissionSheet from '../../components/NotificationPermissionSheet';
 import PullToRefresh from '../../components/PullToRefresh';
 import { MainScreenLayout } from '../../components/ui/ScreenLayout';
 import UserProfileModal from '../../components/UserProfileModal';
@@ -53,7 +52,6 @@ import { SlotAvailabilityCard, SlotConfirmCard, formatSlotDay } from '../../comp
 import { ProposedSlot, SlotPicker, slotEndTime } from '../../components/organisms/SlotPicker';
 import { SlotProposal } from '../../types/sport';
 import { contactsService, NormalizedContact } from '../../services/friends/contactsService';
-import { pushNotificationService } from '../../services/notifications/pushNotifications';
 import { useGetUserProfile } from '../../services/users/getUserProfile';
 import { getSportEmoji } from '../../utils';
 import { formatDate } from '../../utils/dateHelpers';
@@ -123,37 +121,6 @@ export default function SessionDetailsScreen() {
   const { cancelParticipation, isLoading: isCancelling } = useCancelParticipation();
   const { cancelSession } = useCancelSession();
 
-  // Demande "soft" de notifications : affichée une fois, après que l'utilisateur
-  // participe à une session (typiquement juste après le flow de join).
-  const [showNotifSheet, setShowNotifSheet] = useState(false);
-  const [notifSheetVariant, setNotifSheetVariant] = useState<'participant' | 'organizer' | 'availability'>('participant');
-  const notifPromptCheckedRef = useRef(false);
-
-  // iOS ne superpose pas deux fenêtres : une demande ouverte pendant l'invitation (ouverte d'office
-  // après la création) restait invisible et bloquait tous les taps une fois l'invitation fermée.
-  const isAnotherModalOpen = isInviteModalVisible || isSlotsEditorVisible || showComments;
-
-  useEffect(() => {
-    if (notifPromptCheckedRef.current) return;
-    if (!session || !user) return;
-    if (isAnotherModalOpen) return;
-
-    // L'utilisateur doit participer (statut accepté) à cette session
-    const isAcceptedParticipant = session.participants?.some(
-      (p: any) => p.id === user.id && p.status === 'accepted'
-    );
-    if (!isAcceptedParticipant) return;
-
-    // On ne vérifie qu'une fois par montage
-    notifPromptCheckedRef.current = true;
-
-    // Gating (déjà accepté/refusé, token existant, déjà traité) délégué au service
-    pushNotificationService.shouldShowSoftPrompt().then((should) => {
-      if (!should) return;
-      setNotifSheetVariant(session.organizer?.id === user.id ? 'organizer' : 'participant');
-      setShowNotifSheet(true);
-    });
-  }, [session, user, isAnotherModalOpen]);
 
   // Comments
   const {
@@ -356,11 +323,6 @@ export default function SessionDetailsScreen() {
       await setAvailability(sessionId, slotIds);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       getSessionById(sessionId, false);
-      // Moment clé pour proposer les notifications : il attend maintenant le choix du créneau
-      if (slotIds.length > 0 && (await pushNotificationService.shouldShowSoftPrompt())) {
-        setNotifSheetVariant('availability');
-        setShowNotifSheet(true);
-      }
     } catch (error) {
       Alert.alert('Erreur', error instanceof Error ? error.message : "Impossible d'envoyer tes disponibilités");
     }
@@ -1522,11 +1484,7 @@ export default function SessionDetailsScreen() {
         </View>
       </Modal>
 
-      <NotificationPermissionSheet
-        visible={showNotifSheet && !isAnotherModalOpen}
-        variant={notifSheetVariant}
-        onDismiss={() => setShowNotifSheet(false)}
-      />
+
 
     </MainScreenLayout>
   );
