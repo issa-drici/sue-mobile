@@ -27,8 +27,8 @@ export default function NotificationsScreen() {
     router.replace('/(auth)/login');
 
     // NOTE: la demande de permission notifications a été DÉPLACÉE hors de l'onboarding.
-    // Elle se fait depuis la carte de l'accueil (NotificationsCard), après une période
-    // de notifications provisoires (iOS).
+    // Elle est désormais affichée (bottom sheet) après que l'utilisateur rejoint une
+    // session, sur l'écran de détail de session. Voir NotificationPermissionSheet.
   };
 
 
