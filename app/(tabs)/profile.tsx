@@ -20,6 +20,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  UIManager,
   View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -35,6 +36,15 @@ import { BadgeGrid } from '../../components/organisms/Badges';
 import { useBadges } from '../../services/badges';
 import { useFocusEffect } from 'expo-router';
 import { formatPhoneDisplay } from '../../utils/phone';
+import { MenuAction, MenuView } from '@react-native-menu/menu';
+
+// Menu natif présent seulement dans les builds qui l'embarquent (une OTA peut tourner sur un build plus ancien)
+const HAS_NATIVE_MENU = !!UIManager.getViewManagerConfig?.('MenuView');
+
+const PHOTO_MENU_ACTIONS: MenuAction[] = [
+  { id: 'camera', title: 'Prendre une photo', image: 'camera' },
+  { id: 'library', title: 'Choisir une photo', image: 'photo.on.rectangle' },
+];
 
 const SUE_GREEN = '#70A831'; // SUE primary icon green
 const VOLT_COLOR = '#D4FC79'; // Electric Volt for buttons
@@ -183,7 +193,7 @@ export default function ProfileScreen() {
 
   const pickImage = () => {
     Haptics.selectionAsync();
-    // iOS : la feuille d'actions native, qui part de la photo touchée
+    // Builds sans menu natif : feuille d'actions iOS, qui part de la photo touchée
     if (Platform.OS === 'ios') {
       const anchor = avatarButtonRef.current ? findNodeHandle(avatarButtonRef.current) : null;
       ActionSheetIOS.showActionSheetWithOptions(
@@ -250,6 +260,21 @@ export default function ProfileScreen() {
   const fn = userProfile?.firstname || user?.firstname || '';
   const ln = userProfile?.lastname || user?.lastname || '';
   const initials = `${fn.charAt(0)}${ln.charAt(0)}`.toUpperCase() || '?';
+
+  const avatarPreview = (
+    <>
+      {localAvatarUri ? (
+        <Image source={{ uri: localAvatarUri }} style={styles.modalAvatar} />
+      ) : (
+        <View style={styles.modalAvatarPlaceholder}>
+          <Text style={styles.modalAvatarPlaceholderText}>{initials}</Text>
+        </View>
+      )}
+      <View style={styles.cameraIconContainer}>
+        <Ionicons name="camera" size={16} color="#4B5563" />
+      </View>
+    </>
+  );
 
   return (
     <MainScreenLayout title="Profil" showHeader={false} containerStyle={{ backgroundColor: '#FAFAFA', flex: 1 }}>
@@ -380,24 +405,31 @@ export default function ProfileScreen() {
                 </TouchableOpacity>
               </View>
 
-              {/* Avatar Uploader in Modal */}
-              <TouchableOpacity 
-                ref={avatarButtonRef}
-                activeOpacity={0.9} 
-                style={styles.modalAvatarContainer}
-                onPress={pickImage}
-              >
-                {localAvatarUri ? (
-                  <Image source={{ uri: localAvatarUri }} style={styles.modalAvatar} />
-                ) : (
-                  <View style={styles.modalAvatarPlaceholder}>
-                    <Text style={styles.modalAvatarPlaceholderText}>{initials}</Text>
-                  </View>
-                )}
-                <View style={styles.cameraIconContainer}>
-                  <Ionicons name="camera" size={16} color="#4B5563" />
-                </View>
-              </TouchableOpacity>
+              {/* Avatar Uploader in Modal : menu natif iOS (comme le « … » d'une session), feuille d'actions sinon */}
+              {HAS_NATIVE_MENU ? (
+                <MenuView
+                  style={styles.modalAvatarContainer}
+                  title="Photo de profil"
+                  actions={PHOTO_MENU_ACTIONS}
+                  onPressAction={({ nativeEvent }) => {
+                    if (nativeEvent.event === 'camera') pickFromCamera();
+                    else if (nativeEvent.event === 'library') pickFromLibrary();
+                  }}
+                  shouldOpenOnLongPress={false}
+                  themeVariant="light"
+                >
+                  {avatarPreview}
+                </MenuView>
+              ) : (
+                <TouchableOpacity
+                  ref={avatarButtonRef}
+                  activeOpacity={0.9}
+                  style={styles.modalAvatarContainer}
+                  onPress={pickImage}
+                >
+                  {avatarPreview}
+                </TouchableOpacity>
+              )}
 
               {/* Input Fields */}
               <Text style={styles.inputLabel}>PRÉNOM</Text>
