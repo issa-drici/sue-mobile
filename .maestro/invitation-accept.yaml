@@ -1,0 +1,17 @@
+# Invitation : accepter une session (padel organisé par Lucas)
+appId: com.alliancetech.com
+name: Invitation · accepter
+tags: [session]
+---
+- runFlow: subflows/login-demo.yaml
+- runFlow:
+    file: subflows/open-home-session.yaml
+    env:
+      SPORT: padel
+- assertVisible: "Tu participes ?"
+- tapOn:
+    id: session-respond-accept
+- runFlow: subflows/dismiss-popups.yaml
+- extendedWaitUntil:
+    notVisible: "Tu participes ?"
+    timeout: 10000

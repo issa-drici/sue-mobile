@@ -1,0 +1,30 @@
+# Version de développement : passe le lanceur Expo (serveur Metro local) et ferme les fenêtres
+# d'arrivée (présentation et menu développeur, badge débloqué)
+appId: com.alliancetech.com
+---
+- runFlow:
+    when:
+      visible: "http://localhost:8081"
+    commands:
+      - tapOn: "http://localhost:8081"
+- runFlow:
+    when:
+      visible: "Continue"
+    commands:
+      - tapOn: "Continue"
+- extendedWaitUntil:
+    notVisible: "Development servers"
+    timeout: 60000
+# Menu développeur Expo ouvert au premier lancement : on le ferme en touchant au-dessus
+- runFlow:
+    when:
+      visible: "Toggle performance monitor"
+    commands:
+      - tapOn:
+          point: "50%,15%"
+# Fenêtre « Badge débloqué » (et pas le bouton « Continuer » de l'écran de connexion)
+- runFlow:
+    when:
+      visible: "BADGE DÉBLOQUÉ"
+    commands:
+      - tapOn: "Continuer"

@@ -1,0 +1,31 @@
+# Compte & confidentialité : liens légaux, changement de numéro et suppression (sans aller au bout)
+appId: com.alliancetech.com
+name: Profil · compte et confidentialité
+tags: [profile]
+---
+- runFlow: subflows/login-demo.yaml
+- tapOn: "Profil, tab.*"
+- runFlow: subflows/dismiss-popups.yaml
+- tapOn: ".*Compte & confidentialité.*"
+- assertVisible: "COMPTE"
+- assertVisible: ".*Politique de confidentialité.*"
+- assertVisible: ".*Conditions d'utilisation.*"
+
+# Changer de numéro : la fenêtre s'ouvre et se ferme
+- tapOn: ".*Changer de numéro.*"
+- extendedWaitUntil:
+    visible: ".*Changer de numéro.*"
+    timeout: 5000
+- runFlow:
+    when:
+      visible:
+        id: code-flow-close
+    commands:
+      - tapOn:
+          id: code-flow-close
+
+# Supprimer mon compte : on s'arrête à la confirmation
+- tapOn: ".*Supprimer mon compte.*"
+- assertVisible: "Supprimer le compte"
+- tapOn: "Annuler"
+- assertVisible: "ZONE DANGER"

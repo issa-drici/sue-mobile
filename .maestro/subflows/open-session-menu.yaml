@@ -1,0 +1,10 @@
+# Fiche session : ouvre le menu « … » (menu natif iOS, sans identifiant exploitable : on tape
+# sa position en haut à droite)
+appId: com.alliancetech.com
+---
+- extendedWaitUntil:
+    visible:
+      id: session-chat-button
+    timeout: 15000
+- tapOn:
+    point: "91%, 11%"

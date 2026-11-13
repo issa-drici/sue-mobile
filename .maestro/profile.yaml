@@ -1,0 +1,11 @@
+# Profil : nom, numéro de téléphone affiché à la française
+appId: com.alliancetech.com
+name: Profil · informations du compte
+tags: [profile]
+---
+- runFlow: subflows/login-demo.yaml
+- tapOn: "Profil, tab.*"
+- runFlow: subflows/dismiss-popups.yaml
+- assertVisible: ".*Alex.*"
+# Espaces insécables entre les paires de chiffres
+- assertVisible: ".*06.39.98.00.00.*"

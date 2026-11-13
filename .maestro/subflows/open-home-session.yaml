@@ -1,0 +1,41 @@
+# Depuis l'accueil (compte de démo) : ouvre la carte de session du sport SPORT (padel, course,
+# basketball…). La liste défile sous un en-tête fixe : on fait défiler depuis le bas de l'écran.
+# Une carte tout en bas peut être cachée sous la barre d'onglets flottante, une carte tout en haut
+# sous l'en-tête : si le tap n'a pas ouvert la fiche, on décale la liste et on retape.
+appId: com.alliancetech.com
+---
+- repeat:
+    times: 5
+    while:
+      notVisible:
+        id: home-session-${SPORT}
+    commands:
+      - swipe:
+          start: "50%, 85%"
+          end: "50%, 55%"
+          duration: 400
+- tapOn:
+    id: home-session-${SPORT}
+# Toujours sur l'accueil : carte sous la barre d'onglets → remonter la liste
+- runFlow:
+    when:
+      visible: "Bonjour Alex.*"
+    commands:
+      - swipe:
+          start: "50%, 80%"
+          end: "50%, 60%"
+          duration: 400
+      - tapOn:
+          id: home-session-${SPORT}
+# Encore sur l'accueil : carte passée sous l'en-tête → redescendre la liste
+- runFlow:
+    when:
+      visible: "Bonjour Alex.*"
+    commands:
+      - swipe:
+          start: "50%, 55%"
+          end: "50%, 80%"
+          duration: 400
+      - tapOn:
+          id: home-session-${SPORT}
+- runFlow: dismiss-popups.yaml

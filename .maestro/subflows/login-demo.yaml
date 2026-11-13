@@ -1,0 +1,24 @@
+# Connexion avec le compte de démo (code fixe, aucun SMS) depuis une app vierge.
+# Le backend recrée à chaque demande de code les données de démo : amis, sessions à venir,
+# session à voter, invitation à confirmer, session passée (cf. demo:review-account).
+# Variables : DEMO_PHONE (sans le +33, ex. 639980000), DEMO_CODE.
+appId: com.alliancetech.com
+---
+- launchApp:
+    clearState: true
+- runFlow: dev-client.yaml
+- extendedWaitUntil:
+    visible: "Prêt à jouer ?"
+    timeout: 60000
+# Le menu développeur peut s'ouvrir avec un temps de retard
+- runFlow: dev-client.yaml
+- tapOn: "6 12 34 56 78"
+- inputText: ${DEMO_PHONE}
+- tapOn: "Continuer"
+- extendedWaitUntil:
+    visible: "Code de vérification"
+    timeout: 20000
+- inputText: ${DEMO_CODE}
+- extendedWaitUntil:
+    visible: "Bonjour Alex.*"
+    timeout: 30000

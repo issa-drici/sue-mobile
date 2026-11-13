@@ -1,0 +1,29 @@
+# Participant : quitter une session (course organisée par Camille), puis revenir
+appId: com.alliancetech.com
+name: Session · quitter puis revenir
+tags: [session]
+---
+- runFlow: subflows/login-demo.yaml
+- runFlow:
+    file: subflows/open-home-session.yaml
+    env:
+      SPORT: course
+- assertVisible: "Course"
+- runFlow: subflows/open-session-menu.yaml
+- tapOn: "Quitter la session"
+- tapOn: "Oui, annuler"
+- runFlow: subflows/dismiss-popups.yaml
+- extendedWaitUntil:
+    visible: "Ne vient pas \\(1\\)"
+    timeout: 10000
+- assertVisible: "Confirmés \\(3\\)"
+
+# Changement de programme : il revient de lui-même
+- assertVisible: "Tu ne viens pas"
+- tapOn:
+    id: session-rejoin
+- runFlow: subflows/dismiss-popups.yaml
+- extendedWaitUntil:
+    visible: "Confirmés \\(4\\)"
+    timeout: 10000
+- assertNotVisible: "Tu ne viens pas"

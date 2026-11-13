@@ -1,0 +1,7 @@
+# Calendrier iOS ouvert : choisit le 15 du mois prochain (toujours dans le futur), puis confirme
+appId: com.alliancetech.com
+---
+- tapOn:
+    id: DatePicker.NextMonth
+- tapOn: "[^ ]+ 15 [^ ]+"
+- tapOn: "Confirmer"

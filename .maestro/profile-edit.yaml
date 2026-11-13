@@ -1,0 +1,35 @@
+# Profil : modifier son prénom et son nom
+appId: com.alliancetech.com
+name: Profil · modifier
+tags: [profile]
+---
+- runFlow: subflows/login-demo.yaml
+- tapOn: "Profil, tab.*"
+- runFlow: subflows/dismiss-popups.yaml
+- tapOn: ".*Modifier mon profil.*"
+- assertVisible: "PRÉNOM"
+- tapOn:
+    id: edit-profile-firstname
+- waitForAnimationToEnd
+# eraseText perd des caractères sur iOS : touche Effacer, une à une
+- repeat:
+    times: 12
+    commands:
+      - pressKey: backspace
+- inputText: "Alexis"
+- tapOn:
+    id: edit-profile-lastname
+- waitForAnimationToEnd
+# eraseText perd des caractères sur iOS : touche Effacer, une à une
+- repeat:
+    times: 12
+    commands:
+      - pressKey: backspace
+- inputText: "Durand"
+- tapOn:
+    id: edit-profile-save
+- extendedWaitUntil:
+    visible: "Alexis Durand"
+    timeout: 10000
+- tapOn: "Sessions, tab.*"
+- assertVisible: "Bonjour Alexis.*"

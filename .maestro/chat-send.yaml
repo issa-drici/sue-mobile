@@ -1,0 +1,30 @@
+# Chat : envoyer un message ; il s'affiche, part, et reste après avoir quitté puis rouvert le chat
+appId: com.alliancetech.com
+name: Chat · envoyer un message
+tags: [chat]
+---
+- runFlow: subflows/login-demo.yaml
+- runFlow: subflows/open-five.yaml
+- tapOn:
+    id: session-chat-button
+- extendedWaitUntil:
+    visible:
+      id: chat-input
+    timeout: 15000
+- evalScript: ${output.message = 'E2E ' + Date.now()}
+- tapOn:
+    id: chat-input
+- inputText: ${output.message}
+- tapOn:
+    id: chat-send
+# La bulle contient aussi l'heure : correspondance partielle
+- assertVisible: .*${output.message}.*
+- assertNotVisible: Message non envoyé, réessayer
+- hideKeyboard
+- tapOn:
+    id: chat-back
+- tapOn:
+    id: session-chat-button
+- extendedWaitUntil:
+    visible: .*${output.message}.*
+    timeout: 10000

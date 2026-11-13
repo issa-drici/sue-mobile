@@ -5,8 +5,19 @@ on:
     branches: ["main"]
 
 jobs:
+  # Les tests (Jest) doivent passer avant toute mise à jour OTA : un push qui casse un test
+  # n'est pas envoyé aux utilisateurs.
+  tests:
+    name: Tests
+    steps:
+      - uses: eas/checkout
+      - uses: eas/install_node_modules
+      - name: Jest
+        run: yarn test --ci
+
   send_updates:
     name: Send updates
+    needs: [tests]
     type: update
     params:
       channel: production

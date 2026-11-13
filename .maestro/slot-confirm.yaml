@@ -1,0 +1,20 @@
+# Organisateur : choisir le créneau d'une session « Trouver un créneau » (basket, 4/4 réponses)
+appId: com.alliancetech.com
+name: Créneau · confirmer
+tags: [session, slots]
+---
+- runFlow: subflows/login-demo.yaml
+- runFlow:
+    file: subflows/open-home-session.yaml
+    env:
+      SPORT: basketball
+- assertVisible: "Choisis le créneau"
+- assertVisible: "4/4 ont répondu"
+- tapOn: "Confirmer mardi 17 à 19h"
+- assertVisible: "Confirmer ce créneau \\?"
+- tapOn: "Confirmer"
+- extendedWaitUntil:
+    visible: "19:00 - 20:30"
+    timeout: 15000
+- assertVisible: "Confirmés \\(4\\)"
+- assertNotVisible: "Choisis le créneau"

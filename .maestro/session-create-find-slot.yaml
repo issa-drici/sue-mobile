@@ -1,0 +1,45 @@
+# Organisateur : créer une session « Trouver un créneau », proposer un créneau, copier le lien
+# d'invitation et inviter deux amis
+appId: com.alliancetech.com
+name: Session · créer en « Trouver un créneau » et inviter
+tags: [session, slots]
+---
+- runFlow: subflows/login-demo.yaml
+- runFlow: subflows/dismiss-popups.yaml
+
+- tapOn: "Trouver un créneau"
+- extendedWaitUntil:
+    visible: "NOUVELLE SESSION"
+    timeout: 10000
+- tapOn: "Football"
+- tapOn: "Trouver un créneau.*"
+- tapOn: "Entrer le lieu..."
+- inputText: "Stade Maestro"
+- hideKeyboard
+- tapOn: "CHOISIR LES CRÉNEAUX →"
+
+# Créneaux proposés
+- assertVisible: "Ajoute au moins un créneau"
+- tapOn: ".*Ajouter un créneau.*"
+- assertVisible: "Proposer un créneau"
+- tapOn: "VALIDER CE CRÉNEAU"
+- assertVisible: "1 créneau proposé"
+- tapOn: "INVITER DES JOUEURS →"
+
+# Invitation : lien et amis
+- extendedWaitUntil:
+    visible: ".*Football  •  Date à définir"
+    timeout: 15000
+- tapOn: ".*Copier le lien"
+- assertVisible: ".*Lien copié !"
+- tapOn: "TB Thomas Bernard"
+- tapOn: "LM Lucas Moreau"
+- tapOn: "Inviter 2 joueurs.*"
+- runFlow: subflows/dismiss-popups.yaml
+
+# Fiche : session à créneau, deux invités en attente
+- extendedWaitUntil:
+    visible: "Créneau à définir.*"
+    timeout: 15000
+- assertVisible: "Stade Maestro"
+- assertVisible: "En attente \\(2\\)"

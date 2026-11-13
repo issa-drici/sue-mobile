@@ -1,0 +1,7 @@
+# Connexion par numéro de téléphone et code SMS (compte de démo, code fixe)
+appId: com.alliancetech.com
+name: Connexion · numéro + code
+tags: [auth]
+---
+- runFlow: subflows/login-demo.yaml
+- assertVisible: "PROCHAINE SESSION"

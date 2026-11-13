@@ -1,0 +1,10 @@
+# Accueil → fiche de la prochaine session
+appId: com.alliancetech.com
+name: Session · ouvrir la prochaine session
+tags: [session]
+---
+- runFlow: subflows/login-demo.yaml
+- assertVisible: ".*Five du Havre.*"
+- runFlow: subflows/open-five.yaml
+- assertVisible: ".*Five du Havre.*"
+- assertVisible: ".*Inviter des joueurs.*"

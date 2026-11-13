@@ -1,0 +1,19 @@
+# Déconnexion : retour à l'écran de connexion
+appId: com.alliancetech.com
+name: Connexion · se déconnecter
+tags: [auth]
+---
+- runFlow: subflows/login-demo.yaml
+- tapOn: "Profil, tab.*"
+- runFlow: subflows/dismiss-popups.yaml
+# Le bouton est en bas, sous la barre d'onglets flottante : on fait défiler jusqu'au bout
+- swipe:
+    start: "50%, 80%"
+    end: "50%, 30%"
+    duration: 400
+- tapOn: ".*Se déconnecter.*"
+- assertVisible: "Voulez-vous vraiment quitter le terrain \\?"
+- tapOn: "Se déconnecter"
+- extendedWaitUntil:
+    visible: "Prêt à jouer \\?"
+    timeout: 15000

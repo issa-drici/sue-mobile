@@ -5,6 +5,11 @@
 import { roundToNearestHalfHour, addOneHour, isValidEndTime, endsNextDay, getDefaultEndTime } from '../timeHelpers';
 
 describe('timeHelpers', () => {
+  // roundToNearestHalfHour journalise beaucoup : on garde la sortie des tests lisible
+  let logSpy: jest.SpyInstance;
+  beforeAll(() => { logSpy = jest.spyOn(console, 'log').mockImplementation(() => {}); });
+  afterAll(() => logSpy.mockRestore());
+
   describe('roundToNearestHalfHour', () => {
     it('devrait arrondir à l\'heure pleine quand les minutes sont <= 15', () => {
       const date = new Date('2000-01-01T14:10:00');

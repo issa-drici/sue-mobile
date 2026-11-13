@@ -1,0 +1,9 @@
+# Depuis l'accueil (compte de démo) : ouvre la fiche du Five de demain, organisé par Alex
+appId: com.alliancetech.com
+---
+- tapOn: "Voir la session"
+- runFlow: dismiss-popups.yaml
+- extendedWaitUntil:
+    visible:
+      id: session-chat-button
+    timeout: 15000

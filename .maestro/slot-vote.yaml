@@ -1,0 +1,34 @@
+# Invité : donner ses disponibilités sur une session « Trouver un créneau » (tennis de Yanis),
+# les modifier, puis répondre qu'aucun créneau ne convient
+appId: com.alliancetech.com
+name: Créneau · donner ses disponibilités
+tags: [session, slots]
+---
+- runFlow: subflows/login-demo.yaml
+- runFlow:
+    file: subflows/open-home-session.yaml
+    env:
+      SPORT: tennis
+- assertVisible: "Quand peux-tu jouer \\?"
+
+# Un créneau coché
+- tapOn: ".* 18h → 19h"
+- tapOn: "Envoyer mes disponibilités"
+- extendedWaitUntil:
+    visible: ".*Réponse envoyée : 1 créneau.*"
+    timeout: 10000
+- assertVisible: "Mettre à jour mes disponibilités"
+
+# Ajout du second créneau
+- tapOn: ".* 12h30 → 13h30"
+- tapOn: "Mettre à jour mes disponibilités"
+- extendedWaitUntil:
+    visible: ".*Réponse envoyée : 2 créneaux.*"
+    timeout: 10000
+
+# Aucun ne convient
+- tapOn: "Aucun créneau ne me va"
+- extendedWaitUntil:
+    notVisible: "Aucun créneau ne me va"
+    timeout: 10000
+- assertVisible: ".*aucun créneau ne te va.*"

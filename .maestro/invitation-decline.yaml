@@ -1,0 +1,22 @@
+# Invitation : refuser une session (padel organisé par Lucas)
+appId: com.alliancetech.com
+name: Invitation · refuser
+tags: [session]
+---
+- runFlow: subflows/login-demo.yaml
+- runFlow:
+    file: subflows/open-home-session.yaml
+    env:
+      SPORT: padel
+- tapOn:
+    id: session-respond-decline
+- runFlow:
+    when:
+      visible: "Sûr de vouloir refuser ?"
+    commands:
+      - tapOn:
+          text: "Refuser"
+          index: 1
+- extendedWaitUntil:
+    notVisible: "Tu participes ?"
+    timeout: 10000

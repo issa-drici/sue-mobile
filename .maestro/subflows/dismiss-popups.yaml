@@ -1,0 +1,24 @@
+# Ferme les fenêtres qui peuvent s'ouvrir à l'arrivée sur un écran (sans effet si aucune)
+appId: com.alliancetech.com
+---
+- runFlow:
+    when:
+      visible: "Continuer sans notifications"
+    commands:
+      - tapOn: "Continuer sans notifications"
+- runFlow:
+    when:
+      visible: "BADGE DÉBLOQUÉ"
+    commands:
+      - tapOn: "Continuer"
+# Alerte iOS de permission des notifications
+- runFlow:
+    when:
+      visible: "Ne pas autoriser"
+    commands:
+      - tapOn: "Ne pas autoriser"
+- runFlow:
+    when:
+      visible: "Don’t Allow"
+    commands:
+      - tapOn: "Don’t Allow"

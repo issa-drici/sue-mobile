@@ -1,0 +1,5 @@
+# Démarrage commun : relance l'app (sans effacer ses données) jusqu'à l'écran courant, connectée
+appId: com.alliancetech.com
+---
+- launchApp
+- runFlow: dev-client.yaml

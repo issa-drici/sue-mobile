@@ -1,0 +1,31 @@
+# Lien d'invitation : un lien invalide affiche « Lien indisponible », un lien valide permet de
+# rejoindre la session (volley de Hugo, lien fixe créé par demo:review-account)
+appId: com.alliancetech.com
+name: Lien d'invitation · rejoindre
+tags: [session, join]
+---
+- runFlow: subflows/login-demo.yaml
+- runFlow: subflows/dismiss-popups.yaml
+
+# Lien invalide
+- openLink: "sue://join/lienQuiNExistePas"
+- extendedWaitUntil:
+    visible: "Lien indisponible"
+    timeout: 15000
+- tapOn: "Retour à l'accueil"
+- extendedWaitUntil:
+    visible: "Bonjour Alex.*"
+    timeout: 10000
+
+# Lien valide
+- openLink: "sue://join/e2eDemoJoinLinkVolleyHugo000000000000000"
+- extendedWaitUntil:
+    visible: "Organisé par Hugo Girard"
+    timeout: 15000
+- assertVisible: ".*VOLLEYBALL"
+- tapOn: "JE REJOINS LA SESSION.*"
+- runFlow: subflows/dismiss-popups.yaml
+- extendedWaitUntil:
+    visible: "Confirmés \\(3\\)"
+    timeout: 15000
+- assertVisible: "3 / 6 joueurs"

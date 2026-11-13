@@ -1,0 +1,66 @@
+# Organisateur : créer une session avec date, la modifier, puis l'annuler
+appId: com.alliancetech.com
+name: Session · créer, modifier, annuler
+tags: [session]
+---
+- runFlow: subflows/login-demo.yaml
+- runFlow: subflows/dismiss-popups.yaml
+
+# Création
+- tapOn: "J'ai une date"
+- extendedWaitUntil:
+    visible: "NOUVELLE SESSION"
+    timeout: 10000
+- tapOn: "Tennis"
+- tapOn: "J'ai une date.*"
+- tapOn: "Entrer le lieu..."
+- inputText: "Court Maestro"
+- hideKeyboard
+- tapOn: "CONTINUER →"
+- tapOn:
+    id: session-date-field
+- runFlow: subflows/pick-next-month-15.yaml
+- tapOn: "CRÉER LA SESSION"
+- extendedWaitUntil:
+    visible: "Ta session est créée !"
+    timeout: 15000
+- assertVisible: "Court Maestro"
+- assertVisible: "Pas de limite de joueurs"
+- tapOn: "PLUS TARD"
+- runFlow: subflows/dismiss-popups.yaml
+
+# Fiche de la session créée
+- extendedWaitUntil:
+    visible: "Court Maestro"
+    timeout: 15000
+- assertVisible: "Confirmés \\(1\\)"
+
+# Modification : lieu et limite de joueurs
+- runFlow: subflows/open-session-menu.yaml
+- tapOn: "Modifier la session"
+- extendedWaitUntil:
+    visible: "MODIFIER SESSION"
+    timeout: 10000
+- tapOn: "Court Maestro"
+- eraseText: 20
+- inputText: "Stade Maestro"
+- hideKeyboard
+- tapOn:
+    id: players-increment
+- tapOn:
+    id: players-increment
+- tapOn: "ENREGISTRER →"
+- extendedWaitUntil:
+    visible: "Stade Maestro"
+    timeout: 15000
+- assertVisible: ".*/ 3 joueurs.*"
+- assertNotVisible: "Court Maestro"
+
+# Annulation
+- runFlow: subflows/open-session-menu.yaml
+- tapOn: "Annuler la session"
+- tapOn: "Oui, supprimer"
+- extendedWaitUntil:
+    visible: "Bonjour Alex.*"
+    timeout: 15000
+- assertNotVisible: ".*Stade Maestro.*"

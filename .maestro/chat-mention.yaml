@@ -1,0 +1,29 @@
+# Chat : « @ » propose les membres, le choix insère « @Prénom » et le message part avec la mention
+appId: com.alliancetech.com
+name: Chat · mentionner un membre
+tags: [chat]
+---
+- runFlow: subflows/login-demo.yaml
+- runFlow: subflows/open-five.yaml
+- tapOn:
+    id: session-chat-button
+- extendedWaitUntil:
+    visible:
+      id: chat-input
+    timeout: 15000
+- tapOn:
+    id: chat-input
+- inputText: "Dispo @Tho"
+- assertVisible:
+    id: mention-suggestion-Thomas
+- tapOn:
+    id: mention-suggestion-Thomas
+- assertNotVisible:
+    id: mention-suggestion-Thomas
+- assertVisible:
+    id: chat-input
+    text: Dispo @Thomas.*
+- inputText: "tu viens ?"
+- tapOn:
+    id: chat-send
+- assertVisible: .*@Thomas tu viens.*
