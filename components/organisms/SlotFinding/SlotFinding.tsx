@@ -248,19 +248,19 @@ export function SlotConfirmCard({ session, isConfirming, onConfirm, onInvite, on
   const responded = invitees.filter((p) => p.hasGivenAvailability && !p.hasNewSlots);
   const waiting = invitees.filter((p) => !p.hasGivenAvailability || p.hasNewSlots);
 
-  // Plus de disponibles d'abord ; à égalité, le plus tôt
-  const rankedSlots = useMemo(
-    () =>
-      [...(session.slotProposals ?? [])].sort(
-        (a, b) =>
-          (b.availabilityCount ?? 0) - (a.availabilityCount ?? 0) ||
-          `${a.date} ${a.startTime}`.localeCompare(`${b.date} ${b.startTime}`)
-      ),
-    [session.slotProposals]
+  // Liste dans l'ordre chronologique (plus facile à lire) ; présélection : le plus de disponibles,
+  // à égalité le plus tôt
+  const rankedSlots = useMemo(() => [...(session.slotProposals ?? [])].sort(byStart), [session.slotProposals]);
+  const bestSlot = useMemo(
+    () => rankedSlots.reduce<SlotProposal | undefined>(
+      (best, s) => (!best || (s.availabilityCount ?? 0) > (best.availabilityCount ?? 0) ? s : best),
+      undefined
+    ),
+    [rankedSlots]
   );
 
   const [chosenId, setChosenId] = useState<string | null>(null);
-  const chosenSlot = rankedSlots.find((s) => slotKey(s) === chosenId) ?? rankedSlots[0];
+  const chosenSlot = rankedSlots.find((s) => slotKey(s) === chosenId) ?? bestSlot;
 
   const firstNameOf = (userId: string) => session.participants.find((p) => p.id === userId)?.firstname || '?';
 

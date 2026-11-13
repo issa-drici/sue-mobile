@@ -264,11 +264,11 @@ describe('SlotConfirmCard', () => {
     expect(onEditSlots).toHaveBeenCalled();
   });
 
-  it('classe par disponibilités puis par date, affiche noms, compteurs et attente', () => {
+  it('liste chronologique, présélection du créneau le plus disponible, noms, compteurs et attente', () => {
     const { onConfirm } = setup({ slotProposals: slots, participants: participants as any });
     expect(screen.getByText('1/3 a répondu')).toBeOnTheScreen();
     const days = screen.getAllByText(/janvier/).map((d) => d.props.children);
-    expect(days).toEqual(['Mardi 13 janvier', 'Lundi 12 janvier', 'Samedi 10 janvier', 'Dimanche 11 janvier']);
+    expect(days).toEqual(['Samedi 10 janvier', 'Dimanche 11 janvier', 'Lundi 12 janvier', 'Mardi 13 janvier']);
     expect(screen.getByText('2 dispos')).toBeOnTheScreen();
     expect(screen.getByText('1 dispo')).toBeOnTheScreen();
     expect(screen.getAllByText('Personne')).toHaveLength(2);
