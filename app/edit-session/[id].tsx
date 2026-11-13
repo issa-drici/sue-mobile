@@ -29,7 +29,7 @@ import { BrandColors } from '../../constants/Colors';
 import { useGetSessionById, useUpdateSession } from '../../services';
 import { SportsApi } from '../../services/api/sportsApi';
 import { endsNextDay, getDefaultEndTime, getSportEmoji, isValidEndTime, SPORTS_LIST } from '../../utils';
-import { matchesSportSearch } from '../../utils/search';
+import { matchesSportSearch, sortSports } from '../../utils/search';
 import { useAuth } from '../context/auth';
 
 // Joueurs max : au moins 2 (comme le backend), sinon pas de limite
@@ -61,7 +61,7 @@ export default function EditSessionScreen() {
   const [date, setDate] = useState(new Date());
 
   // Sports servis par le backend (mêmes composants/données que create-session)
-  const [allSports, setAllSports] = useState<string[]>(SPORTS_LIST as string[]);
+  const [allSports, setAllSports] = useState<string[]>(sortSports(SPORTS_LIST as string[]));
   const [playedSports, setPlayedSports] = useState<string[]>([]);
 
   useEffect(() => {
@@ -73,7 +73,7 @@ export default function EditSessionScreen() {
           SportsApi.getPlayedByUser(),
         ]);
         if (cancelled) return;
-        if (all.length) setAllSports(all as string[]);
+        if (all.length) setAllSports(sortSports(all as string[]));
         setPlayedSports(played.map((p) => p.sport as string));
         // Pas de présélection par défaut ici (contrairement à create-session) :
         // le sport affiché doit toujours être celui de la session, jamais un repli.

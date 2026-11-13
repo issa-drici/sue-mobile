@@ -30,7 +30,7 @@ import { BrandColors } from '../constants/Colors';
 import { useCreateSession, useRecentLocations } from '../services';
 import { SportsApi } from '../services/api/sportsApi';
 import { endsNextDay, getDefaultEndTime, getSportEmoji, isValidEndTime, roundToNextHalfHour, SPORTS_LIST } from '../utils';
-import { matchesSportSearch } from '../utils/search';
+import { matchesSportSearch, sortSports } from '../utils/search';
 import { Sport } from '../types/sport';
 
 // Joueurs max : au moins 2 (comme le backend), sinon pas de limite
@@ -66,7 +66,7 @@ export default function CreateSessionScreen() {
   // Sports servis par le backend (plus de liste codée en dur)
   // - allSports : liste complète (modal "+"), avec repli local si l'API échoue
   // - playedSports : sports pratiqués par l'utilisateur, triés du + au - joué (accès rapides)
-  const [allSports, setAllSports] = useState<string[]>(SPORTS_LIST as string[]);
+  const [allSports, setAllSports] = useState<string[]>(sortSports(SPORTS_LIST as string[]));
   const [playedSports, setPlayedSports] = useState<string[]>([]);
 
   // Charger les sports depuis le backend au montage (source de vérité serveur)
@@ -79,7 +79,7 @@ export default function CreateSessionScreen() {
           SportsApi.getPlayedByUser(),
         ]);
         if (cancelled) return;
-        if (all.length) setAllSports(all as string[]);
+        if (all.length) setAllSports(sortSports(all as string[]));
         const playedKeys = played.map((p) => p.sport as string);
         setPlayedSports(playedKeys);
         // Pré-sélectionner le sport le plus pratiqué si aucune sélection encore

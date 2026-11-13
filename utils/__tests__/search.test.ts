@@ -1,4 +1,4 @@
-import { matchesSearch, matchesSportSearch, normalizeForSearch } from '../search';
+import { sortSports, matchesSearch, matchesSportSearch, normalizeForSearch } from '../search';
 
 describe('normalizeForSearch', () => {
   it('retire accents et majuscules', () => {
@@ -29,5 +29,19 @@ describe('matchesSportSearch', () => {
   it('ne trouve pas sans nom ni synonyme correspondant', () => {
     expect(matchesSportSearch('musculation', 'natation')).toBe(false);
     expect(matchesSportSearch('tennis', 'fitness')).toBe(false);
+  });
+});
+
+describe('sortSports', () => {
+  it('trie en français : accents rangés avec leur lettre, sans tenir compte de la casse', () => {
+    expect(sortSports(['équitation', 'pêche', 'aïkido', 'padel', 'pétanque', 'esport', 'escalade'])).toEqual([
+      'aïkido', 'équitation', 'escalade', 'esport', 'padel', 'pêche', 'pétanque',
+    ]);
+  });
+
+  it('ne modifie pas la liste reçue', () => {
+    const list = ['b', 'a'];
+    sortSports(list);
+    expect(list).toEqual(['b', 'a']);
   });
 });

@@ -24,3 +24,8 @@ export function matchesSportSearch(sport: string, query: string): boolean {
   const synonyms = SPORT_SYNONYMS[normalizeForSearch(sport)] ?? [];
   return synonyms.some((term) => matchesSearch(term, query));
 }
+
+/** Tri alphabétique français des sports (« Équitation » avec les E, « Pêche » après « Padel ») */
+export function sortSports<T extends string>(sports: readonly T[]): T[] {
+  return [...sports].sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' }));
+}
