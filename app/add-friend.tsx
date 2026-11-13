@@ -433,6 +433,7 @@ export default function AddFriendScreen() {
           )}
           {!isFriend && hasPending && userId && (
             <TouchableOpacity
+              testID={`cancel-request-${userId}`}
               style={styles.pendingButton}
               onPress={(e) => {
                 e.stopPropagation();
@@ -444,6 +445,7 @@ export default function AddFriendScreen() {
           )}
           {!isFriend && !hasPending && userId && (
             <TouchableOpacity
+              testID={`add-request-${userId}`}
               style={styles.addButton}
               onPress={(e) => {
                 e.stopPropagation();
@@ -632,14 +634,14 @@ export default function AddFriendScreen() {
 
       {/* Header */}
       <View style={[styles.header, Platform.OS === 'android' && { paddingTop: Math.max(insets.top, 16) }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity testID="add-friend-back" onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={28} color="#000" />
         </TouchableOpacity>
         <View style={styles.headerContent}>
           <Text style={styles.mainTitle}>RECRUTER</Text>
           <Text style={styles.subtitle}>AGRANDISSEZ VOTRE SQUAD</Text>
         </View>
-        <TouchableOpacity onPress={handleShareApp} style={styles.shareButton}>
+        <TouchableOpacity testID="add-friend-share" onPress={handleShareApp} style={styles.shareButton}>
           <Ionicons name="share-outline" size={28} color="#000" />
         </TouchableOpacity>
       </View>
@@ -657,7 +659,7 @@ export default function AddFriendScreen() {
           autoCorrect={false}
         />
         {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchQuery('')}>
+          <TouchableOpacity testID="add-friend-clear-search" onPress={() => setSearchQuery('')}>
             <Ionicons name="close-circle" size={20} color="#CCC" />
           </TouchableOpacity>
         )}

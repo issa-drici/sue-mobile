@@ -248,6 +248,7 @@ export default function HomeScreen() {
         <TouchableOpacity
           activeOpacity={0.95}
           onPress={() => handleSessionPress(item.id)}
+          testID={`home-session-${item.sport}`}
           style={[styles.upcomingCard, pending && styles.upcomingCardPending]}
         >
           <SportSurface sport={item.sport} />
@@ -335,6 +336,7 @@ export default function HomeScreen() {
         key={item.id}
         activeOpacity={0.95}
         onPress={() => handleSessionPress(item.id)}
+        testID={`home-session-${item.sport}`}
         style={[styles.upcomingCard, styles.toOrganizeCard, needsMyAnswer && styles.upcomingCardPending]}
       >
         <SportSurface sport={item.sport} />
@@ -398,7 +400,10 @@ export default function HomeScreen() {
           {sessionsToOrganize.map(renderToOrganizeItem)}
         </View>
       ) : null}
-      <Text style={styles.sectionHeader}>À VENIR</Text>
+      {/* Seule session à venir = la prochaine (en haut) : pas de titre « À VENIR » sur une liste vide */}
+      {upcomingSessions.length > 0 || !nextSession ? (
+        <Text style={styles.sectionHeader}>À VENIR</Text>
+      ) : null}
     </>
   );
 
@@ -616,10 +621,12 @@ export default function HomeScreen() {
               />
             }
             ListEmptyComponent={
-              hasNoSessionAtAll ? null : !isFirstLoading ? (
+              // Avec une prochaine session, « Créer une autre session » est déjà affiché sous sa carte :
+              // pas de second bloc avec les mêmes boutons
+              hasNoSessionAtAll || nextSession ? null : !isFirstLoading ? (
                 <NextSessionPrompt
-                  title={nextSession ? 'Et la suivante ?' : 'Rien de prévu pour l\'instant'}
-                  hint={nextSession ? 'Lance déjà ta prochaine session.' : 'Tes potes répondent en un tap.'}
+                  title="Rien de prévu pour l'instant"
+                  hint="Tes potes répondent en un tap."
                 />
               ) : (
                 <InlineLoading message="Chargement..." />

@@ -128,6 +128,7 @@ export default function RegisterScreen() {
         showsVerticalScrollIndicator={false}
       >
         <TouchableOpacity
+          testID="register-back"
           style={styles.backButton}
           onPress={handleBack}
           disabled={isLoading}
@@ -234,6 +235,7 @@ export default function RegisterScreen() {
                     autoFocus
                   />
                   <TouchableOpacity
+                    testID="toggle-password"
                     onPress={() => setShowPassword(!showPassword)}
                     style={styles.eyeIcon}
                     disabled={isLoading}
@@ -262,6 +264,7 @@ export default function RegisterScreen() {
                     editable={!isLoading}
                   />
                   <TouchableOpacity
+                    testID="toggle-confirm-password"
                     onPress={() => setShowConfirmPassword(!showConfirmPassword)}
                     style={styles.eyeIcon}
                     disabled={isLoading}

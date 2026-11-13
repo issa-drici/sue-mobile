@@ -55,7 +55,7 @@ function convertToSportSession(session: Session): SportSession {
       status: participant.status,
       avatar: participant.avatar || participant.avatarUrl || null,
     })),
-    comments: session.comments.map(comment => {
+    comments: (session.comments || []).map(comment => {
       // Fonction pour extraire firstname et lastname de authorName
       const extractNames = (authorName: string | undefined | null) => {
         if (!authorName || typeof authorName !== 'string') {

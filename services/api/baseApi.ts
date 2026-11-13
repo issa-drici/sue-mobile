@@ -36,6 +36,11 @@ class BaseApiService {
     this.token = token;
   }
 
+  // Jeton courant (chat : authentification du temps réel et requêtes avec code HTTP)
+  getAuthToken(): string | null {
+    return this.token;
+  }
+
   // Suppression du token
   clearAuthToken() {
     this.token = null;

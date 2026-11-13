@@ -110,6 +110,7 @@ export default function FriendsScreen() {
         </View>
         <View style={styles.requestActions}>
           <TouchableOpacity
+            testID={`accept-request-${item.id}`}
             style={[styles.actionButton, styles.acceptButton]}
             onPress={() => handleRespondToRequest(item.id, 'accept')}
             disabled={isResponding}
@@ -117,6 +118,7 @@ export default function FriendsScreen() {
             <Ionicons name="checkmark" size={20} color="#000" />
           </TouchableOpacity>
           <TouchableOpacity
+            testID={`decline-request-${item.id}`}
             style={[styles.actionButton, styles.declineButton]}
             onPress={() => handleRespondToRequest(item.id, 'decline')}
             disabled={isResponding}
@@ -163,6 +165,7 @@ export default function FriendsScreen() {
           <Text style={styles.headerSubtitle}>TON SQUAD ({friends?.length || 0})</Text>
         </View>
         <TouchableOpacity
+          testID="friends-add-button"
           style={styles.addButton}
           onPress={() => router.push('/add-friend')}
         >
@@ -210,6 +213,7 @@ export default function FriendsScreen() {
         onRequestClose={() => setIsMenuVisible(false)}
       >
         <TouchableOpacity
+          testID="friends-menu-overlay"
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setIsMenuVisible(false)}

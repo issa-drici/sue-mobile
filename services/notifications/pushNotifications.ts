@@ -1,17 +1,25 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Application from 'expo-application';
 import * as Notifications from 'expo-notifications';
+import * as ExpoRouter from 'expo-router';
 import { Platform } from 'react-native';
 import { baseApiService } from '../api/baseApi';
+import { activeChat, openChat } from '../chat/activeChat';
 
 // Configuration des notifications
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
+  handleNotification: async (notification) => {
+    // Message du chat actuellement affiché : on le voit déjà arriver, pas de bannière ni de son
+    const data: any = notification.request.content.data || {};
+    const isOpenChat = (data.type === 'chat_message' || data.type === 'chat_mention')
+      && activeChat.is(data.session_id || data.sessionId);
+    return {
+      shouldShowBanner: !isOpenChat,
+      shouldShowList: !isOpenChat,
+      shouldPlaySound: !isOpenChat,
+      shouldSetBadge: true,
+    };
+  },
 });
 
 /**
@@ -641,8 +649,10 @@ export class PushNotificationService {
     console.log('🔔 Navigation notification - Type:', data.type);
     console.log('🔔 Navigation notification - Données:', JSON.stringify(data, null, 2));
 
-    // Import dynamique pour éviter les dépendances circulaires
-    import('expo-router').then(({ router }) => {
+    // expo-router est déjà chargé statiquement via ../chat/activeChat : l'import dynamique
+    // n'évitait aucune dépendance circulaire (et n'est pas supporté par Jest). On garde
+    // l'exécution asynchrone et le .catch d'origine.
+    Promise.resolve(ExpoRouter).then(({ router }) => {
       // On utilise router.navigate (et non push) : ça réutilise l'écran de session s'il
       // est déjà affiché au lieu d'empiler un doublon → retour propre.
       const sessionId = data.session_id || data.sessionId;
@@ -667,10 +677,20 @@ export class PushNotificationService {
           }
           break;
 
+        // Chat de la session : son propre écran (réutilisé s'il est déjà ouvert, pas d'empilement)
+        case 'chat_message':
+        case 'chat_mention':
+          if (sessionId) {
+            openChat(sessionId);
+          } else {
+            router.navigate('/(tabs)');
+          }
+          break;
+
+        // Anciennes notifications « commentaire » (avant le chat) : même destination
         case 'comment':
           if (sessionId) {
-            // Ouvre directement la modal de commentaires
-            router.navigate(`/session/${sessionId}?openComments=true`);
+            openChat(sessionId);
           } else {
             router.navigate('/(tabs)');
           }

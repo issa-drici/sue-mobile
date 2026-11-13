@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Haptics from 'expo-haptics';
+import { useNavigation } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -31,6 +32,9 @@ import { endsNextDay, getDefaultEndTime, getSportEmoji, isValidEndTime, SPORTS_L
 import { matchesSportSearch } from '../../utils/search';
 import { useAuth } from '../context/auth';
 
+// Joueurs max : au moins 2 (comme le backend), sinon pas de limite
+const MIN_PLAYERS = 2;
+
 // Configuration fixe des sports principaux par défaut (identique à create-session)
 const SPORT_PRESETS: Record<string, { label: string; emoji: string; color: string }> = {
   football: { label: 'Football', emoji: '⚽', color: '#EAF6DD' },
@@ -42,6 +46,7 @@ const SPORT_PRESETS: Record<string, { label: string; emoji: string; color: strin
 export default function EditSessionScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const formScrollViewRef = React.useRef<ScrollView>(null);
@@ -250,19 +255,19 @@ export default function EditSessionScreen() {
   const incrementMax = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (maxParticipants === null) {
-      setMaxParticipants(1);
+      setMaxParticipants(MIN_PLAYERS); // Une session se joue au moins à 2
     } else {
-      setMaxParticipants((prev) => (prev ?? 1) + 1);
+      setMaxParticipants((prev) => (prev ?? MIN_PLAYERS) + 1);
     }
   };
 
   const decrementMax = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (maxParticipants === null) return;
-    if (maxParticipants <= 1) {
-      setMaxParticipants(null);
+    if (maxParticipants <= MIN_PLAYERS) {
+      setMaxParticipants(null); // En dessous de 2 : repasse en « Aucune » limite
     } else {
-      setMaxParticipants((prev) => (prev ?? 1) - 1);
+      setMaxParticipants((prev) => (prev ?? MIN_PLAYERS) - 1);
     }
   };
 
@@ -328,7 +333,15 @@ export default function EditSessionScreen() {
 
       await updateSession(sessionId, sessionData);
 
-      router.replace(`/session/${sessionId}`);
+      // Ouverte depuis la fiche : on y revient (elle se recharge au retour). Remplacer l'écran
+      // empilerait une deuxième fiche, et « retour » ramènerait ensuite sur l'ancienne.
+      const state = navigation.getState();
+      const previous = state?.routes[(state?.index ?? 0) - 1] as { name?: string; params?: { id?: string } } | undefined;
+      if (previous?.name === 'session/[id]' && String(previous.params?.id) === String(sessionId)) {
+        router.back();
+      } else {
+        router.replace(`/session/${sessionId}`);
+      }
     } catch (error) {
       Alert.alert(
         'Erreur',
@@ -438,6 +451,7 @@ export default function EditSessionScreen() {
                       activeOpacity={0.8}
                       style={styles.inputCardRow}
                       onPress={handleDatePickerPress}
+          testID="session-date-field"
                     >
                       <Ionicons name="calendar-outline" size={18} color="#8E8E93" style={styles.cardIcon} />
                       <Text style={styles.cardValueText}>{formatDateLabel(date)}</Text>
@@ -452,6 +466,7 @@ export default function EditSessionScreen() {
                       activeOpacity={0.8}
                       style={styles.inputCardRow}
                       onPress={handleTimePickerPress}
+          testID="session-time-field"
                     >
                       <Ionicons name="time-outline" size={18} color="#8E8E93" style={styles.cardIcon} />
                       <View style={styles.timeDisplayBlock}>
@@ -473,6 +488,7 @@ export default function EditSessionScreen() {
                     <TextInput
                       style={styles.textInputRow}
                       placeholder="Entrer le lieu..."
+                      autoCorrect={false}
                       placeholderTextColor="#CCCCCC"
                       value={location}
                       onChangeText={setLocation}
@@ -512,6 +528,7 @@ export default function EditSessionScreen() {
                         <View style={styles.stepperContainer}>
                           <TouchableOpacity
                             onPress={decrementMax}
+                    testID="players-decrement"
                             style={[styles.stepperButton, maxParticipants === null && styles.stepperButtonDisabled]}
                             disabled={maxParticipants === null}
                           >
@@ -522,6 +539,7 @@ export default function EditSessionScreen() {
                           </Text>
                           <TouchableOpacity
                             onPress={incrementMax}
+                    testID="players-increment"
                             style={styles.stepperButton}
                           >
                             <Ionicons name="add" size={16} color="#000" />

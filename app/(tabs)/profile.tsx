@@ -398,6 +398,7 @@ export default function ProfileScreen() {
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Modifier mon profil</Text>
                 <TouchableOpacity 
+                  testID="edit-profile-close"
                   onPress={() => setIsEditProfileVisible(false)}
                   style={styles.modalCloseBtn}
                 >
@@ -422,6 +423,7 @@ export default function ProfileScreen() {
                 </MenuView>
               ) : (
                 <TouchableOpacity
+                  testID="edit-profile-avatar"
                   ref={avatarButtonRef}
                   activeOpacity={0.9}
                   style={styles.modalAvatarContainer}
@@ -436,6 +438,7 @@ export default function ProfileScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Prénom"
+                testID="edit-profile-firstname"
                 placeholderTextColor="#999"
                 value={firstname}
                 onChangeText={setFirstname}
@@ -445,6 +448,7 @@ export default function ProfileScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Nom"
+                testID="edit-profile-lastname"
                 placeholderTextColor="#999"
                 value={lastname}
                 onChangeText={setLastname}
@@ -452,6 +456,7 @@ export default function ProfileScreen() {
 
               {/* Enregistrer button */}
               <TouchableOpacity
+                testID="edit-profile-save"
                 activeOpacity={0.8}
                 style={styles.saveBtn}
                 onPress={handleSaveProfile}

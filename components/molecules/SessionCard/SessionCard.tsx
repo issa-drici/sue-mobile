@@ -121,7 +121,8 @@ export const SessionCard: React.FC<SessionCardProps> = ({
           </Text>
         </View>
 
-        {session.maxParticipants && (
+        {/* > 0 explicite : avec `&&`, un 0 serait rendu brut hors <Text> et ferait planter l'écran */}
+        {!!session.maxParticipants && session.maxParticipants > 0 && (
           <View style={{ 
             flexDirection: 'row', 
             alignItems: 'center',

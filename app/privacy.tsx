@@ -131,7 +131,7 @@ export default function PrivacyScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity testID="privacy-back" onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Compte & confidentialité</Text>
@@ -223,7 +223,7 @@ export default function PrivacyScreen() {
               <Text style={styles.modalTitle}>
                 {codeFlow === 'delete-code' ? 'Supprimer mon compte' : 'Changer de numéro'}
               </Text>
-              <TouchableOpacity onPress={closeCodeFlow} style={styles.modalCloseBtn}>
+              <TouchableOpacity testID="code-flow-close" onPress={closeCodeFlow} style={styles.modalCloseBtn}>
                 <Ionicons name="close" size={20} color="#000" />
               </TouchableOpacity>
             </View>
@@ -317,7 +317,7 @@ export default function PrivacyScreen() {
               <Text style={styles.modalTitle}>
                 {legalModalType === 'privacy' ? 'Politique de confidentialité' : "Conditions d'utilisation"}
               </Text>
-              <TouchableOpacity onPress={() => setLegalModalVisible(false)} style={styles.modalCloseBtn}>
+              <TouchableOpacity testID="legal-close" onPress={() => setLegalModalVisible(false)} style={styles.modalCloseBtn}>
                 <Ionicons name="close" size={20} color="#000" />
               </TouchableOpacity>
             </View>

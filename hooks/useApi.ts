@@ -1,5 +1,5 @@
 import { useFocusEffect } from '@react-navigation/native';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface ApiState<T> {
   data: T | null;
@@ -99,7 +99,7 @@ export function useApi<T = any>(
           if (isMountedRef.current) {
             fetchData(attemptNumber + 1);
           }
-        }, retryDelay);
+        }, retryDelay) as unknown as NodeJS.Timeout;
       } else {
         // Échec final ou retry désactivé
         setState({

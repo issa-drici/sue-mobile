@@ -3,6 +3,7 @@ import { SessionScheduling, SessionStatus, SlotProposal, Sport } from '../../typ
 // Types pour les sessions
 export interface Session {
   id: string;
+  shareToken?: string | null; // Code du lien de partage /join/{token}
   title?: string;
   description?: string;
   date: string;

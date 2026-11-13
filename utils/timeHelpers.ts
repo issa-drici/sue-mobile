@@ -122,8 +122,14 @@ export function formatTimeString(date: Date): string {
  * @returns true si la session est terminée
  */
 export function isSessionFinished(date: string, endTime: string, startTime?: string): boolean {
+  const sessionEndDate = getSessionEndDate(date, endTime, startTime);
+  return !!sessionEndDate && sessionEndDate < new Date();
+}
+
+/** Date et heure de fin d'une session (null sans date ou heure de fin, ex. créneau pas encore trouvé) */
+export function getSessionEndDate(date: string, endTime: string, startTime?: string): Date | null {
   if (!date || !endTime) {
-    return false;
+    return null;
   }
 
   // Extraire les heures et minutes de l'heure de fin
@@ -140,8 +146,5 @@ export function isSessionFinished(date: string, endTime: string, startTime?: str
     sessionEndDate.setDate(sessionEndDate.getDate() + 1);
   }
 
-  // Comparer avec maintenant
-  const now = new Date();
-  
-  return sessionEndDate < now;
+  return sessionEndDate;
 }

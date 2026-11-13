@@ -160,6 +160,12 @@ function RootLayoutNav() {
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="join/[token]" />
       <Stack.Screen name="session/[id]" />
+      {/* Un écran de chat par session dans la pile (cf. openChat dans services/chat/activeChat) */}
+      <Stack.Screen
+        name="chat/[sessionId]"
+        getId={({ params }) => (params as { sessionId?: string } | undefined)?.sessionId}
+        options={{ animation: 'slide_from_right' }}
+      />
       <Stack.Screen name="edit-session/[id]" />
       <Stack.Screen name="create-session" />
       <Stack.Screen name="add-friend" />

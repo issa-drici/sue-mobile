@@ -119,6 +119,7 @@ export default function NotificationsScreen() {
   const renderHiddenItem = (data: { item: Notification }, rowMap: any) => (
     <View style={styles.rowBack}>
       <TouchableOpacity
+        testID={`delete-notification-${data.item.id}`}
         style={[styles.backRightBtn, styles.backRightBtnRight]}
         onPress={() => handleDelete(data.item.id)}
       >
@@ -139,6 +140,7 @@ export default function NotificationsScreen() {
         </View>
         {unreadCount > 0 && (
           <TouchableOpacity
+            testID="mark-all-read"
             style={styles.markAllButton}
             onPress={handleMarkAllRead}
           >

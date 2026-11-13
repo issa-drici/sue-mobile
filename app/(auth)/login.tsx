@@ -286,7 +286,7 @@ export default function LoginScreen() {
         {/* Step Header */}
         {step > 1 && (
           <View style={styles.topBar}>
-            <TouchableOpacity onPress={() => setStep(step - 1)} style={styles.backBtn}>
+            <TouchableOpacity testID="login-back" onPress={() => setStep(step - 1)} style={styles.backBtn}>
               <Ionicons name="chevron-back" size={24} color="#000" />
             </TouchableOpacity>
           </View>
@@ -398,6 +398,7 @@ export default function LoginScreen() {
               {/* OTP Boxes Grid */}
               <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.otpGridWrapper}>
                 <TouchableOpacity
+                  testID="otp-boxes"
                   activeOpacity={1}
                   onPress={() => otpInputRef.current?.focus()}
                   style={styles.otpBoxesRow}

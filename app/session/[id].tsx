@@ -38,7 +38,9 @@ import { MenuAction, MenuView, NativeActionEvent } from '@react-native-menu/menu
 // arrive aussi sur des builds plus anciens, qui gardent alors le menu sous forme d'alerte.
 const HAS_NATIVE_MENU = !!UIManager.getViewManagerConfig?.('MenuView');
 import * as Contacts from 'expo-contacts';
-import ChatComments from '../../components/ChatComments';
+import { openChat } from '../../services/chat/activeChat';
+import { chatApi } from '../../services/chat/chatApi';
+import { messageCache } from '../../services/chat/messageCache';
 import NotificationPermissionSheet from '../../components/NotificationPermissionSheet';
 import PullToRefresh from '../../components/PullToRefresh';
 import { MainScreenLayout } from '../../components/ui/ScreenLayout';
@@ -46,7 +48,6 @@ import UserProfileModal from '../../components/UserProfileModal';
 import { ENV } from '../../config/env';
 import { BrandColors } from '../../constants/Colors';
 import { usePullToRefresh } from '../../hooks';
-import { useComments } from '../../hooks/useComments';
 import {
   useCancelParticipation,
   useCancelSession,
@@ -99,7 +100,7 @@ export default function SessionDetailsScreen() {
   const inviteScrollRef = useRef<ScrollView>(null);
 
   // State
-  const [showComments, setShowComments] = useState(false);
+  const [chatUnread, setChatUnread] = useState(0);
   const [showUserProfile, setShowUserProfile] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [selectedUserFirstname, setSelectedUserFirstname] = useState<string>('');
@@ -141,7 +142,7 @@ export default function SessionDetailsScreen() {
 
   // iOS ne superpose pas deux fenêtres : une demande ouverte pendant l'invitation (ouverte d'office
   // après la création) restait invisible et bloquait tous les taps une fois l'invitation fermée.
-  const isAnotherModalOpen = isInviteModalVisible || isSlotsEditorVisible || showComments;
+  const isAnotherModalOpen = isInviteModalVisible || isSlotsEditorVisible;
 
   useEffect(() => {
     if (!SESSION_NOTIF_PROMPT_ENABLED) return;
@@ -165,12 +166,6 @@ export default function SessionDetailsScreen() {
       setShowNotifSheet(true);
     });
   }, [session, user, isAnotherModalOpen]);
-
-  // Comments
-  const {
-    comments,
-    reloadComments
-  } = useComments(sessionId);
 
   const loadLocalContacts = async () => {
     try {
@@ -227,12 +222,19 @@ export default function SessionDetailsScreen() {
   useFocusEffect(
     React.useCallback(() => {
       if (sessionId) getSessionById(sessionId);
-    }, [sessionId, getSessionById])
+      // Messages non lus du chat (rafraîchi au retour du chat)
+      if (sessionId) {
+        chatApi.getMeta(sessionId).then((meta) => setChatUnread(meta.unreadCount)).catch(() => setChatUnread(0));
+        // Chat lu depuis le téléphone à l'avance : son ouverture sera instantanée
+        if (user?.id) messageCache.preload(user.id, sessionId);
+      }
+    }, [sessionId, getSessionById, user?.id])
   );
 
+  // Anciennes notifications « commentaire » (avant le chat) : ouvrent le chat de la session
   React.useEffect(() => {
-    if (openComments === 'true') setShowComments(true);
-  }, [openComments]);
+    if (openComments === 'true' && sessionId) openChat(sessionId);
+  }, [openComments, sessionId]);
 
   React.useEffect(() => {
     if (openInvite === 'true') setIsInviteModalVisible(true);
@@ -318,7 +320,6 @@ export default function SessionDetailsScreen() {
   const { refreshing, onRefresh } = usePullToRefresh({
     onRefresh: async () => {
       await getSessionById(sessionId, false);
-      await reloadComments();
     },
     minDelay: 800
   });
@@ -343,6 +344,8 @@ export default function SessionDetailsScreen() {
   const userStatus = getUserStatus();
   const isOrganizer = userStatus === 'organizer';
   const isParticipant = ['accepted', 'declined', 'pending'].includes(userStatus || '');
+  // Chat : organisateur et tous les invités, même ceux qui ont refusé
+  const canOpenChat = isOrganizer || isParticipant;
   const canRespond = userStatus === 'pending';
   const canCancel = userStatus === 'accepted';
   const isFromHistory = source === 'history';
@@ -453,7 +456,6 @@ export default function SessionDetailsScreen() {
               await confirmSlot(sessionId, slotId);
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               getSessionById(sessionId, false);
-              reloadComments();
             } catch (error) {
               Alert.alert('Erreur', error instanceof Error ? error.message : 'Impossible de confirmer le créneau');
             }
@@ -546,6 +548,9 @@ export default function SessionDetailsScreen() {
   // Menu des options supplémentaires (Trois points ...)
   // Menu "…" : le vrai menu natif (iOS UIMenu / Android), en groupes séparés
   const isSessionOver = session?.date && session?.endTime ? isSessionFinished(session.date, session.endTime, session.startTime) : false;
+  // A refusé ou quitté : peut revenir de lui-même tant que la session a lieu et qu'il reste de la place
+  const canRejoin = userStatus === 'declined' && !isFromHistory && session?.status !== 'cancelled'
+    && !isSessionOver && session?.scheduling !== 'finding_slot' && !isLimitReached;
   const moreMenuActions = React.useMemo<MenuAction[]>(() => {
     const groups: MenuAction[][] = [];
 
@@ -678,9 +683,24 @@ export default function SessionDetailsScreen() {
         return (hash >>> 0).toString(36);
       })()
     : '';
-  const sessionUrl = session?.shareToken
-    ? `${ENV.WEB_BASE_URL}/join/${session.shareToken}?${user?.id ? `from=${user.id}&` : ''}p=${previewKey}`
-    : `${ENV.WEB_BASE_URL}/session/${sessionId}`;
+  const buildJoinUrl = (shareToken: string) =>
+    `${ENV.WEB_BASE_URL}/join/${shareToken}?${user?.id ? `from=${user.id}&` : ''}p=${previewKey}`;
+  const sessionUrl = session?.shareToken ? buildJoinUrl(session.shareToken) : '';
+
+  // Lien à partager ou copier : toujours le lien /join (le seul qui a un aperçu avec la session dans
+  // iMessage / WhatsApp). Si le code de partage n'est pas encore connu (ex. juste après la création),
+  // on recharge la session pour l'obtenir plutôt que de donner un lien sans aperçu.
+  const getShareUrl = async (): Promise<string | null> => {
+    if (session?.shareToken) return buildJoinUrl(session.shareToken);
+    try {
+      const fresh = await getSessionById(sessionId, false);
+      if (fresh?.shareToken) return buildJoinUrl(fresh.shareToken);
+    } catch {
+      // réseau indisponible : message ci-dessous
+    }
+    Alert.alert('Lien indisponible', 'Impossible de récupérer le lien de la session. Réessaie dans un instant.');
+    return null;
+  };
 
   const formatButtonDate = (dStr: string) => {
     try {
@@ -757,32 +777,16 @@ export default function SessionDetailsScreen() {
     return isFindingSlot ? `${countText} ${sportPart}` : `${countText} ${sportPart} du ${dateStr}`;
   };
 
-  const buildShareMessage = (contactName?: string) => {
-    if (!session) return sessionUrl;
+  const buildShareMessage = (url: string, contactName?: string) => {
+    if (!session) return url;
     return buildSessionInviteMessage({
       sport: session.sport,
       date: session.date,
       startTime: session.startTime,
-      sessionUrl,
+      sessionUrl: url,
       contactName,
       findingSlot: isFindingSlot,
     });
-  };
-
-  const shareWhatsApp = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const message = buildShareMessage();
-    const url = `whatsapp://send?text=${encodeURIComponent(message)}`;
-    try {
-      const supported = await Linking.canOpenURL(url);
-      if (supported) {
-        await Linking.openURL(url);
-      } else {
-        await Share.share({ message });
-      }
-    } catch {
-      await Share.share({ message });
-    }
   };
 
   // Confirmation dans le bouton lui-même (pas d'alerte à fermer), pendant 2 secondes
@@ -790,8 +794,10 @@ export default function SessionDetailsScreen() {
   const linkCopiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (linkCopiedTimer.current) clearTimeout(linkCopiedTimer.current); }, []);
   const copyLink = async () => {
+    const url = await getShareUrl();
+    if (!url) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Clipboard.setString(sessionUrl);
+    Clipboard.setString(url);
     setLinkCopied(true);
     if (linkCopiedTimer.current) clearTimeout(linkCopiedTimer.current);
     linkCopiedTimer.current = setTimeout(() => setLinkCopied(false), 2000);
@@ -799,21 +805,27 @@ export default function SessionDetailsScreen() {
 
   // Depuis le menu "…" : pas de bouton à transformer, une courte confirmation qui se ferme seule
   const [menuLinkCopied, setMenuLinkCopied] = useState(false);
-  const copyLinkFromMenu = () => {
+  const copyLinkFromMenu = async () => {
+    const url = await getShareUrl();
+    if (!url) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Clipboard.setString(sessionUrl);
+    Clipboard.setString(url);
     setMenuLinkCopied(true);
     setTimeout(() => setMenuLinkCopied(false), 2000);
   };
 
   const shareGeneral = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    await Share.share({ message: buildShareMessage() });
+    const url = await getShareUrl();
+    if (!url) return;
+    await Share.share({ message: buildShareMessage(url) });
   };
 
   const inviteContact = async (contactName: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    await Share.share({ message: buildShareMessage(contactName) });
+    const url = await getShareUrl();
+    if (!url) return;
+    await Share.share({ message: buildShareMessage(url, contactName) });
   };
 
   if (isLoading) {
@@ -910,33 +922,31 @@ export default function SessionDetailsScreen() {
         </TouchableOpacity>
         
         <View style={styles.headerRightContainer}>
-          {/* Icône Discussion Vestiaire : masquée tant que le chat n'est pas disponible */}
-          {false && (
-          <TouchableOpacity 
-            disabled={true} 
-            onPress={() => setShowComments(true)} 
-            style={[styles.headerChatButton, { opacity: 0.3 }]}
-          >
-            <Ionicons name="chatbubble-ellipses-outline" size={24} color="#000" />
-            {comments.length > 0 ? (
-              <View style={styles.headerChatBadge}>
-                <Text style={styles.headerChatBadgeText}>
-                  {comments.length > 9 ? '9+' : comments.length}
-                </Text>
-              </View>
-            ) : null}
-          </TouchableOpacity>
-
+          {/* Discussion de la session (écran dédié) */}
+          {canOpenChat && (
+            <TouchableOpacity
+              onPress={() => openChat(sessionId)}
+              style={styles.headerChatButton}
+              accessibilityLabel="Discussion"
+              testID="session-chat-button"
+            >
+              <Ionicons name="chatbubble-ellipses-outline" size={24} color="#000" />
+              {chatUnread > 0 ? (
+                <View style={styles.headerChatBadge}>
+                  <Text style={styles.headerChatBadgeText}>{chatUnread > 9 ? '9+' : chatUnread}</Text>
+                </View>
+              ) : null}
+            </TouchableOpacity>
           )}
 
           {/* Bouton Plus Options */}
           {moreMenuActions.length > 0 && !HAS_NATIVE_MENU ? (
-            <TouchableOpacity onPress={openFallbackMenu} style={styles.headerMoreButton}>
+            <TouchableOpacity onPress={openFallbackMenu} style={styles.headerMoreButton} testID="session-more-button">
               <Ionicons name="ellipsis-horizontal" size={24} color="#000" />
             </TouchableOpacity>
           ) : moreMenuActions.length > 0 ? (
             <MenuView actions={moreMenuActions} onPressAction={handleMoreMenuAction} shouldOpenOnLongPress={false} themeVariant="light">
-              <View style={styles.headerMoreButton}>
+              <View style={styles.headerMoreButton} testID="session-more-button" accessibilityLabel="Options">
                 <Ionicons name="ellipsis-horizontal" size={24} color="#000" />
               </View>
             </MenuView>
@@ -1053,6 +1063,7 @@ export default function SessionDetailsScreen() {
               <View style={styles.respondButtonsRow}>
                 <TouchableOpacity
                   activeOpacity={0.8}
+                  testID="session-respond-accept"
                   style={styles.respondAcceptBtn}
                   onPress={handleAccept}
                   disabled={isResponding}
@@ -1063,12 +1074,33 @@ export default function SessionDetailsScreen() {
 
                 <TouchableOpacity
                   activeOpacity={0.8}
+                  testID="session-respond-decline"
                   style={styles.respondDeclineBtn}
                   onPress={handleDecline}
                   disabled={isResponding}
                 >
                   <Ionicons name="close-circle-outline" size={20} color="#E64A19" />
                   <Text style={styles.respondDeclineBtnText}>Je ne peux pas</Text>
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
+          ) : null}
+
+          {/* A refusé ou quitté : bouton pour revenir */}
+          {canRejoin ? (
+            <Animated.View entering={FadeInUp.delay(150).springify()} style={styles.respondContainer}>
+              <Text style={styles.respondTitle}>Tu ne viens pas</Text>
+              <Text style={styles.respondSubtitle}>Changement de programme ? Tu peux encore rejoindre la session.</Text>
+              <View style={styles.respondButtonsRow}>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  testID="session-rejoin"
+                  style={styles.respondAcceptBtn}
+                  onPress={handleAccept}
+                  disabled={isResponding}
+                >
+                  <Ionicons name="checkmark-circle-outline" size={20} color="#000" />
+                  <Text style={styles.respondAcceptBtnText}>Finalement je viens</Text>
                 </TouchableOpacity>
               </View>
             </Animated.View>
@@ -1543,23 +1575,6 @@ export default function SessionDetailsScreen() {
         </View>
       </Modal>
 
-      <Modal visible={showComments} animationType="slide" presentationStyle="fullScreen">
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowComments(false)}>
-              <Ionicons name="close" size={28} color="#000" />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>VESTIAIRE</Text>
-            <View style={{ width: 28 }} />
-          </View>
-          <ChatComments
-            sessionId={sessionId}
-            onCommentsReload={reloadComments}
-            onUserPress={handleUserPress}
-            onCloseComments={() => setShowComments(false)}
-          />
-        </SafeAreaView>
-      </Modal>
 
       <UserProfileModal
         visible={showUserProfile}

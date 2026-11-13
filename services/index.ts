@@ -19,12 +19,6 @@ export {
     useUpdateSession
 } from './sessions';
 
-// Hooks des commentaires
-export {
-    useCreateComment,
-    useGetComments
-} from './comments';
-
 // Hook de l'historique
 export { useGetHistory } from './sessions/getHistory';
 
@@ -50,7 +44,4 @@ export * from './notifications/getNotifications';
 export * from './notifications/markAllNotificationsAsRead';
 export * from './notifications/markNotificationAsRead';
 
-// Service WebSocket
-export { webSocketService } from './websocket';
-export type { CommentEvent, PresenceEvent, WebSocketConfig } from './websocket';
 

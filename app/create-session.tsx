@@ -33,6 +33,9 @@ import { endsNextDay, getDefaultEndTime, getSportEmoji, isValidEndTime, roundToN
 import { matchesSportSearch } from '../utils/search';
 import { Sport } from '../types/sport';
 
+// Joueurs max : au moins 2 (comme le backend), sinon pas de limite
+const MIN_PLAYERS = 2;
+
 type WhenMode = 'known-date' | 'find-slot';
 
 const WHEN_OPTIONS: { value: WhenMode; label: string; image: ImageSourcePropType; description: string }[] = [
@@ -238,19 +241,19 @@ export default function CreateSessionScreen() {
   const incrementMax = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (maxParticipants === null) {
-      setMaxParticipants(1); // Démarre à 1 joueur si c'était illimité
+      setMaxParticipants(MIN_PLAYERS); // Une session se joue au moins à 2
     } else {
-      setMaxParticipants((prev) => (prev ?? 1) + 1);
+      setMaxParticipants((prev) => (prev ?? MIN_PLAYERS) + 1);
     }
   };
 
   const decrementMax = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (maxParticipants === null) return;
-    if (maxParticipants <= 1) {
-      setMaxParticipants(null); // Redescend en "Session ouverte (illimité)" si <= 1
+    if (maxParticipants <= MIN_PLAYERS) {
+      setMaxParticipants(null); // En dessous de 2 : repasse en « Aucune » limite
     } else {
-      setMaxParticipants((prev) => (prev ?? 1) - 1);
+      setMaxParticipants((prev) => (prev ?? MIN_PLAYERS) - 1);
     }
   };
 
@@ -486,6 +489,7 @@ export default function CreateSessionScreen() {
           <TextInput
             style={styles.textInputRow}
             placeholder="Entrer le lieu..."
+                      autoCorrect={false}
             placeholderTextColor="#CCCCCC"
             value={location}
             onChangeText={handleLocationChange}
@@ -550,6 +554,7 @@ export default function CreateSessionScreen() {
               <View style={styles.stepperContainer}>
                 <TouchableOpacity
                   onPress={decrementMax}
+                    testID="players-decrement"
                   style={[styles.stepperButton, maxParticipants === null && styles.stepperButtonDisabled]}
                   disabled={maxParticipants === null}
                 >
@@ -560,6 +565,7 @@ export default function CreateSessionScreen() {
                 </Text>
                 <TouchableOpacity
                   onPress={incrementMax}
+                    testID="players-increment"
                   style={styles.stepperButton}
                 >
                   <Ionicons name="add" size={16} color="#000" />
@@ -601,6 +607,7 @@ export default function CreateSessionScreen() {
           activeOpacity={0.8}
           style={styles.inputCardRow}
           onPress={handleDatePickerPress}
+          testID="session-date-field"
         >
           <Ionicons name="calendar-outline" size={18} color="#8E8E93" style={styles.cardIcon} />
           <Text style={styles.cardValueText}>{formatDateLabel(date)}</Text>
@@ -615,6 +622,7 @@ export default function CreateSessionScreen() {
           activeOpacity={0.8}
           style={styles.inputCardRow}
           onPress={handleTimePickerPress}
+          testID="session-time-field"
         >
           <Ionicons name="time-outline" size={18} color="#8E8E93" style={styles.cardIcon} />
           <View style={styles.timeDisplayBlock}>

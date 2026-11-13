@@ -88,7 +88,7 @@ export default function ForgotPasswordScreen() {
         >
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.headerBar}>
-                    <TouchableOpacity onPress={() => router.back()} style={styles.backIcon}>
+                    <TouchableOpacity testID="forgot-password-back" onPress={() => router.back()} style={styles.backIcon}>
                         <Ionicons name="arrow-back" size={24} color="#000" />
                     </TouchableOpacity>
                 </View>

@@ -60,6 +60,7 @@ export default function FriendRequestsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
+          testID="friend-requests-back"
           activeOpacity={0.7}
           onPress={() => router.back()}
           style={styles.backBtn}
@@ -105,6 +106,7 @@ export default function FriendRequestsScreen() {
                 {/* Right: Actions */}
                 <View style={styles.actionsContainer}>
                   <TouchableOpacity
+                    testID={`decline-${item.id}`}
                     activeOpacity={0.8}
                     style={styles.declineBtn}
                     onPress={() => handleResponse(item.id, 'decline')}
@@ -112,6 +114,7 @@ export default function FriendRequestsScreen() {
                     <Ionicons name="close" size={20} color="#374151" />
                   </TouchableOpacity>
                   <TouchableOpacity
+                    testID={`accept-${item.id}`}
                     activeOpacity={0.8}
                     style={styles.acceptBtn}
                     onPress={() => handleResponse(item.id, 'accept')}

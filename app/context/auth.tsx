@@ -4,6 +4,8 @@ import { ENV } from '../../config/env';
 import { AuthApi } from '../../services/api/authApi';
 import { baseApiService } from '../../services/api/baseApi';
 import { UsersApi } from '../../services/api/usersApi';
+import { messageCache } from '../../services/chat/messageCache';
+import { outbox } from '../../services/chat/outbox';
 import { pushNotificationService } from '../../services/notifications/pushNotifications';
 import { UpdateProfileData } from '../../services/types/users';
 import { User } from '../../types/user';
@@ -76,8 +78,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.warn('⚠️ Erreur lors de la suppression du token push:', error);
       }
 
-      // Nettoyer le stockage local
+      // Nettoyer le stockage local (dont les messages de chat pas encore partis : jamais envoyés
+      // sous le compte suivant)
       await AsyncStorage.multiRemove(['user', 'authToken', 'refreshToken']);
+      await outbox.clearAll();
+      await messageCache.clearAll();
 
       // Nettoyer le token de l'API
       baseApiService.clearAuthToken();
@@ -134,7 +139,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // Vérifier la validité du token
-  const checkTokenValidity = async (): Promise<boolean> => {
+  // afterRefresh : déjà un essai avec un jeton tout juste rafraîchi. S'il est refusé aussi, on
+  // s'arrête là (sinon vérification et rafraîchissement s'appelleraient en boucle sans fin).
+  const checkTokenValidity = async (afterRefresh = false): Promise<boolean> => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       if (!token) {
@@ -151,11 +158,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (response.ok) {
         return true;
       } else if (response.status === 401) {
+        if (afterRefresh) {
+          // Le nouveau jeton est refusé lui aussi : pas de nouvel essai
+          return true;
+        }
         // Essayer de rafraîchir le token
         const refreshSuccess = await refreshAuth();
         if (refreshSuccess) {
-          // Vérifier à nouveau avec le nouveau token
-          return await checkTokenValidity();
+          // Vérifier une seule fois avec le nouveau token
+          return await checkTokenValidity(true);
         }
 
         // Si le refresh échoue, on ne déconnecte PAS automatiquement
@@ -219,6 +230,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // Charger l'utilisateur depuis le stockage au démarrage
+  // File d'attente du chat : liée à l'utilisateur connecté (envoi au retour du réseau, même chat fermé)
+  useEffect(() => {
+    outbox.setUser(user?.id ?? null);
+    // Chats des sessions terminées depuis plus d'un jour : plus accessibles, effacés du téléphone
+    if (user?.id) messageCache.prune(user.id);
+  }, [user?.id]);
+
   useEffect(() => {
     const loadUser = async () => {
       try {
@@ -463,8 +481,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       }
 
-      // Nettoyer le stockage local
+      // Nettoyer le stockage local (dont les messages de chat pas encore partis : jamais envoyés
+      // sous le compte suivant)
       await AsyncStorage.multiRemove(['user', 'authToken', 'refreshToken']);
+      await outbox.clearAll();
+      await messageCache.clearAll();
       baseApiService.clearAuthToken();
       setUser(null);
     } catch (error) {
