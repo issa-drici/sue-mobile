@@ -13,6 +13,7 @@ export type Sport =
   | 'cyclisme'
   | 'escalade'
   | 'yoga'
+  | 'esport'
   | 'pilates'
   | 'boxe'
   | 'jiu-jitsu-brésilien'

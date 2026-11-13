@@ -19,6 +19,7 @@ export const SPORTS_LIST: Sport[] = [
   'danse',
   'équitation',
   'escalade',
+  'esport',
   'football',
   'golf',
   'gymnastique',

@@ -51,6 +51,7 @@ const SPORT_IMAGES: Record<string, ImageSourcePropType> = {
   volleyball: require('../../../assets/images/sports/volleyball.webp'),
   yoga: require('../../../assets/images/sports/yoga.webp'),
   'équitation': require('../../../assets/images/sports/equitation.webp'),
+  esport: require('../../../assets/images/sports/esport.webp'),
 };
 
 export const hasSportImage = (sport?: string | null) => !!sport && sport.toLowerCase() in SPORT_IMAGES;

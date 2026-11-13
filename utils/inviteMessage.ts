@@ -50,6 +50,7 @@ const SPORT_SHARE_LABELS: Record<string, string> = {
   'tir-à-l-arc': "Tir à l'arc",
   'triathlon': 'Triathlon',
   'volleyball': 'Volley',
+  'esport': 'Session jeux vidéo',
   'yoga': 'Yoga',
 };
 

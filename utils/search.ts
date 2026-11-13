@@ -16,6 +16,7 @@ export function matchesSearch(candidate: string, query: string): boolean {
 // Termes que les gens tapent sans penser au nom du sport dans la liste
 const SPORT_SYNONYMS: Record<string, string[]> = {
   musculation: ['fitness', 'salle de sport'],
+  esport: ['jeux video', 'jeu video', 'gaming', 'console', 'manette', 'fifa', 'fc 25', 'rocket league', 'lan'],
 };
 
 export function matchesSportSearch(sport: string, query: string): boolean {

@@ -82,6 +82,7 @@ const SPORT_CONFIGS: Record<string, { icon: string; color: string }> = {
   golf: { icon: 'flag-sharp', color: '#5E40DC' }, // Violet golf
   basketball: { icon: 'basketball-sharp', color: '#E65100' },
   volleyball: { icon: 'football-outline', color: '#0288D1' },
+  esport: { icon: 'game-controller-outline', color: '#7C4DFF' },
   running: { icon: 'walk-sharp', color: '#00796B' },
 };
 
@@ -1120,7 +1121,7 @@ export default function SessionDetailsScreen() {
                 {maxParticipants ? (
                   <Text style={styles.summaryRatioSmall}> / {maxParticipants} joueurs</Text>
                 ) : (
-                  <Text style={styles.summaryRatioSmall}> joueurs</Text>
+                  <Text style={styles.summaryRatioSmall}> joueur{acceptedParticipants.length > 1 ? 's' : ''}</Text>
                 )}
               </Text>
               <Text style={styles.summaryBreakdownText}>

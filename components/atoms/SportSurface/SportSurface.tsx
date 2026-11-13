@@ -33,6 +33,7 @@ const SURFACES: Record<string, ImageSourcePropType> = {
   'arena-sand': require('../../../assets/images/surfaces/arena-sand.webp'),
   'bowling-lane': require('../../../assets/images/surfaces/bowling-lane.webp'),
   'archery-target': require('../../../assets/images/surfaces/archery-target.webp'),
+  'gaming-desk': require('../../../assets/images/surfaces/gaming-desk.webp'),
 };
 
 const SPORT_SURFACES: Record<string, keyof typeof SURFACES> = {
@@ -84,6 +85,7 @@ const SPORT_SURFACES: Record<string, keyof typeof SURFACES> = {
   'équitation': 'arena-sand',
   bowling: 'bowling-lane',
   'tir-à-l-arc': 'archery-target',
+  esport: 'gaming-desk',
 };
 
 // Format réel de chaque texture (elles n'ont pas toutes exactement la même hauteur)

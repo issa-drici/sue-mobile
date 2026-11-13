@@ -10,6 +10,7 @@ export const SPORT_EMOJIS: Record<Sport, string> = {
   football: '⚽',
   basketball: '🏀',
   volleyball: '🏐',
+  esport: '🎮',
   badminton: '🏸',
   padel: '🎾',
   squash: '🏓',

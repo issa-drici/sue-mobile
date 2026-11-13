@@ -47,6 +47,7 @@ export const SPORT_TINTS: Record<string, string> = {
   'tir-à-l-arc': '#F4EDE1',
   triathlon: '#EEF8D9',
   volleyball: '#EEF8D9',
+  esport: '#EEE8FF',
   yoga: '#EEF8D9',
   'équitation': '#EEF8D9',
 };
