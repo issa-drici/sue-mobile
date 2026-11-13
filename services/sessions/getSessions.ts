@@ -111,5 +111,7 @@ export function useGetSessions() {
     ...result,
     data: finalData,
     isFirstLoading: result.data === null && result.isLoading,
+    // Jamais chargé et en erreur : l'accueil affiche « Réessayer », pas « aucune session »
+    loadFailed: result.data === null && !result.isLoading && !result.isRetrying && !!result.error,
   };
 } 

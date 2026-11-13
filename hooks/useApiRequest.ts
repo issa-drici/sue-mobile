@@ -1,6 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../app/context/auth';
+import { isNonRetryableError } from '../services/api/baseApi';
 import { useAuthScreenDetection } from './useAuthScreenDetection';
 
 interface UseApiRequestOptions {
@@ -101,7 +102,10 @@ export function useApiRequest<T>(
       
       // Si le retry est activé et qu'on n'a pas atteint le maximum de tentatives
       // ET qu'on n'est PAS sur un écran d'authentification
-      if (enableRetry && attemptNumber < maxRetries && !isOnAuthScreen) {
+      // ET que l'erreur peut se résoudre (réseau, serveur) : un refus (401, 403, 404, 422…) donnerait
+      // la même réponse à chaque essai
+      const retryable = !isNonRetryableError(err);
+      if (enableRetry && retryable && attemptNumber < maxRetries && !isOnAuthScreen) {
         setRetryCount(attemptNumber + 1);
         setIsRetrying(true);
         
@@ -119,7 +123,7 @@ export function useApiRequest<T>(
         setIsLoading(false);
         setIsRetrying(false);
         
-        if (enableRetry && attemptNumber >= maxRetries && !isOnAuthScreen) {
+        if (enableRetry && retryable && attemptNumber >= maxRetries && !isOnAuthScreen) {
           onMaxRetriesReached?.(err);
         }
       }

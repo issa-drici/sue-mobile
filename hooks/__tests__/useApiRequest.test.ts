@@ -2,6 +2,7 @@
  * Requête API avec relance automatique : authentification requise, écrans d'auth, focus, annulation.
  */
 import { act, renderHook } from '@testing-library/react-native';
+import { ApiError } from '../../services/api/baseApi';
 import { useApiRequest } from '../useApiRequest';
 
 const mockAuth = { isAuthenticated: true };
@@ -99,6 +100,28 @@ it('ne relance pas sur un écran d’authentification', async () => {
   expect(api).toHaveBeenCalledTimes(1);
   expect(result.current.error).toBe('401');
   expect(onMax).not.toHaveBeenCalled();
+});
+
+it('refus définitif (401, 403, 404, 422) : aucune relance, erreur tout de suite', async () => {
+  const onRetry = jest.fn();
+  const onMax = jest.fn();
+  const api = jest.fn().mockRejectedValue(new ApiError('Unauthenticated.', 401));
+  const { result } = renderHook(() => useApiRequest(api, { retryDelay: 10, onRetry, onMaxRetriesReached: onMax }));
+  await tick(300);
+  expect(api).toHaveBeenCalledTimes(1);
+  expect(onRetry).not.toHaveBeenCalled();
+  expect(onMax).not.toHaveBeenCalled();
+  expect(result.current.error).toBe('Unauthenticated.');
+  expect(result.current.isRetrying).toBe(false);
+});
+
+it('erreur serveur (500) : relancée comme avant', async () => {
+  const onRetry = jest.fn();
+  const api = jest.fn().mockRejectedValueOnce(new ApiError('Erreur serveur', 500)).mockResolvedValue('ok');
+  const { result } = renderHook(() => useApiRequest(api, { retryDelay: 10, onRetry }));
+  await tick(300);
+  expect(onRetry).toHaveBeenCalledTimes(1);
+  expect(result.current.data).toBe('ok');
 });
 
 it('traite isAuthScreen indéfini comme faux', async () => {

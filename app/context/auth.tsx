@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
+import React, { createContext, ReactNode, useContext, useEffect, useRef, useState } from 'react';
+import { Alert } from 'react-native';
 import { ENV } from '../../config/env';
 import { AuthApi } from '../../services/api/authApi';
 import { baseApiService } from '../../services/api/baseApi';
@@ -229,6 +230,39 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  /**
+   * Le serveur a refusé le jeton (401) : on vérifie avant de déconnecter. Une coupure réseau ou une
+   * erreur serveur ne déconnecte jamais ; seul un refus confirmé (et un rafraîchissement impossible)
+   * renvoie à la connexion, avec un message.
+   */
+  const handleUnauthorizedRef = useRef<() => Promise<void>>(async () => {});
+  handleUnauthorizedRef.current = async () => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      if (!token) return;
+      const response = await fetch(`${ENV.API_BASE_URL}/profile`, {
+        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
+      });
+      if (response.status !== 401) {
+        baseApiService.resetUnauthorized(); // jeton valide ou serveur en difficulté : on reste connecté
+        return;
+      }
+      if (await refreshAuth()) {
+        baseApiService.resetUnauthorized();
+        return;
+      }
+      await forceSignOut();
+      Alert.alert('Session expirée', 'Reconnecte-toi pour retrouver tes sessions.');
+    } catch {
+      baseApiService.resetUnauthorized(); // pas de réseau : rien à conclure
+    }
+  };
+
+  // Signalement des jetons refusés, actif que l'on se connecte maintenant ou au démarrage
+  useEffect(() => {
+    baseApiService.setLogoutCallback(() => { handleUnauthorizedRef.current(); });
+  }, []);
+
   // Charger l'utilisateur depuis le stockage au démarrage
   // File d'attente du chat : liée à l'utilisateur connecté (envoi au retour du réseau, même chat fermé)
   useEffect(() => {
@@ -254,9 +288,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const normalized = normalizeUser(parsedUser);
           setUser(normalized);
           baseApiService.setAuthToken(token);
-
-          // Configurer le callback de déconnexion automatique
-          baseApiService.setLogoutCallback(forceSignOut);
 
           // Synchroniser le profil utilisateur en arrière-plan
           refreshUser().catch(() => {});

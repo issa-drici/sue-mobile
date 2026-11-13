@@ -493,6 +493,21 @@ describe('useGetSessions', () => {
     expect(result.current.data).toEqual([{ id: 'x' }]);
     expect(result.current.isFirstLoading).toBe(false);
   });
+
+  it('loadFailed : seulement jamais chargé, en erreur, et plus de relance en cours', () => {
+    const cases: [Record<string, unknown>, boolean][] = [
+      [{ data: null, isLoading: false, isRetrying: false, error: 'x' }, true],
+      [{ data: null, isLoading: false, isRetrying: true, error: 'x' }, false],
+      [{ data: null, isLoading: true, isRetrying: false, error: null }, false],
+      [{ data: [], isLoading: false, isRetrying: false, error: 'x' }, false],
+      [{ data: null, isLoading: false, isRetrying: false, error: null }, false],
+    ];
+    cases.forEach(([state, expected]) => {
+      mockApiRequest.result = state;
+      const { result } = renderHook(() => useGetSessions());
+      expect(result.current.loadFailed).toBe(expected);
+    });
+  });
 });
 
 describe('useRecentLocations', () => {

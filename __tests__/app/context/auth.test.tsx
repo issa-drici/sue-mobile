@@ -6,7 +6,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { act, render, renderHook, screen, waitFor } from '@testing-library/react-native';
 import React from 'react';
-import { Text } from 'react-native';
+import { Alert, Text } from 'react-native';
 import AuthProviderDefault, { AuthProvider, useAuth } from '../../../app/context/auth';
 
 const mockEnv = { API_BASE_URL: 'https://api.test/api', USE_MOCKS: false };
@@ -15,7 +15,7 @@ jest.mock('../../../config/env', () => ({ get ENV() { return mockEnv; } }));
 const mockAuthApi = { login: jest.fn(), register: jest.fn(), logout: jest.fn(), forgotPassword: jest.fn() };
 jest.mock('../../../services/api/authApi', () => ({ get AuthApi() { return mockAuthApi; } }));
 
-const mockBase = { setAuthToken: jest.fn(), clearAuthToken: jest.fn(), setLogoutCallback: jest.fn() };
+const mockBase = { setAuthToken: jest.fn(), clearAuthToken: jest.fn(), setLogoutCallback: jest.fn(), resetUnauthorized: jest.fn() };
 jest.mock('../../../services/api/baseApi', () => ({ get baseApiService() { return mockBase; } }));
 
 const mockUsersApi = { getProfile: jest.fn(), updateProfile: jest.fn() };
@@ -130,13 +130,61 @@ describe('démarrage', () => {
     await waitFor(() => expect(result.current.user).toEqual({}));
   });
 
-  it('le callback de déconnexion automatique vide la session', async () => {
-    await storeSession();
-    const { result } = await setup();
-    const logout = mockBase.setLogoutCallback.mock.calls[0][0];
-    await act(async () => { await logout(); });
-    expect(result.current.user).toBeNull();
-    expect(mockBase.clearAuthToken).toHaveBeenCalled();
+  describe('jeton refusé (401) signalé par l’API', () => {
+    const signal = async () => {
+      const report = mockBase.setLogoutCallback.mock.calls[0][0];
+      await act(async () => { report(); await new Promise((r) => setTimeout(r, 0)); });
+    };
+
+    it('refus confirmé par le serveur et rafraîchissement impossible : déconnexion avec message', async () => {
+      await storeSession();
+      const { result } = await setup();
+      const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+      await AsyncStorage.removeItem('refreshToken');
+      fetchMock.mockResolvedValue(res(401));
+      await signal();
+      expect(result.current.user).toBeNull();
+      expect(mockBase.clearAuthToken).toHaveBeenCalled();
+      expect(alert).toHaveBeenCalledWith('Session expirée', 'Reconnecte-toi pour retrouver tes sessions.');
+    });
+
+    it('jeton finalement accepté : reste connecté et réarme le signalement', async () => {
+      await storeSession();
+      const { result } = await setup();
+      fetchMock.mockResolvedValue(res(200));
+      await signal();
+      expect(result.current.user).toEqual(normalizedUser);
+      expect(mockBase.resetUnauthorized).toHaveBeenCalled();
+    });
+
+    it('serveur en erreur ou pas de réseau : jamais de déconnexion', async () => {
+      await storeSession();
+      const { result } = await setup();
+      fetchMock.mockResolvedValueOnce(res(500));
+      await signal();
+      fetchMock.mockRejectedValueOnce(new Error('offline'));
+      await signal();
+      expect(result.current.user).toEqual(normalizedUser);
+      expect(mockBase.clearAuthToken).not.toHaveBeenCalled();
+    });
+
+    it('rafraîchissement réussi : reste connecté', async () => {
+      await storeSession();
+      const { result } = await setup();
+      await AsyncStorage.setItem('refreshToken', 'R');
+      fetchMock.mockResolvedValueOnce(res(401)).mockResolvedValueOnce(res(200, { token: 'N' }));
+      await signal();
+      expect(result.current.user).toEqual(normalizedUser);
+      expect(await AsyncStorage.getItem('authToken')).toBe('N');
+    });
+
+    it('sans jeton enregistré : rien à vérifier', async () => {
+      const { result } = await setup();
+      fetchMock.mockClear();
+      await signal();
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(result.current.user).toBeNull();
+    });
   });
 
   it('erreur de lecture de l’onboarding → considéré non terminé', async () => {

@@ -259,6 +259,16 @@ describe('HomeScreen (onglet Sessions)', () => {
     });
   });
 
+  it('chargement impossible : message et « Réessayer », jamais l’écran « aucune session »', () => {
+    setSessions([], { loadFailed: true });
+    render(<HomeScreen />);
+    expect(screen.getByText('Impossible de charger tes sessions')).toBeTruthy();
+    expect(screen.queryByText('home-empty-state')).toBeNull();
+    expect(screen.queryByText(/^prompt:/)).toBeNull();
+    fireEvent.press(screen.getByText('Réessayer'));
+    expect(mockSessions.current.refetch).toHaveBeenCalled();
+  });
+
   it("choisit la première session future quand l'utilisateur n'est dans aucune, sans doublon des boutons de création", () => {
     setSessions([session('only', { sport: 'aquafitness', participants: [person('z')], maxParticipants: 3 })]);
     render(<HomeScreen />);

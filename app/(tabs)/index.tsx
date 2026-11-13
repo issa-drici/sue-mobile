@@ -53,7 +53,7 @@ const getSportConfig = (sportName: string) => {
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { data: sessions, isLoading, refetch, isFirstLoading } = useGetSessions();
+  const { data: sessions, isLoading, refetch, isFirstLoading, loadFailed } = useGetSessions();
   const { user } = useAuth();
   const { unreadCount } = useGlobalNotifications();
   const { friendRequestsCount, refetch: refetchFriendRequests } = useGlobalFriendRequests();
@@ -389,9 +389,29 @@ export default function HomeScreen() {
   };
 
   // Aucune session du tout (ni prochaine, ni à organiser, ni à venir) : écran d'accueil dédié
-  const hasNoSessionAtAll = !isFirstLoading && !nextSession && sessionsToOrganize.length === 0 && upcomingSessions.length === 0;
+  const hasNoSessionAtAll = !isFirstLoading && !loadFailed && !nextSession && sessionsToOrganize.length === 0 && upcomingSessions.length === 0;
 
-  const renderListHeader = () => hasNoSessionAtAll ? <HomeEmptyState /> : (
+  // Chargement impossible (réseau, serveur) : on le dit, plutôt que de laisser croire qu'il n'y a
+  // aucune session
+  const renderLoadError = () => (
+    <View style={styles.loadError} testID="home-load-error">
+      <Ionicons name="cloud-offline-outline" size={36} color="#8E8E93" />
+      <Text style={styles.loadErrorTitle}>Impossible de charger tes sessions</Text>
+      <Text style={styles.loadErrorText}>Vérifie ta connexion, puis réessaie.</Text>
+      <TouchableOpacity
+        activeOpacity={0.8}
+        style={styles.loadErrorButton}
+        onPress={() => {
+          Haptics.selectionAsync();
+          refetch();
+        }}
+      >
+        <Text style={styles.loadErrorButtonText}>Réessayer</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderListHeader = () => loadFailed ? renderLoadError() : hasNoSessionAtAll ? <HomeEmptyState /> : (
     <>
       <NotificationsCard />
       {sessionsToOrganize.length > 0 ? (
@@ -623,7 +643,7 @@ export default function HomeScreen() {
             ListEmptyComponent={
               // Avec une prochaine session, « Créer une autre session » est déjà affiché sous sa carte :
               // pas de second bloc avec les mêmes boutons
-              hasNoSessionAtAll || nextSession ? null : !isFirstLoading ? (
+              hasNoSessionAtAll || nextSession || loadFailed ? null : !isFirstLoading ? (
                 <NextSessionPrompt
                   title="Rien de prévu pour l'instant"
                   hint="Tes potes répondent en un tap."
@@ -746,6 +766,36 @@ const styles = StyleSheet.create({
   quickCreateHeader: {
     marginTop: 4,
     marginBottom: 8,
+  },
+  loadError: {
+    alignItems: 'center',
+    paddingVertical: 56,
+    paddingHorizontal: 24,
+  },
+  loadErrorTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#000',
+    marginTop: 14,
+    textAlign: 'center',
+  },
+  loadErrorText: {
+    fontSize: 14,
+    color: '#8E8E93',
+    marginTop: 6,
+    textAlign: 'center',
+  },
+  loadErrorButton: {
+    marginTop: 20,
+    backgroundColor: BrandColors.primary,
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    borderRadius: 14,
+  },
+  loadErrorButtonText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#000',
   },
   sectionHeader: {
     fontSize: 11,

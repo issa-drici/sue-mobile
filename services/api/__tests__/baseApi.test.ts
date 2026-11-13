@@ -3,7 +3,7 @@
  * upload multipart et mode simulé (mocks).
  */
 import { buildApiUrl, ENV } from '../../../config/env';
-import { baseApiService } from '../baseApi';
+import { ApiError, baseApiService, isNonRetryableError } from '../baseApi';
 
 const fetchMock = global.fetch as jest.Mock;
 
@@ -50,14 +50,48 @@ describe('jeton et configuration', () => {
     });
   });
 
-  it('accepte un callback de déconnexion sans jamais l’appeler sur 401', async () => {
-    const logout = jest.fn();
-    baseApiService.setLogoutCallback(logout);
+  it('401 : signale le jeton refusé une seule fois, réarmé par resetUnauthorized ou un nouveau jeton', async () => {
+    const report = jest.fn();
+    baseApiService.setLogoutCallback(report);
     baseApiService.setAuthToken('t');
-    fetchMock.mockResolvedValueOnce(fail(401, { message: 'Unauthenticated.' }));
-    await expect(baseApiService.get('/users/profile')).rejects.toThrow('Unauthenticated.');
-    expect(logout).not.toHaveBeenCalled();
+    fetchMock.mockResolvedValue(fail(401, { message: 'Unauthenticated.' }));
+    const error = await baseApiService.get('/users/profile').catch((e) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toMatchObject({ message: 'Unauthenticated.', status: 401 });
+    await baseApiService.get('/sessions').catch(() => {});
+    await baseApiService.get('/notifications').catch(() => {});
+    expect(report).toHaveBeenCalledTimes(1);
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('401'));
+
+    baseApiService.resetUnauthorized();
+    await baseApiService.get('/sessions').catch(() => {});
+    expect(report).toHaveBeenCalledTimes(2);
+
+    baseApiService.setAuthToken('t2');
+    await baseApiService.get('/sessions').catch(() => {});
+    expect(report).toHaveBeenCalledTimes(3);
+    baseApiService.clearAuthToken();
+  });
+
+  it('401 sur un endpoint public (connexion, aperçu de lien) : pas de signalement', async () => {
+    const report = jest.fn();
+    baseApiService.setLogoutCallback(report);
+    baseApiService.setAuthToken('t');
+    fetchMock.mockResolvedValue(fail(401, { message: 'Code invalide' }));
+    await baseApiService.post('/auth/phone/verify', {}).catch(() => {});
+    await baseApiService.get('/join/abc').catch(() => {});
+    expect(report).not.toHaveBeenCalled();
+    baseApiService.clearAuthToken();
+  });
+
+  it('isNonRetryableError : refus définitifs seulement', () => {
+    expect(isNonRetryableError(new ApiError('x', 401))).toBe(true);
+    expect(isNonRetryableError(new ApiError('x', 422))).toBe(true);
+    expect(isNonRetryableError(new ApiError('x', 429))).toBe(false);
+    expect(isNonRetryableError(new ApiError('x', 408))).toBe(false);
+    expect(isNonRetryableError(new ApiError('x', 500))).toBe(false);
+    expect(isNonRetryableError(new Error('Network request failed'))).toBe(false);
+    expect(isNonRetryableError(null)).toBe(false);
   });
 });
 
@@ -137,10 +171,13 @@ describe('messages d’erreur', () => {
     await expect(baseApiService.get('/x')).rejects.toThrow('HTTP error! status: 502');
   });
 
-  it('403 : avertit sans déconnecter', async () => {
+  it('403 : action interdite, jamais de signalement de déconnexion', async () => {
+    const report = jest.fn();
+    baseApiService.setLogoutCallback(report);
     fetchMock.mockResolvedValueOnce(fail(403, { message: 'Interdit' }));
-    await expect(baseApiService.get('/x')).rejects.toThrow('Interdit');
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('403'));
+    const error = await baseApiService.get('/x').catch((e) => e);
+    expect(error).toMatchObject({ message: 'Interdit', status: 403 });
+    expect(report).not.toHaveBeenCalled();
   });
 
   it('erreur réseau : relayée telle quelle', async () => {

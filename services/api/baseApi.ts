@@ -7,13 +7,24 @@ export interface ApiResponse<T> {
   success: boolean;
 }
 
-export interface ApiError {
-  message: string;
+// Appelé quand le serveur refuse le jeton (401) : l'app vérifie la session avant de déconnecter
+type LogoutCallback = () => void;
+
+/** Erreur d'API avec son code HTTP (401, 403, 422…) : permet de ne pas réessayer en vain */
+export class ApiError extends Error {
   status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+  }
 }
 
-// Callback pour la déconnexion automatique
-type LogoutCallback = () => void;
+/** Erreurs à ne pas réessayer : la même requête obtiendra la même réponse */
+export function isNonRetryableError(error: unknown): boolean {
+  const status = (error as { status?: number } | null)?.status;
+  return typeof status === 'number' && status >= 400 && status < 500 && status !== 408 && status !== 429;
+}
 
 // Service API principal
 class BaseApiService {
@@ -21,6 +32,8 @@ class BaseApiService {
   private token: string | null = null;
   private useMocks: boolean = isMockMode();
   private logoutCallback: LogoutCallback | null = null;
+  // Un seul signalement à la fois : des dizaines de requêtes refusées ne déclenchent qu'une vérification
+  private unauthorizedReported = false;
 
   constructor(baseURL?: string) {
     this.baseURL = baseURL || ENV.API_BASE_URL;
@@ -34,6 +47,7 @@ class BaseApiService {
   // Configuration du token d'authentification
   setAuthToken(token: string) {
     this.token = token;
+    this.unauthorizedReported = false;
   }
 
   // Jeton courant (chat : authentification du temps réel et requêtes avec code HTTP)
@@ -44,6 +58,12 @@ class BaseApiService {
   // Suppression du token
   clearAuthToken() {
     this.token = null;
+    this.unauthorizedReported = false;
+  }
+
+  /** Vérification terminée sans déconnexion (réseau, jeton finalement valide) : signalement réarmé */
+  resetUnauthorized() {
+    this.unauthorizedReported = false;
   }
 
   // Activer/désactiver les mocks
@@ -75,14 +95,15 @@ class BaseApiService {
   }
 
   // Gestion des erreurs d'authentification
-  private handleAuthError(status: number, errorMessage: string) {
-    // Erreurs d'authentification (401 Unauthorized, 403 Forbidden)
-    if (status === 401 || status === 403) {
-      console.warn(`🔐 Erreur d'authentification (${status}): ${errorMessage}`);
-      
-      // NE PAS déclencher la déconnexion automatique
-      // L'utilisateur reste connecté même en cas d'erreur d'authentification
-    }
+  // 401 = jeton refusé : on le signale (une fois) pour que l'app vérifie la session et, si elle est
+  // vraiment expirée, renvoie à la connexion. 403 = action interdite (pas organisateur…) : jamais de
+  // déconnexion pour ça.
+  private handleAuthError(status: number, errorMessage: string, endpoint: string) {
+    if (status !== 401) return;
+    console.warn(`🔐 Jeton refusé (401) sur ${endpoint}: ${errorMessage}`);
+    if (!this.token || !this.requiresAuthentication(endpoint) || this.unauthorizedReported) return;
+    this.unauthorizedReported = true;
+    this.logoutCallback?.();
   }
 
   // Déterminer si un endpoint nécessite une authentification
@@ -163,9 +184,9 @@ class BaseApiService {
         console.error('📋 Error data:', errorData);
         
         // Gérer les erreurs d'authentification
-        this.handleAuthError(response.status, errorMessage);
+        this.handleAuthError(response.status, errorMessage, endpoint);
         
-        throw new Error(errorMessage);
+        throw new ApiError(errorMessage, response.status);
       }
 
       const data = await response.json();
@@ -342,8 +363,8 @@ class BaseApiService {
         } else if (typeof errorData.error === 'string') {
           errorMessage = errorData.error;
         }
-        this.handleAuthError(response.status, errorMessage);
-        throw new Error(errorMessage);
+        this.handleAuthError(response.status, errorMessage, endpoint);
+        throw new ApiError(errorMessage, response.status);
       }
 
       return await response.json();
