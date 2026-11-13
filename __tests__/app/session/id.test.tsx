@@ -111,6 +111,8 @@ const pressAlertButton = async (text: string) => {
 };
 
 beforeEach(() => {
+  // Comme le vrai hook : toujours une promesse
+  fns.getSessionById.mockResolvedValue(null);
   jest.clearAllMocks();
   mockParams = { id: 's-1' };
   mockUser = { id: 'org-1', firstname: 'Marc' };

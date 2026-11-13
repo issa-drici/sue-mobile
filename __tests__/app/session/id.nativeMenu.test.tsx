@@ -69,7 +69,7 @@ beforeEach(() => {
     data: mockSession,
     error: null,
     isLoading: false,
-    getSessionById: jest.fn(),
+    getSessionById: jest.fn(() => Promise.resolve(null)),
   }));
   // Avertissement de dépréciation de Clipboard (react-native core), émis au premier accès
   jest.spyOn(console, 'warn').mockImplementation(() => {});

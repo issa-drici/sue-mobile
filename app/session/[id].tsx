@@ -222,7 +222,7 @@ export default function SessionDetailsScreen() {
   // Effects
   useFocusEffect(
     React.useCallback(() => {
-      if (sessionId) getSessionById(sessionId);
+      if (sessionId) getSessionById(sessionId).catch(() => {});
       // Messages non lus du chat (rafraîchi au retour du chat)
       if (sessionId) {
         chatApi.getMeta(sessionId).then((meta) => setChatUnread(meta.unreadCount)).catch(() => setChatUnread(0));
@@ -370,7 +370,7 @@ export default function SessionDetailsScreen() {
     try {
       await setAvailability(sessionId, slotIds);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      getSessionById(sessionId, false);
+      getSessionById(sessionId, false).catch(() => {});
       // Moment clé pour proposer les notifications : il attend maintenant le choix du créneau
       if (SESSION_NOTIF_PROMPT_ENABLED && slotIds.length > 0 && (await pushNotificationService.shouldShowSoftPrompt())) {
         setNotifSheetVariant('availability');
@@ -385,7 +385,7 @@ export default function SessionDetailsScreen() {
     try {
       await proposeSlot(sessionId, slot);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      getSessionById(sessionId, false);
+      getSessionById(sessionId, false).catch(() => {});
       return true;
     } catch (error) {
       Alert.alert('Erreur', error instanceof Error ? error.message : 'Impossible de proposer ce créneau');
@@ -396,7 +396,7 @@ export default function SessionDetailsScreen() {
   const handleRemoveProposedSlot = async (slotId: string) => {
     try {
       await removeProposedSlot(sessionId, slotId);
-      getSessionById(sessionId, false);
+      getSessionById(sessionId, false).catch(() => {});
     } catch (error) {
       Alert.alert('Erreur', error instanceof Error ? error.message : 'Impossible de retirer ce créneau');
     }
@@ -436,7 +436,7 @@ export default function SessionDetailsScreen() {
       );
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setIsSlotsEditorVisible(false);
-      getSessionById(sessionId, false);
+      getSessionById(sessionId, false).catch(() => {});
     } catch (error) {
       Alert.alert('Erreur', error instanceof Error ? error.message : 'Impossible de modifier les créneaux');
     }
@@ -456,7 +456,7 @@ export default function SessionDetailsScreen() {
             try {
               await confirmSlot(sessionId, slotId);
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              getSessionById(sessionId, false);
+              getSessionById(sessionId, false).catch(() => {});
             } catch (error) {
               Alert.alert('Erreur', error instanceof Error ? error.message : 'Impossible de confirmer le créneau');
             }
@@ -480,7 +480,7 @@ export default function SessionDetailsScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     try {
       await respondToInvitation(sessionId, 'accept');
-      getSessionById(sessionId);
+      getSessionById(sessionId).catch(() => {});
     } catch { Alert.alert('Erreur', "Impossible d'accepter"); }
   };
 
@@ -492,7 +492,7 @@ export default function SessionDetailsScreen() {
         text: 'Refuser', style: 'destructive', onPress: async () => {
           try {
             await respondToInvitation(sessionId, 'decline');
-            getSessionById(sessionId);
+            getSessionById(sessionId).catch(() => {});
           } catch { Alert.alert('Erreur', "Impossible de refuser"); }
         }
       }
@@ -506,7 +506,7 @@ export default function SessionDetailsScreen() {
         text: 'Oui, annuler', style: 'destructive', onPress: async () => {
           try {
             await cancelParticipation(sessionId);
-            getSessionById(sessionId);
+            getSessionById(sessionId).catch(() => {});
           } catch { Alert.alert('Erreur', "Impossible d'annuler"); }
         }
       }
@@ -537,7 +537,7 @@ export default function SessionDetailsScreen() {
       await inviteFriends(sessionId, selectedFriends);
       setIsInviteModalVisible(false);
       setSelectedFriends([]);
-      getSessionById(sessionId);
+      getSessionById(sessionId).catch(() => {});
     } catch { Alert.alert('Erreur', "Echec de l'envoi"); }
   };
 
@@ -1591,7 +1591,7 @@ export default function SessionDetailsScreen() {
         isSessionOrganizer={isOrganizer}
         isSessionFinished={session?.date && session?.endTime ? isSessionFinished(session.date, session.endTime, session.startTime) : false}
         onOrganizerChanged={() => {
-          getSessionById(sessionId);
+          getSessionById(sessionId).catch(() => {});
         }}
       />
 

@@ -151,7 +151,8 @@ export function useGetSessionById() {
   useFocusEffect(
     useCallback(() => {
       if (currentSessionId) {
-        getSessionById(currentSessionId, !dataRef.current);
+        // L'erreur est déjà dans `error` (ou ignorée si la fiche est affichée) : pas de rejet non géré
+        getSessionById(currentSessionId, !dataRef.current).catch(() => {});
       }
     }, [currentSessionId, getSessionById])
   );

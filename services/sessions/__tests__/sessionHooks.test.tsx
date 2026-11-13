@@ -493,7 +493,7 @@ describe('useGetSessionById', () => {
   // .catch : si le rechargement au retour sur l'écran échoue (réseau coupé), la promesse rejetée n'est
   // jamais gérée (« unhandled promise rejection »). L'erreur est bien mise dans `error`, mais le rejet
   // remonte. Correctif suggéré : getSessionById(currentSessionId, !dataRef.current).catch(() => {}).
-  it.skip('un échec du rechargement au focus ne produit pas de rejet non géré', async () => {
+  it('un échec du rechargement au focus ne produit pas de rejet non géré', async () => {
     const { result } = renderHook(() => useGetSessionById());
     api.getById.mockRejectedValueOnce(new Error('première')).mockRejectedValueOnce(new Error('focus'));
     await call(() => result.current.getSessionById('x'));

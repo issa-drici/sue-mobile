@@ -398,7 +398,8 @@ export default function AddFriendScreen() {
       // Pour les contacts trouvés depuis les contacts locaux, utiliser le nom du contact local
       // Sinon, utiliser le nom de l'utilisateur Sue (pour les résultats de recherche)
       const contactName = item.localContact?.name;
-      const displayName = contactName || (user.firstname ? `${user.firstname} ${user.lastname}` : (user.name || user.email || 'Athlète'));
+      const fullName = user.firstname ? [user.firstname, user.lastname].filter(Boolean).join(' ') : '';
+      const displayName = contactName || fullName || user.name || user.email || 'Athlète';
 
       // Afficher le nom/prénom de l'utilisateur Sue à la place de "Utilisateur SUE"
       const userDisplayName = user.firstname && user.lastname

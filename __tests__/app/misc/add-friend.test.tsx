@@ -427,7 +427,7 @@ describe('AddFriendScreen', () => {
 
   // BUG: app/add-friend.tsx (renderItem, calcul de displayName) : `user.firstname ? \`${user.firstname} ${user.lastname}\` : …`
   // affiche "PRÉNOM UNDEFINED" pour un utilisateur Sue qui a un prénom mais pas de nom de famille.
-  it.skip("n'affiche pas \"undefined\" pour un utilisateur sans nom de famille", async () => {
+  it("n'affiche pas \"undefined\" pour un utilisateur sans nom de famille", async () => {
     mockState.search.data = [{ id: 'u60', firstname: 'Zack' }];
     await renderLoaded();
     await typeSearch('za');
