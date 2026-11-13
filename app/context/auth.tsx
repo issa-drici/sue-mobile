@@ -6,6 +6,7 @@ import { AuthApi } from '../../services/api/authApi';
 import { baseApiService } from '../../services/api/baseApi';
 import { UsersApi } from '../../services/api/usersApi';
 import { messageCache } from '../../services/chat/messageCache';
+import { clearSessionCache } from '../../services/sessions/getSessionById';
 import { outbox } from '../../services/chat/outbox';
 import { pushNotificationService } from '../../services/notifications/pushNotifications';
 import { UpdateProfileData } from '../../services/types/users';
@@ -84,6 +85,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await AsyncStorage.multiRemove(['user', 'authToken', 'refreshToken']);
       await outbox.clearAll();
       await messageCache.clearAll();
+      clearSessionCache();
 
       // Nettoyer le token de l'API
       baseApiService.clearAuthToken();
@@ -517,6 +519,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await AsyncStorage.multiRemove(['user', 'authToken', 'refreshToken']);
       await outbox.clearAll();
       await messageCache.clearAll();
+      clearSessionCache();
       baseApiService.clearAuthToken();
       setUser(null);
     } catch (error) {

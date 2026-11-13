@@ -71,6 +71,25 @@ function convertToSportSession(session: any): SportSession {
   };
 }
 
+/**
+ * Sessions déjà connues (fiches ouvertes, liste de l'accueil) : une fiche s'affiche tout de suite,
+ * puis se met à jour en silence. Jamais d'écran de chargement pour une session déjà vue.
+ */
+const sessionCache = new Map<string, SportSession>();
+
+/** L'accueil y dépose ses sessions : ouvrir une carte affiche la fiche sans attendre */
+export function primeSessionCache(sessions: SportSession[]) {
+  sessions.forEach((session) => {
+    // Une fiche déjà chargée en entier (lien de partage…) n'est pas remplacée par la version liste
+    const known = sessionCache.get(session.id);
+    sessionCache.set(session.id, known ? { ...session, shareToken: known.shareToken } : session);
+  });
+}
+
+export function clearSessionCache() {
+  sessionCache.clear();
+}
+
 export function useGetSessionById() {
   const [data, setData] = useState<SportSession | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -81,7 +100,13 @@ export function useGetSessionById() {
 
   const getSessionById = useCallback(async (id: string, showLoading = true) => {
     setCurrentSessionId(id);
-    if (showLoading) {
+    // Déjà connue : affichée tout de suite, rechargée en silence
+    const known = dataRef.current?.id === id ? dataRef.current : sessionCache.get(id) ?? null;
+    if (known && dataRef.current?.id !== id) {
+      dataRef.current = known;
+      setData(known);
+    }
+    if (showLoading && !known) {
       setIsLoading(true);
     }
     setError(null);
@@ -98,13 +123,24 @@ export function useGetSessionById() {
         const sessionData = (response as any).data || response;
         
         const sportSession = convertToSportSession(sessionData);
+        sessionCache.set(id, sportSession);
         setData(sportSession);
         
         
         return sportSession;
       }
     } catch (err: any) {
-      setError(err.message || 'Erreur lors du chargement de la session');
+      const status = (err as { status?: number })?.status;
+      if (status === 404 || status === 403) {
+        // Session supprimée ou plus accessible : on ne la montre plus, même depuis la mémoire
+        sessionCache.delete(id);
+        dataRef.current = null;
+        setData(null);
+        setError(err.message || 'Session introuvable');
+      } else if (dataRef.current?.id !== id) {
+        setError(err.message || 'Erreur lors du chargement de la session');
+      }
+      // Sinon (réseau, serveur) : la fiche déjà affichée reste, sans message
       throw err;
     } finally {
       setIsLoading(false);

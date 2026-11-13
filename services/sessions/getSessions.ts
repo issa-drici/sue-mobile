@@ -4,6 +4,7 @@ import { useApiRequest } from '../../hooks/useApiRequest';
 import { mockSessions } from '../../mocks/sessions';
 import { SportSession } from '../../types/sport';
 import { SessionsApi } from '../api/sessionsApi';
+import { primeSessionCache } from './getSessionById';
 import { formatAvatarUrl } from '../../utils';
 
 // Fonction de conversion de Session vers SportSession
@@ -84,6 +85,8 @@ export function useGetSessions() {
       
       // Convertir les vraies sessions
       const convertedSessions = sessionsArray.map(convertToSportSession);
+      // Ouvrir une carte affichera la fiche tout de suite
+      primeSessionCache(convertedSessions);
       
       return convertedSessions;
     }

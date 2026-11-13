@@ -180,16 +180,30 @@ async function runFallbackMenu(title: string) {
 const menuTitles = () => (alertMock().mock.calls.slice(-1)[0][2] as any[]).map((b) => b.text);
 
 describe('SessionDetailsScreen — états', () => {
-  it('affiche un indicateur pendant le chargement', async () => {
+  it('indicateur de chargement seulement tant que rien n’est à afficher', async () => {
+    state.session = null;
     state.isLoading = true;
     await renderScreen();
     expect(screen.queryByText('SESSION')).toBeNull();
   });
 
-  it("affiche l'erreur de chargement", async () => {
-    state.error = 'Erreur réseau';
+  it('rechargement d’une fiche déjà affichée : silencieux, la page reste', async () => {
+    state.isLoading = true;
     await renderScreen();
+    expect(screen.getByText('SESSION')).toBeTruthy();
+  });
+
+  it("erreur de chargement sans session : message ; avec une fiche affichée : la fiche reste", async () => {
+    state.session = null;
+    state.error = 'Erreur réseau';
+    const { unmount } = await renderScreen();
     expect(screen.getByText('Erreur réseau')).toBeTruthy();
+    unmount();
+
+    state.session = makeSportSession();
+    await renderScreen();
+    expect(screen.getByText('SESSION')).toBeTruthy();
+    expect(screen.queryByText('Erreur réseau')).toBeNull();
   });
 
   it('affiche "Session introuvable" sans session', async () => {

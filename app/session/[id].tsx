@@ -828,7 +828,9 @@ export default function SessionDetailsScreen() {
     await Share.share({ message: buildShareMessage(url, contactName) });
   };
 
-  if (isLoading) {
+  // Écran de chargement seulement s'il n'y a encore rien à montrer : les retours sur la fiche et
+  // les mises à jour après une action se font en silence, sans démonter la page
+  if (isLoading && !session) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#000" />
@@ -836,7 +838,7 @@ export default function SessionDetailsScreen() {
     );
   }
 
-  if (error || !session) {
+  if (!session) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
         <Text style={styles.errorText}>{error || 'Session introuvable'}</Text>

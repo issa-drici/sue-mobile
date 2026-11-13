@@ -12,6 +12,7 @@ import {
   useInviteFriends, useRecentLocations, useRespondToInvitation, useSlotFinding, useUpdateSession,
 } from '..';
 import { useGetHistory } from '../getHistory';
+import { clearSessionCache, primeSessionCache } from '../getSessionById';
 import { useGetMyCreatedSessions } from '../getMyCreatedSessions';
 import { useGetMyParticipations } from '../getMyParticipations';
 
@@ -426,17 +427,57 @@ describe('useGetSessionById', () => {
     expect((value as any).comments[0]).toEqual(expect.objectContaining({ userId: 'u', firstname: 'Utilisateur' }));
   });
 
-  it('erreur relayée, puis mode simulé', async () => {
+  it('session déjà connue (accueil ou fiche vue) : affichée tout de suite, rechargée sans indicateur', async () => {
+    clearSessionCache();
+    // Rechargements au focus (hook) : jamais résolus, pour ne pas fausser les étapes
+    api.getById.mockReturnValue(new Promise(() => {}) as any);
+    primeSessionCache([{ id: 'p1', location: 'Five' } as any]);
+    let resolve!: (v: unknown) => void;
+    api.getById.mockReturnValueOnce(new Promise((r) => { resolve = r; }) as any);
     const { result } = renderHook(() => useGetSessionById());
-    api.getById.mockResolvedValue({ id: 'x' } as any);
+    let pending!: Promise<unknown>;
+    act(() => { pending = result.current.getSessionById('p1'); });
+    expect(result.current.data?.location).toBe('Five');
+    expect(result.current.isLoading).toBe(false);
+    await act(async () => { resolve({ id: 'p1', location: 'Five du Havre', shareToken: 'tok' }); await pending; });
+    expect(result.current.data?.location).toBe('Five du Havre');
+
+    // La liste de l'accueil ne fait pas perdre le lien de partage déjà connu
+    primeSessionCache([{ id: 'p1', location: 'Five du Havre' } as any]);
+    const second = renderHook(() => useGetSessionById());
+    api.getById.mockReturnValueOnce(new Promise(() => {}) as any);
+    act(() => { second.result.current.getSessionById('p1'); });
+    expect(second.result.current.data?.shareToken).toBe('tok');
+
+    clearSessionCache();
+    const third = renderHook(() => useGetSessionById());
+    api.getById.mockReturnValueOnce(new Promise(() => {}) as any);
+    act(() => { third.result.current.getSessionById('p1'); });
+    expect(third.result.current.isLoading).toBe(true);
+  });
+
+  it('erreur relayée, puis mode simulé', async () => {
+    clearSessionCache();
+    api.getById.mockReturnValue(new Promise(() => {}) as any);
+    const { result } = renderHook(() => useGetSessionById());
+    api.getById.mockResolvedValueOnce({ id: 'x' } as any);
     await call(() => result.current.getSessionById('x'));
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    // Même session : pas de rechargement au focus, l'erreur reste affichée
-    api.getById.mockRejectedValueOnce(new Error('introuvable'));
-    expect((await call(() => result.current.getSessionById('x'))).error.message).toBe('introuvable');
-    expect(result.current.error).toBe('introuvable');
+    // Fiche affichée, rafraîchissement raté (réseau) : la fiche reste, sans message
+    api.getById.mockRejectedValueOnce(new Error('réseau'));
+    expect((await call(() => result.current.getSessionById('x'))).error.message).toBe('réseau');
+    expect(result.current.error).toBeNull();
+    expect(result.current.data?.id).toBe('x');
     expect(result.current.isLoading).toBe(false);
+
+    // Session supprimée (404) : elle disparaît, même de la mémoire
+    api.getById.mockRejectedValueOnce(Object.assign(new Error('introuvable'), { status: 404 }));
+    await call(() => result.current.getSessionById('x'));
+    expect(result.current.error).toBe('introuvable');
+    expect(result.current.data).toBeNull();
+
+    // Rien d'affiché et échec réseau : message par défaut
     api.getById.mockRejectedValueOnce({});
     await call(() => result.current.getSessionById('x'));
     expect(result.current.error).toBe('Erreur lors du chargement de la session');
